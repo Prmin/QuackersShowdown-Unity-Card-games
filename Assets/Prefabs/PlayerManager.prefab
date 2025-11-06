@@ -1,0 +1,211 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7005805799716854279
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1467388723397597815}
+  - component: {fileID: 8685383577402169244}
+  - component: {fileID: 8141879179407857986}
+  - component: {fileID: -1984101244939124786}
+  - component: {fileID: -587962535400228168}
+  - component: {fileID: -6624219924896131588}
+  m_Layer: 0
+  m_Name: PlayerManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1467388723397597815
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1098.5327, y: 515.58075, z: -7.002095}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8685383577402169244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a553cb17010b2403e8523b558bffbc14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 1
+  syncMode: 0
+  syncInterval: 0.1
+  target: {fileID: 1467388723397597815}
+  syncPosition: 1
+  syncRotation: 1
+  syncScale: 0
+  onlySyncOnChange: 1
+  compressRotation: 1
+  interpolatePosition: 1
+  interpolateRotation: 1
+  interpolateScale: 1
+  coordinateSpace: 0
+  timelineOffset: 1
+  showGizmos: 0
+  showOverlay: 0
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  bufferResetMultiplier: 3
+  useFixedUpdate: 0
+  positionSensitivity: 0.01
+  rotationSensitivity: 0.01
+  scaleSensitivity: 0.01
+--- !u!114 &8141879179407857986
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sceneId: 0
+  _assetId: 2922302410
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &-1984101244939124786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c5187d52ecabca4b8cee4c8781626d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  Shoot: {fileID: 6939795744060361821, guid: 615781b8bbb1ca24f8bb000a69f4236b, type: 3}
+  TekeAim: {fileID: 4912664318366299341, guid: 48b61857d16b5af449dec83c523f8e3b, type: 3}
+  DoubleBarrel: {fileID: 4912664318366299341, guid: 76c048bf7ef04f14da7e57dcd0730648, type: 3}
+  QuickShot: {fileID: 4912664318366299341, guid: 79e03a7ef1dcd8745aa61fab57243dd8, type: 3}
+  Misfire: {fileID: 4912664318366299341, guid: 6f1b742f8d8ca2e40bde942d06a19a7c, type: 3}
+  TwoBirds: {fileID: 4912664318366299341, guid: 61dd3289bc3b7ef45b5f0f3db78e7dfe, type: 3}
+  BumpLeft: {fileID: 4912664318366299341, guid: 5d1fe7e370f26dc4880787fd5cc8d221, type: 3}
+  BumpRight: {fileID: 4912664318366299341, guid: 9f3ba58c4575c3544868ad30379c97a8, type: 3}
+  LineForward: {fileID: 4912664318366299341, guid: f121c31ea91e11d4788f9d3a4210849f, type: 3}
+  MoveAhead: {fileID: 4912664318366299341, guid: 5d18a48faae4c1a40bba1b30ec8c449e, type: 3}
+  HangBack: {fileID: 4912664318366299341, guid: 44fa92a76506e6e4b80f56255199320f, type: 3}
+  FastForward: {fileID: 4912664318366299341, guid: 7e4d4d157dd3ce948a8fc68443b12fa8, type: 3}
+  DisorderlyConduckt: {fileID: 4912664318366299341, guid: 108b07e6a2b42984b9c604b46b8fa1a6, type: 3}
+  DuckShuffle: {fileID: 4912664318366299341, guid: 602af8cbed8f1644990add1c261bfc20, type: 3}
+  GivePeaceAChance: {fileID: 4912664318366299341, guid: 5b10a1a9c7cfba443826028d19fc7bc4, type: 3}
+  ShootPrefab: {fileID: 6939795744060361821, guid: 615781b8bbb1ca24f8bb000a69f4236b, type: 3}
+  TekeAimPrefab: {fileID: 4912664318366299341, guid: 48b61857d16b5af449dec83c523f8e3b, type: 3}
+  DoubleBarrelPrefab: {fileID: 4912664318366299341, guid: 76c048bf7ef04f14da7e57dcd0730648, type: 3}
+  QuickShotPrefab: {fileID: 4912664318366299341, guid: 79e03a7ef1dcd8745aa61fab57243dd8, type: 3}
+  MisfirePrefab: {fileID: 4912664318366299341, guid: 6f1b742f8d8ca2e40bde942d06a19a7c, type: 3}
+  TwoBirdsPrefab: {fileID: 4912664318366299341, guid: 61dd3289bc3b7ef45b5f0f3db78e7dfe, type: 3}
+  BumpLeftPrefab: {fileID: 4912664318366299341, guid: 5d1fe7e370f26dc4880787fd5cc8d221, type: 3}
+  BumpRightPrefab: {fileID: 4912664318366299341, guid: 9f3ba58c4575c3544868ad30379c97a8, type: 3}
+  LineForwardPrefab: {fileID: 4912664318366299341, guid: f121c31ea91e11d4788f9d3a4210849f, type: 3}
+  MoveAheadPrefab: {fileID: 4912664318366299341, guid: 5d18a48faae4c1a40bba1b30ec8c449e, type: 3}
+  HangBackPrefab: {fileID: 4912664318366299341, guid: 44fa92a76506e6e4b80f56255199320f, type: 3}
+  FastForwardPrefab: {fileID: 4912664318366299341, guid: 7e4d4d157dd3ce948a8fc68443b12fa8, type: 3}
+  DisorderlyConducktPrefab: {fileID: 4912664318366299341, guid: 108b07e6a2b42984b9c604b46b8fa1a6, type: 3}
+  DuckShufflePrefab: {fileID: 4912664318366299341, guid: 602af8cbed8f1644990add1c261bfc20, type: 3}
+  GivePeaceAChancePrefab: {fileID: 4912664318366299341, guid: 5b10a1a9c7cfba443826028d19fc7bc4, type: 3}
+  resurrectionPrefab: {fileID: 4912664318366299341, guid: 16b2ab167195cff40b770f6581d64b62, type: 3}
+  duckAndCoverPrefab: {fileID: 4912664318366299341, guid: 3fc5be5983eba2a48a1c4c9dacd63414, type: 3}
+  PlayerArea: {fileID: 8984303353754016741, guid: 531bf5e86878df84aad2b6e2b8c1dbc7, type: 3}
+  EnemyArea: {fileID: 8512122936133997501, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
+  DropZone: {fileID: 7109037699065259299, guid: efb6de748c2733d4380977aad84e0963, type: 3}
+  DuckZone: {fileID: 4097748016762052934, guid: 3ef6e3ebfa65e654b9a07018b0175947, type: 3}
+  TargetZone: {fileID: 1761571985895606704, guid: f3492f020a4471e4cb0cd4d64176c0c0, type: 3}
+  DuckBlue: {fileID: 6939795744060361821, guid: ae1effe4ca6d69940a65d604ce9ddee7, type: 3}
+  DuckGreen: {fileID: 6939795744060361821, guid: fe4e3cd75ca0837469efa23b3686e7e7, type: 3}
+  DuckOrange: {fileID: 6939795744060361821, guid: f0b45bc94c9bf164aa21bced9a996db6, type: 3}
+  DuckPink: {fileID: 6939795744060361821, guid: e0e4d150ae3328d4187f9654b1bd9317, type: 3}
+  DuckPurple: {fileID: 6939795744060361821, guid: c055c54cad203d441a32b1046f8ab38b, type: 3}
+  DuckYellow: {fileID: 6939795744060361821, guid: e66b57d66adcfe344bd66ccec3496792, type: 3}
+  Marsh: {fileID: 6939795744060361821, guid: a74b94a59f171164883ce12bf19916df, type: 3}
+  TargetCoverZone: {fileID: 3687697826827476903, guid: 77fe25a2d79151d4092586467e7a7258, type: 3}
+  DuckBluePrefab: {fileID: 6939795744060361821, guid: ae1effe4ca6d69940a65d604ce9ddee7, type: 3}
+  DuckGreenPrefab: {fileID: 6939795744060361821, guid: fe4e3cd75ca0837469efa23b3686e7e7, type: 3}
+  DuckOrangePrefab: {fileID: 6939795744060361821, guid: f0b45bc94c9bf164aa21bced9a996db6, type: 3}
+  DuckPinkPrefab: {fileID: 6939795744060361821, guid: e0e4d150ae3328d4187f9654b1bd9317, type: 3}
+  DuckPurplePrefab: {fileID: 6939795744060361821, guid: c055c54cad203d441a32b1046f8ab38b, type: 3}
+  DuckYellowPrefab: {fileID: 6939795744060361821, guid: e66b57d66adcfe344bd66ccec3496792, type: 3}
+  MarshPrefab: {fileID: 6939795744060361821, guid: a74b94a59f171164883ce12bf19916df, type: 3}
+  targetCoverPrefab: {fileID: 6939795744060361821, guid: d672ea27527ad8a4199306165220530e, type: 3}
+  enemiesAreaRootName: EnemiesArea
+  enemySlotPrefix: EnemyArea
+  seatIndex: -1
+  cardPoolLineForward: {fileID: 0}
+  isLineForwardActive: 0
+  targetPrefab: {fileID: 6939795744060361821, guid: a5e7347f0bee2d24ca35d69c30e0a1e1, type: 3}
+  playerID: 0
+  actionCardPrefabList:
+  - {fileID: 4912664318366299341, guid: 48b61857d16b5af449dec83c523f8e3b, type: 3}
+  - {fileID: 6939795744060361821, guid: 615781b8bbb1ca24f8bb000a69f4236b, type: 3}
+  - {fileID: 4912664318366299341, guid: 5d1fe7e370f26dc4880787fd5cc8d221, type: 3}
+  - {fileID: 4912664318366299341, guid: 9f3ba58c4575c3544868ad30379c97a8, type: 3}
+  - {fileID: 4912664318366299341, guid: 108b07e6a2b42984b9c604b46b8fa1a6, type: 3}
+  - {fileID: 4912664318366299341, guid: 76c048bf7ef04f14da7e57dcd0730648, type: 3}
+  - {fileID: 4912664318366299341, guid: 602af8cbed8f1644990add1c261bfc20, type: 3}
+  - {fileID: 4912664318366299341, guid: 7e4d4d157dd3ce948a8fc68443b12fa8, type: 3}
+  - {fileID: 4912664318366299341, guid: 44fa92a76506e6e4b80f56255199320f, type: 3}
+  - {fileID: 4912664318366299341, guid: f121c31ea91e11d4788f9d3a4210849f, type: 3}
+  - {fileID: 4912664318366299341, guid: 6f1b742f8d8ca2e40bde942d06a19a7c, type: 3}
+  - {fileID: 4912664318366299341, guid: 5d18a48faae4c1a40bba1b30ec8c449e, type: 3}
+  - {fileID: 4912664318366299341, guid: 79e03a7ef1dcd8745aa61fab57243dd8, type: 3}
+  - {fileID: 4912664318366299341, guid: 61dd3289bc3b7ef45b5f0f3db78e7dfe, type: 3}
+  - {fileID: 4912664318366299341, guid: 5b10a1a9c7cfba443826028d19fc7bc4, type: 3}
+  - {fileID: 4912664318366299341, guid: 16b2ab167195cff40b770f6581d64b62, type: 3}
+--- !u!114 &-587962535400228168
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf92d44a25f68d7438b493b071ab0cdb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &-6624219924896131588
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9855087a2c9e2da49ad080fcbdcc9fd1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0

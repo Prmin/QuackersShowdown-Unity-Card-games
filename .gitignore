@@ -1,0 +1,85 @@
+############################
+# Unity generated folders  #
+############################
+
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+
+# Cache ของ Package Manager / Asset
+[Pp]ackages/[Cc]ache/
+[Pp]ackages/com.unity.package-manager-ui/
+Assets/AssetStoreTools*
+
+############################
+# User / Local settings    #
+############################
+
+UserSettings/
+*.userprefs
+
+############################
+# VS / Rider / IDE         #
+############################
+
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userosscache
+*.sln.docstates
+
+############################
+# OS files                 #
+############################
+
+# macOS
+.DS_Store
+.AppleDouble
+*.swp
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+############################
+# Logs / Crash / Profiles  #
+############################
+
+*.log
+*.pidb
+*.booproj
+*.svd
+*.pdb
+
+############################
+# Build outputs            #
+############################
+
+*.apk
+*.aab
+*.unitypackage
+*.app
+*.exe
+*.dll
+*.so
+
+############################
+# Gradle / Android         #
+############################
+
+.gradle/
+**/gradle-wrapper.jar
+*.gradle
+*.keystore
+*.jks
+local.properties

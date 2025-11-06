@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 212831b5bd1a6f743bca0e72ee5e54bc
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - audioMixer: {fileID: 24100000, guid: 887add3d4bca36846ab9258dea68514a, type: 2}
+  - musicSource: {fileID: 7898781471020387337, guid: fbf892b86ff582844b17e55384d14b64, type: 3}
+  - musicSlider: {fileID: 322144358953315465, guid: 2ddcc74a8a5d630408926fec9070ef0a, type: 3}
+  - sfxSlider: {fileID: 3607836799465077351, guid: 906e8425886ccfe41949685defaa25e9, type: 3}
+  - backgroundDropdown: {fileID: 7381921173293344672, guid: 83e8c8fc4965a674ab6eb8957d1853ef, type: 3}
+  - backgroundImage: {fileID: 5485276911862901982, guid: 2cc1216b7d0a9374cbef1585b5abb636, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 459e7f557c794354d89744c3ea3e19d5
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - playerManager: {fileID: -1984101244939124786, guid: cb86b2db309aaf647ab3c483f1fa0849, type: 3}
+  - cardDeckIdentity: {fileID: -6179909637543491916, guid: 615781b8bbb1ca24f8bb000a69f4236b, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
