@@ -417,38 +417,52 @@ public class PlayerManager : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
+
         TryBindBarrierClient();
 
-        // Resolve UI zones via Main Canvas -> Image hierarchy
+        // หาตัว Main Canvas
         Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
         if (mainCanvas == null)
         {
-            Debug.LogError("[PlayerManager.OnStartClient] 'Main Canvas' not found!");
+            Debug.LogError("[PlayerManager.OnStartClient] ❌ 'Main Canvas' not found");
             return;
         }
 
+        // หา root UI ที่ชื่อ "Image" (ซ้อนอยู่ใต้ Main Canvas)
         Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
         if (uiRoot == null)
         {
-            Debug.LogError("[PlayerManager.OnStartClient] 'Image' container not found!");
+            Debug.LogError("[PlayerManager.OnStartClient] ❌ 'Image' root not found under Main Canvas");
             return;
         }
 
+        // หาโซนหลัก ๆ
         DuckZone = FindChildRecursive(uiRoot, "DuckZone")?.gameObject;
         DropZone = FindChildRecursive(uiRoot, "DropZone")?.gameObject;
         TargetZone = FindChildRecursive(uiRoot, "TargetZone")?.gameObject;
         EnemyArea = FindChildRecursive(uiRoot, "EnemyArea")?.gameObject;
-        PlayerArea = FindChildRecursive(uiRoot, "PlayerArea")?.gameObject;
 
-        if (DuckZone == null) Debug.LogError("[OnStartClient] 'DuckZone' not found!");
-        if (DropZone == null) Debug.LogError("[OnStartClient] 'DropZone' not found!");
-        if (TargetZone == null) Debug.LogError("[OnStartClient] 'TargetZone' not found!");
-        if (PlayerArea == null) Debug.LogWarning("[OnStartClient] 'PlayerArea' not found!");
-        if (EnemyArea == null) Debug.LogWarning("[OnStartClient] 'EnemyArea' not found!");
+        var ni = GetComponent<NetworkIdentity>();
+        if (ni != null && ni.isOwned)
+        {
+            // เราคือ local player
+            PlayerArea = FindChildRecursive(uiRoot, "PlayerArea")?.gameObject;
+            localInstance = this;
+        }
+
+        if (DuckZone == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ DuckZone not found");
+        if (DropZone == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ DropZone not found");
+        if (TargetZone == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ TargetZone not found");
+        if (EnemyArea == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ EnemyArea not found");
+        if (ni != null && ni.isOwned && PlayerArea == null)
+            Debug.LogError("[PlayerManager.OnStartClient] ❌ PlayerArea not found for local player");
+
+        Debug.Log("[PlayerManager.OnStartClient] ✅ Zones found successfully");
 
         CacheEnemySlotsFromScene();
         RecomputeLocalLayoutBySeat();
     }
+
 
     public override void OnStopClient()
     {
@@ -486,20 +500,32 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
-        Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
-        if (uiRoot == null)
+        Transform uiRoot = null;
+        if (mainCanvas != null)
+            uiRoot = FindChildRecursive(mainCanvas, "Image");
+
+        Transform root = null;
+        if (uiRoot != null)
+            root = FindChildRecursive(uiRoot, enemiesAreaRootName);
+
+        if (root == null && mainCanvas != null)
+            root = FindChildRecursive(mainCanvas, enemiesAreaRootName);
+
+        if (root == null)
         {
-            Debug.LogWarning("[CacheEnemySlots] 'Image' container not found!");
-            s_enemySlots = null;
-            return;
+            var fallback = GameObject.Find(enemiesAreaRootName);
+            root = fallback != null ? fallback.transform : null;
         }
 
-        var root = FindChildRecursive(uiRoot, enemiesAreaRootName);
         if (root == null)
         {
             Debug.LogWarning($"[CacheEnemySlots] '{enemiesAreaRootName}' not found!");
             s_enemySlots = null;
             return;
+        }
+        else
+        {
+            Debug.Log($"[CacheEnemySlots] Using root '{root.name}' for enemy slots.");
         }
 
         if (s_enemySlots == null || s_enemySlots.Length != 5)
@@ -517,7 +543,9 @@ public class PlayerManager : NetworkBehaviour
 
             s_enemySlots[i] = child;
             if (child == null)
-                Debug.LogWarning($"[CacheEnemySlots] '{childName}' not found!");
+                Debug.LogWarning($"[CacheEnemySlots] Slot '{childName}' not found!");
+            else
+                Debug.Log($"[CacheEnemySlots] Slot '{childName}' -> {child.name}");
         }
     }
 
@@ -637,6 +665,58 @@ public class PlayerManager : NetworkBehaviour
                 return s_enemySlots[idx];
         }
         return null;
+    }
+
+    public static Transform TryGetEnemySlotForNetId(uint netId)
+    {
+        if ((s_enemySlots == null || s_enemySlots.Any(t => t == null)) && localInstance != null)
+            localInstance.CacheEnemySlotsFromScene();
+
+        if (s_enemySlots == null)
+            return null;
+
+        if (s_remoteSlotIndex.TryGetValue(netId, out int idx))
+        {
+            if (idx >= 0 && idx < s_enemySlots.Length)
+            {
+                var slot = s_enemySlots[idx];
+                Debug.Log($"[TryGetEnemySlot] netId={netId} -> slotIndex={idx} ({(slot != null ? slot.name : "NULL")})");
+                return slot;
+            }
+        }
+        return null;
+    }
+
+    private GameObject FindUIObject(string childName)
+    {
+        var direct = GameObject.Find(childName);
+        if (direct != null)
+        {
+            Debug.Log($"[FindUIObject] Found '{childName}' via GameObject.Find");
+            return direct;
+        }
+
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
+        if (mainCanvas == null)
+        {
+            Debug.LogWarning($"[FindUIObject] Could not find canvas while searching for '{childName}'");
+            return null;
+        }
+
+        var target = FindChildRecursive(mainCanvas, childName);
+        if (target != null)
+        {
+            Debug.Log($"[FindUIObject] Found '{childName}' under canvas hierarchy ({target.name})");
+            return target.gameObject;
+        }
+
+        Debug.LogWarning($"[FindUIObject] '{childName}' not found under canvas hierarchy");
+        return null;
+    }
+
+    private void LogZoneStatus(string zoneName, GameObject go)
+    {
+        Debug.Log($"[OnStartClient] {zoneName} => {(go != null ? go.name : "NULL")}");
     }
 
     // server: แจก seatIndex ช่องว่างถัดไป 0..5

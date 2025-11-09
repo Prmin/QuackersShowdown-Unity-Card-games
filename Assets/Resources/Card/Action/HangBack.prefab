@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 2248681530658475716}
   - component: {fileID: -3393484494162582346}
   - component: {fileID: -1546298861786259656}
+  - component: {fileID: 2026877080067893303}
   m_Layer: 6
   m_Name: HangBack
   m_TagString: Untagged
@@ -321,6 +322,7 @@ MonoBehaviour:
   showOverlay: 0
   overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
   bufferResetMultiplier: 3
+  useFixedUpdate: 0
   positionSensitivity: 0.01
   rotationSensitivity: 0.01
   scaleSensitivity: 0.01
@@ -404,3 +406,22 @@ MonoBehaviour:
   syncInterval: 0
   PlayerManager: {fileID: 0}
   NumberOfClicks: 0
+--- !u!114 &2026877080067893303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4912664318366299341}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b32c3918f63d5784581f598e12b37647, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  zone: 0
+  RowNet: 0
+  ColNet: 0
+  ownerPlayerManagerNetId: 0
