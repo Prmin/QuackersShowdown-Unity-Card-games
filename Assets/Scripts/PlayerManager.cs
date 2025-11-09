@@ -614,7 +614,6 @@ public class PlayerManager : NetworkBehaviour
 
 
     // ใช้บน server (เรียกได้ทั้ง server/host) — cache ผลลัพธ์เล็กน้อย
-    [Server]
     private Transform _cachedDuckZone;
     [Server]
     private Transform GetSceneDuckZone()
@@ -2000,8 +1999,10 @@ public class PlayerManager : NetworkBehaviour
 
 
     // ========================
-    // TwoBirds Logic
+    // TwoBirds Logic (Refactored)
     // ========================
+
+    // (ตัวแปร isTwoBirdsActive, twoBirdsClickCount, firstTwoBirdsCard ควรมีอยู่แล้ว)
 
     // เรียกตอนวางการ์ด TwoBirds
     [Command(requiresAuthority = false)]
@@ -2041,6 +2042,10 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcDisableTwoBirds] TwoBirds mode is now deactivated on all clients.");
     }
 
+    // (เพิ่ม Property นี้ ถ้า DuckCard.cs ต้องใช้เช็ก)
+    public bool IsTwoBirdsActive => isTwoBirdsActive;
+
+
     [Command(requiresAuthority = false)]
     public void CmdTwoBirdsClick(NetworkIdentity clickedCard)
     {
@@ -2055,7 +2060,7 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
-        // เช็กว่าใบที่คลิกมีเป้าเล็ง
+        // เช็กว่าใบที่คลิกมีเป้าเล็ง (สมมติว่า IsCardTargeted ทำงานถูกต้อง)
         if (!IsCardTargeted(clickedCard))
         {
             Debug.LogWarning($"[CmdTwoBirdsClick] {clickedCard.name} has NO target, can't shoot!");
@@ -2077,6 +2082,7 @@ public class PlayerManager : NetworkBehaviour
             bool canShootBoth = false;
             if (firstTwoBirdsCard != null)
             {
+                // ใช้ Helper ที่แก้แล้ว
                 canShootBoth = CheckAdjacentTwoBirds(firstTwoBirdsCard, clickedCard);
             }
 
@@ -2084,21 +2090,21 @@ public class PlayerManager : NetworkBehaviour
             {
                 // =============== ยิง 2 ใบพร้อมกัน ===============
 
-                // 1) เก็บ row/col ของสองใบ
+                // 1) เก็บ row/col ของสองใบ (จาก SyncVar)
                 DuckCard dc1 = firstTwoBirdsCard.GetComponent<DuckCard>();
                 DuckCard dc2 = clickedCard.GetComponent<DuckCard>();
                 if (dc1 == null || dc2 == null)
                 {
-                    // ถ้ามีใบไหนไม่มี DuckCard ก็ยิงไม่ได้
                     // Debug.LogWarning("[CmdTwoBirdsClick] One of the cards has no DuckCard component!");
                     CmdDeactivateTwoBirds();
                     return;
                 }
 
-                int row1 = dc1.Row;
-                int col1 = dc1.Column;
-                int row2 = dc2.Row;
-                int col2 = dc2.Column;
+                // === FIX: ใช้ RowNet / ColNet ===
+                int row1 = dc1.RowNet;
+                int col1 = dc1.ColNet;
+                int row2 = dc2.RowNet;
+                int col2 = dc2.ColNet;
 
                 // 2) Destroy สองใบ
                 NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
@@ -2123,14 +2129,21 @@ public class PlayerManager : NetworkBehaviour
             }
             else
             {
-                // ยิงได้แค่ใบแรกใบเดียว
+                // ยิงได้แค่ใบแรกใบเดียว (ใบที่คลิกครั้งแรก)
                 // Debug.Log("[CmdTwoBirdsClick] Cards are NOT adjacent => shoot only the first one.");
 
                 if (firstTwoBirdsCard != null)
                 {
                     DuckCard dc1 = firstTwoBirdsCard.GetComponent<DuckCard>();
-                    int row1 = dc1.Row;
-                    int col1 = dc1.Column;
+                    if (dc1 == null)
+                    {
+                        CmdDeactivateTwoBirds();
+                        return;
+                    }
+
+                    // === FIX: ใช้ RowNet / ColNet ===
+                    int row1 = dc1.RowNet;
+                    int col1 = dc1.ColNet;
 
                     // ทำลายใบแรก
                     NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
@@ -2144,30 +2157,34 @@ public class PlayerManager : NetworkBehaviour
             // ปิดโหมด TwoBirds
             CmdDeactivateTwoBirds();
 
-            StartCoroutine(RefillNextFrame());
+            // (ถ้า ShiftColumnsDown ไม่ได้เรียก Refill ให้เรียกตรงนี้)
+            // StartCoroutine(RefillNextFrame());
         }
     }
 
 
-    [Server]
+    [Server] // <-- (ควรแปะ [Server] เพราะเรียกใช้บน Server เท่านั้น)
     private bool CheckAdjacentTwoBirds(NetworkIdentity card1, NetworkIdentity card2)
     {
         DuckCard dc1 = card1.GetComponent<DuckCard>();
         DuckCard dc2 = card2.GetComponent<DuckCard>();
         if (dc1 == null || dc2 == null) return false;
 
-        // ตัวอย่าง: อยู่ row เดียวกัน และ col ห่าง 1
-        if (dc1.Row == dc2.Row && Mathf.Abs(dc1.Column - dc2.Column) == 1)
+        // === FIX: ใช้ RowNet / ColNet ===
+        // เช็ก: อยู่ row เดียวกัน และ col ห่าง 1
+        if (dc1.RowNet == dc2.RowNet && Mathf.Abs(dc1.ColNet - dc2.ColNet) == 1)
         {
             return true;
         }
         return false;
     }
 
+    [Server] // <-- (ควรแปะ [Server] เพราะเรียก NetworkServer.Destroy)
     private void RemoveTargetFromCard(NetworkIdentity duckNi)
     {
         if (duckNi == null) return;
 
+        // (วิธีนี้ O(n) แต่ถ้า Target ไม่เยอะก็ OK)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var tf in allTargets)
         {
@@ -2175,12 +2192,19 @@ public class PlayerManager : NetworkBehaviour
             {
                 NetworkServer.Destroy(tf.gameObject);
                 // Debug.Log($"[RemoveTargetFromCard] Also destroyed target {tf.name} pointing to {duckNi.name}");
+
+                // ถ้ามั่นใจว่า 1 เป็ดมี 1 เป้า -> return; ได้เลย
+                return;
             }
         }
     }
+
     // ========================
-    // BumpLeft  Logic
+    // BumpLeft  Logic (Refactored)
     // ========================
+
+    // (ตัวแปร isBumpLeftActive ควรมีอยู่แล้ว)
+
     // เรียกเมื่อวางการ์ด Bump Left
     [Command(requiresAuthority = false)]
     public void CmdActivateBumpLeft()
@@ -2213,6 +2237,9 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcDisableBumpLeft] BumpLeft mode is now deactivated on all clients.");
     }
 
+    public bool IsBumpLeftActive => isBumpLeftActive;
+
+
     [Command(requiresAuthority = false)]
     public void CmdBumpLeftClick(NetworkIdentity clickedCard)
     {
@@ -2242,11 +2269,12 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
-        int curRow = duck.Row;
-        int curCol = duck.Column;
+        // === FIX: ใช้ RowNet / ColNet ===
+        int curRow = duck.RowNet;
+        int curCol = duck.ColNet;
         // Debug.Log($"[CmdBumpLeftClick] Attempting to bump target from col={curCol} to col={curCol - 1} in row={curRow}");
 
-        // 3) หาใบซ้าย (Column = curCol - 1) (ถ้ามี)
+        // 3) หาใบซ้าย (Column = curCol - 1) (ใช้ Helper ที่แก้แล้ว)
         DuckCard leftDuck = FindDuckAt(curRow, curCol - 1);
         if (leftDuck == null)
         {
@@ -2257,63 +2285,15 @@ public class PlayerManager : NetworkBehaviour
         // 4) ย้ายเป้า = หา TargetFollow ที่เล็งการ์ดปัจจุบัน => เปลี่ยนให้ไปเล็งการ์ดใบซ้าย
         MoveTargetFromTo(clickedCard, leftDuck.GetComponent<NetworkIdentity>());
 
-        // 5) ปิดโหมด BumpLeft (หรือจะให้ผู้เล่นทำหลายครั้งก็ได้)
+        // 5) ปิดโหมด BumpLeft
         CmdDeactivateBumpLeft();
     }
 
-    private void MoveTargetFromTo(NetworkIdentity fromCard, NetworkIdentity toCard)
-    {
-        if (fromCard == null || toCard == null)
-            return;
-
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
-        {
-            if (tf.targetNetId == fromCard.netId)
-            {
-                // ย้ายเป้าเล็ง
-                tf.targetNetId = toCard.netId;
-                // Debug.Log($"[MoveTargetFromTo] Moved target from {fromCard.name} => {toCard.name}");
-                tf.ResetTargetTransform();
-                // อัปเดตตำแหน่ง (RPC ก็ได้ หรือ local code)
-                RpcUpdateTargetPosition(tf.GetComponent<NetworkIdentity>(), toCard);
-
-                NetworkIdentity tfNi = tf.GetComponent<NetworkIdentity>();
-                RpcSetTargetNetId(tfNi, toCard);
-            }
-        }
-    }
-
-    // อัปเดตตำแหน่งจริงบน Client
-    [ClientRpc]
-    private void RpcUpdateTargetPosition(NetworkIdentity targetNi, NetworkIdentity cardNi)
-    {
-        if (targetNi == null || cardNi == null) return;
-
-        RectTransform targetRect = targetNi.GetComponent<RectTransform>();
-        RectTransform cardRect = cardNi.GetComponent<RectTransform>();
-
-        if (targetRect != null && cardRect != null)
-        {
-            targetRect.anchoredPosition = cardRect.anchoredPosition + new Vector2(0, 150);
-            // Debug.Log($"[RpcUpdateTargetPosition] BumpLeft => target goes to {targetRect.anchoredPosition} above {cardNi.name}");
-        }
-    }
-
-    private DuckCard FindDuckAt(int row, int col)
-    {
-        foreach (Transform child in DuckZone.transform)
-        {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row && d.Column == col)
-                return d;
-        }
-        return null;
-    }
-
     // ========================
-    // BumpRight Logic
+    // BumpRight Logic (Refactored)
     // ========================
+
+    // (ตัวแปร isBumpRightActive ควรมีอยู่แล้ว)
 
     // เรียกเมื่อวางการ์ด BumpRight
     [Command(requiresAuthority = false)]
@@ -2347,6 +2327,8 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcDisableBumpRight] BumpRight mode is now deactivated on all clients.");
     }
 
+    public bool IsBumpRightActive => isBumpRightActive;
+
     [Command(requiresAuthority = false)]
     public void CmdBumpRightClick(NetworkIdentity clickedCard)
     {
@@ -2376,11 +2358,12 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
-        int curRow = duck.Row;
-        int curCol = duck.Column;
+        // === FIX: ใช้ RowNet / ColNet ===
+        int curRow = duck.RowNet;
+        int curCol = duck.ColNet;
         // Debug.Log($"[CmdBumpRightClick] Attempting to bump target from col={curCol} to col={curCol + 1} in row={curRow}");
 
-        // 3) หาใบทางขวา
+        // 3) หาใบทางขวา (ใช้ Helper ที่แก้แล้ว)
         DuckCard rightDuck = FindDuckAt(curRow, curCol + 1);
         if (rightDuck == null)
         {
@@ -2391,13 +2374,64 @@ public class PlayerManager : NetworkBehaviour
         // 4) ย้ายเป้า (target) จากการ์ดปัจจุบัน => ใบขวา
         MoveTargetFromTo(clickedCard, rightDuck.GetComponent<NetworkIdentity>());
 
-        // 5) ปิดโหมด BumpRight (หรือจะ allow หลายครั้งก็แล้วแต่)
+        // 5) ปิดโหมด BumpRight
         CmdDeactivateBumpRight();
     }
 
+
     // ========================
-    // LineForward Logic
+    // Helpers (Refactored)
     // ========================
+
+    [Server]
+    private void MoveTargetFromTo(NetworkIdentity fromCard, NetworkIdentity toCard)
+    {
+        if (fromCard == null || toCard == null)
+            return;
+
+        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
+        foreach (var tf in allTargets)
+        {
+            if (tf.targetNetId == fromCard.netId)
+            {
+                // === FIX: เปลี่ยน SyncVar [targetNetId] ===
+                // สมมติว่า TargetFollow.targetNetId เป็น [SyncVar]
+                // การเปลี่ยนค่านี้บน Server จะทำให้ Client ทุกคนอัปเดตตาม (ผ่าน Hook หรือ Update() ใน TargetFollow.cs)
+                tf.targetNetId = toCard.netId;
+                // Debug.Log($"[MoveTargetFromTo] Moved target from {fromCard.name} => {toCard.name}");
+
+                // ไม่จำเป็นต้องเรียก RPC ซ้ำซ้อน (ถ้า targetNetId เป็น SyncVar)
+                // RpcUpdateTargetPosition(...)
+                // RpcSetTargetNetId(...)
+
+                return; // ย้ายตัวเดียวแล้วออก
+            }
+        }
+    }
+
+    [Server]
+    private DuckCard FindDuckAt(int row, int col)
+    {
+        // === FIX: วนหาจาก NetworkServer.spawned (ชัวร์ที่สุด) ===
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
+        {
+            DuckCard card = netId.GetComponent<DuckCard>();
+
+            // เช็กว่า 1. เป็น DuckCard, 2. อยู่ใน DuckZone, 3. ตำแหน่งตรง
+            if (card != null && card.Zone == ZoneKind.DuckZone &&
+                card.RowNet == row && card.ColNet == col)
+            {
+                return card;
+            }
+        }
+        return null; // ไม่เจอ
+    }
+
+    // ========================
+    // LineForward Logic (Refactored)
+    // ========================
+
+    // (ตัวแปร isLineForwardActive ควรมีอยู่แล้ว)
 
     public void TryLineForward()
     {
@@ -2412,41 +2446,38 @@ public class PlayerManager : NetworkBehaviour
         if (isLineForwardActive) return;
         isLineForwardActive = true;
 
-        // 1) เก็บเป้าก่อน
+        // 1) เก็บเป้าก่อน (ใช้ Helper ที่แก้แล้ว)
         var oldTargets = CollectTargetColumns();
 
-        // 2) คืนและทำลายเฉพาะใบซ้ายสุด
-        var leftmost = FindLeftmostDuck(0);
+        // 2) คืนและทำลายเฉพาะใบซ้ายสุด (ใช้ Helper ที่แก้แล้ว)
+        var leftmost = FindLeftmostDuck(0); // สมมติว่าต้องการแถว 0
         if (leftmost != null)
         {
-            NetworkServer.Destroy(leftmost.gameObject);           // remove card
-            CardPoolManager.ReturnCard(leftmost.gameObject);      // +1 pool
+            // (การ์ดที่ถูกทำลายจะถูกคืนเข้า Pool โดยอัตโนมัติผ่าน NetworkBehaviour.OnStopServer หรือ OnDestroy)
+            NetworkServer.Destroy(leftmost.gameObject);         // remove card
 
+            // (ถ้า CardPoolManager.ReturnCard ไม่ได้ถูกเรียกอัตโนมัติใน OnDestroy ก็ต้องเรียกเอง)
+            // CardPoolManager.ReturnCard(leftmost.gameObject); // +1 pool
         }
 
         // 3) ลบเป้าเดิม
         RemoveAllTargets();
 
-
-        // 5) สร้างเป้าย้อนหลัง
-        StartCoroutine(RecreateTargetsAfterShuffle(oldTargets));
+        // 5) สร้างเป้าย้อนหลัง (FIX: แก้ชื่อฟังก์ชันที่เรียก)
+        StartCoroutine(RefillAndRecreateTargets(oldTargets));
 
         StartCoroutine(DelayedLog());
 
         // 6) ปิดโหมด
         CmdDeactivateLineForward();
-
     }
 
     private IEnumerator DelayedLog()
     {
         // รอจนจบ frame ให้ OnStopServer() คืน pool เสร็จ
         yield return null;
-        LogTotalDuckCounts();
+        // LogTotalDuckCounts();
     }
-
-
-
 
     // ปิดโหมดหลังจากจบการทำงาน
     [Command(requiresAuthority = false)]
@@ -2467,6 +2498,7 @@ public class PlayerManager : NetworkBehaviour
     // ========================================================
     // ✅ 1) บันทึกตำแหน่ง Column ของเป้าเล็งทั้งหมดก่อนลบการ์ด
     // ========================================================
+    [Server] // <-- (Helper นี้ถูกเรียกบน Server)
     private List<int> CollectTargetColumns()
     {
         List<int> targetColumns = new List<int>();
@@ -2474,13 +2506,16 @@ public class PlayerManager : NetworkBehaviour
 
         foreach (var tf in allTargets)
         {
-            if (NetworkClient.spawned.TryGetValue(tf.targetNetId, out NetworkIdentity duckNi))
+            // === FIX: ใช้ NetworkServer.spawned ===
+            if (NetworkServer.spawned.TryGetValue(tf.targetNetId, out NetworkIdentity duckNi))
             {
                 DuckCard duck = duckNi.GetComponent<DuckCard>();
-                if (duck != null && !targetColumns.Contains(duck.Column))
+
+                // === FIX: ใช้ ColNet ===
+                if (duck != null && !targetColumns.Contains(duck.ColNet))
                 {
-                    targetColumns.Add(duck.Column);
-                    // Debug.Log($"[CollectTargetColumns] Target at Column {duck.Column} recorded.");
+                    targetColumns.Add(duck.ColNet);
+                    // Debug.Log($"[CollectTargetColumns] Target at Column {duck.ColNet} recorded.");
                 }
             }
         }
@@ -2492,19 +2527,23 @@ public class PlayerManager : NetworkBehaviour
     // ========================================================
     // ✅ 2) หาและลบการ์ดใบซ้ายสุด (Column 0) เท่านั้น
     // ========================================================
+    [Server] // <-- (Helper นี้ถูกเรียกบน Server)
     private DuckCard FindLeftmostDuck(int row)
     {
         DuckCard result = null;
         int minCol = int.MaxValue;
 
-        foreach (Transform child in DuckZone.transform)
+        // === FIX: วนหาจาก NetworkServer.spawned ===
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row)
+            DuckCard d = netId.GetComponent<DuckCard>();
+
+            // === FIX: ใช้ RowNet / ColNet และเช็ก Zone ===
+            if (d != null && d.Zone == ZoneKind.DuckZone && d.RowNet == row)
             {
-                if (d.Column < minCol)
+                if (d.ColNet < minCol)
                 {
-                    minCol = d.Column;
+                    minCol = d.ColNet;
                     result = d;
                 }
             }
@@ -2515,6 +2554,7 @@ public class PlayerManager : NetworkBehaviour
     // ========================================================
     // ✅ 3) ลบเป้าเล็งทั้งหมด
     // ========================================================
+    [Server] // <-- (Helper นี้ถูกเรียกบน Server)
     private void RemoveAllTargets()
     {
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
@@ -2529,14 +2569,18 @@ public class PlayerManager : NetworkBehaviour
     // ========================================================
     // ✅ 4) เติมการ์ดใหม่ แล้วค่อยสร้างเป้าเล็งใหม่หลังจาก Grid Layout จัดเรียงเสร็จ
     // ========================================================
+    [Server] // <-- (Helper นี้ถูกเรียกบน Server)
     private List<DuckCard> FindDucksInRow(int row)
     {
         List<DuckCard> list = new List<DuckCard>();
 
-        foreach (Transform child in DuckZone.transform)
+        // === FIX: วนหาจาก NetworkServer.spawned ===
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row) // เช็คว่าเป็ดนี้อยู่ใน row ที่ต้องการหรือไม่
+            DuckCard d = netId.GetComponent<DuckCard>();
+
+            // === FIX: ใช้ RowNet และเช็ก Zone ===
+            if (d != null && d.Zone == ZoneKind.DuckZone && d.RowNet == row)
             {
                 list.Add(d);
             }
@@ -2554,11 +2598,12 @@ public class PlayerManager : NetworkBehaviour
         yield return null;
 
         // 4.3) สร้างเป้าเล็งใหม่ตามตำแหน่งที่บันทึกไว้
-        List<DuckCard> ducks = FindDucksInRow(0); // <<<< ตรงนี้จะไม่มี error แล้ว
+        List<DuckCard> ducks = FindDucksInRow(0); // หาเป็ดแถว 0
 
         foreach (int col in oldTargetColumns)
         {
-            DuckCard duckAtCol = ducks.Find(d => d.Column == col);
+            // === FIX: ใช้ ColNet ===
+            DuckCard duckAtCol = ducks.Find(d => d.ColNet == col);
             if (duckAtCol != null)
             {
                 CmdSpawnTargetForDuck(duckAtCol.netId);
@@ -2584,6 +2629,7 @@ public class PlayerManager : NetworkBehaviour
     [Server]
     private void RefillDuckZoneIfNeededLineForward()
     {
+        // (โค้ดส่วนนี้ดูถูกต้องแล้ว ไม่ต้องแก้)
         if (DuckZone == null)
         {
             // Debug.LogError("RefillDuckZoneIfNeeded: DuckZone is NULL!");
@@ -2606,7 +2652,6 @@ public class PlayerManager : NetworkBehaviour
         int needed = 6 - currentCount;
         for (int i = 0; i < needed; i++)
         {
-            // สุ่มและสปอนการ์ดใหม่ผ่าน abstraction
             GameObject newCard = CardPoolManager.DrawRandomCard(DuckZone.transform);
             if (newCard == null) break;
 
@@ -2621,7 +2666,8 @@ public class PlayerManager : NetworkBehaviour
     [Command(requiresAuthority = false)]
     private void CmdSpawnTargetForDuck(uint duckNetId)
     {
-        if (!NetworkClient.spawned.TryGetValue(duckNetId, out NetworkIdentity duckNi))
+        // (โค้ดส่วนนี้ดูถูกต้องแล้ว ไม่ต้องแก้)
+        if (!NetworkServer.spawned.TryGetValue(duckNetId, out NetworkIdentity duckNi)) // (แก้เป็น NetworkServer.spawned เพื่อความชัวร์)
         {
             // Debug.LogWarning($"[CmdSpawnTargetForDuck] Duck netId={duckNetId} not found!");
             return;
@@ -2637,12 +2683,14 @@ public class PlayerManager : NetworkBehaviour
         NetworkServer.Spawn(newTarget);
 
         NetworkIdentity targetNi = newTarget.GetComponent<NetworkIdentity>();
-        RpcSetTargetNetId(targetNi, duckNi);
+        RpcSetTargetNetId(targetNi, duckNi); // (สมมติว่ามี RpcSetTargetNetId อยู่)
     }
 
     // ========================
-    // Move Ahead Logic 
+    // Move Ahead Logic (Refactored)
     // ========================
+
+    // (ตัวแปร isMoveAheadActive ควรมีอยู่แล้ว)
 
     [Command(requiresAuthority = false)]
     public void CmdActivateMoveAhead()
@@ -2675,6 +2723,8 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcDisableMoveAhead] MoveAhead mode is now deactivated on all clients.");
     }
 
+    public bool IsMoveAheadActive => isMoveAheadActive;
+
     [Command(requiresAuthority = false)]
     public void CmdMoveAheadClick(NetworkIdentity clickedCard)
     {
@@ -2684,210 +2734,99 @@ public class PlayerManager : NetworkBehaviour
         DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
         if (selectedDuck == null) return;
 
-        int currentCol = selectedDuck.Column;
-        int targetCol = currentCol - 1; // เดินหน้าไปทางซ้าย
+        // === FIX: ใช้ RowNet / ColNet ===
+        int curRow = selectedDuck.RowNet;
+        int curCol = selectedDuck.ColNet;
+        int targetCol = curCol - 1; // "ข้างหน้า" คือ Col น้อยกว่า
 
-        DuckCard targetDuck = FindDuckAtMoveAhead(0, targetCol);
+        // === FIX: ใช้ FindDuckAt (ที่แก้แล้ว) ===
+        // (สมมติว่าต้องการสลับกับแถวเดียวกัน)
+        DuckCard targetDuck = FindDuckAt(curRow, targetCol);
         if (targetDuck == null)
         {
-            // Debug.LogWarning($"[CmdMoveAheadClick] No duck at column {targetCol}, can't swap!");
+            // Debug.LogWarning($"[CmdMoveAheadClick] No duck at ({curRow}, {targetCol}), can't swap!");
             return;
         }
 
-        // 🔹 **1) ตรวจสอบว่ามีเป้าเล็งที่การ์ดทั้งสองใบหรือไม่ และเก็บ Column ของเป้านั้น**
-        Dictionary<int, TargetFollow> targetMap = new Dictionary<int, TargetFollow>();
+        // 🔹 1) ตรวจสอบว่ามีเป้าเล็งที่การ์ดทั้งสองใบหรือไม่
+        // (เก็บสถานะ "ใครมีเป้า" ไว้ก่อน)
+        bool selectedHadTarget = IsCardTargeted(selectedDuck.netId);
+        bool targetHadTarget = IsCardTargeted(targetDuck.netId);
 
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
+        // 🔹 2) ทำลายเป้าเล็งทั้งหมดที่เกี่ยวข้อง (ถ้ามี)
+        if (selectedHadTarget)
         {
-            if (tf.targetNetId == selectedDuck.netId)
-            {
-                targetMap[selectedDuck.Column] = tf;
-            }
-            else if (tf.targetNetId == targetDuck.netId)
-            {
-                targetMap[targetDuck.Column] = tf;
-            }
+            RemoveTargetFromCard(selectedDuck.netId);
+        }
+        if (targetHadTarget)
+        {
+            RemoveTargetFromCard(targetDuck.netId);
         }
 
-        // 🔹 **2) ทำลายเป้าเล็งทั้งหมดที่เกี่ยวข้อง**
-        foreach (var tf in targetMap.Values)
+        // 🔹 3) สลับตำแหน่งการ์ด (โดยการสลับ SyncVar)
+        // (Server เปลี่ยนค่านี้ -> Client ทุกคนจะอัปเดต UI เองผ่าน Hook)
+        selectedDuck.ColNet = targetCol;
+        targetDuck.ColNet = curCol;
+
+        // (ถ้าต้องสลับ Row ด้วย ก็ทำตรงนี้)
+        // int tempRow = selectedDuck.RowNet;
+        // selectedDuck.RowNet = targetDuck.RowNet;
+        // targetDuck.RowNet = tempRow;
+
+        // Debug.Log($"[CmdMoveAheadClick] Swapped {selectedDuck.name} (now at {selectedDuck.ColNet}) <-> {targetDuck.name} (now at {targetDuck.ColNet})");
+
+        // 🔹 4) (ลบทิ้ง) RpcUpdateDuckPositions ไม่จำเป็นต้องใช้
+
+        // 🔹 5) สร้างเป้าเล็งใหม่ "ที่ตำแหน่งเดิม" (ให้เป็ดตัวใหม่ที่ย้ายมา)
+
+        // ถ้า "ใบที่เลือก" (selectedDuck) เคยมีเป้า, ให้สร้างเป้าให้ "ใบที่มาแทน" (targetDuck)
+        if (selectedHadTarget)
         {
-            NetworkServer.Destroy(tf.gameObject);
+            CmdSpawnTargetForDuck(targetDuck.netId);
+            // Debug.Log($"[CmdMoveAheadClick] Recreated target at column {curCol} for new duck {targetDuck.name}");
         }
 
-        // 🔹 **3) สลับตำแหน่งการ์ด**
-        SwapDuckColumns(selectedDuck, targetDuck);
-
-        // Debug.Log($"[CmdMoveAheadClick] Swapped {selectedDuck.name} (col={selectedDuck.Column}) <-> {targetDuck.name} (col={targetDuck.Column})");
-
-        // 🔹 **4) Sync ตำแหน่งการ์ดไป Client**
-        RpcUpdateDuckPositions(selectedDuck.netId, targetDuck.netId);
-
-        // 🔹 **5) สร้างเป้าเล็งใหม่ที่ตำแหน่งเดิม**
-        foreach (var entry in targetMap)
+        // ถ้า "ใบเป้าหมาย" (targetDuck) เคยมีเป้า, ให้สร้างเป้าให้ "ใบที่มาแทน" (selectedDuck)
+        if (targetHadTarget)
         {
-            int originalCol = entry.Key;
-            TargetFollow oldTarget = entry.Value;
-
-            DuckCard newDuckAtCol = FindDuckAtMoveAhead(0, originalCol);
-            if (newDuckAtCol != null)
-            {
-                CmdSpawnTargetForDuck(newDuckAtCol.netId);
-                // Debug.Log($"[CmdMoveAheadClick] Recreated target at column {originalCol} for {newDuckAtCol.name}");
-            }
+            CmdSpawnTargetForDuck(selectedDuck.netId);
+            // Debug.Log($"[CmdMoveAheadClick] Recreated target at column {targetCol} for new duck {selectedDuck.name}");
         }
 
         // ปิดโหมด
         CmdDeactivateMoveAhead();
     }
 
-    // 🔹 ฟังก์ชันสลับ Column ของการ์ดเป็ดสองใบ
-    private void SwapDuckColumns(DuckCard duck1, DuckCard duck2)
+    // (ลบ 🔹 ฟังก์ชันสลับ Column ของการ์ดเป็ดสองใบ (SwapDuckColumns) ทิ้ง)
+
+    // (ลบ 🔹 หาเป็ดที่อยู่ใน Column ที่กำหนด (FindDuckAtMoveAhead) ทิ้ง)
+    // (เราจะใช้ FindDuckAt ตัวที่ถูกต้องที่เราแก้ไว้ก่อนหน้านี้แทน)
+
+    // (นี่คือ FindDuckAt ตัวที่ถูกต้อง - ถ้ายังไม่มีให้เพิ่ม)
+    [Server]
+    private DuckCard FindDuckAt(int row, int col)
     {
-        int tempCol = duck1.Column;
-        duck1.Column = duck2.Column;
-        duck2.Column = tempCol;
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
+        {
+            DuckCard card = netId.GetComponent<DuckCard>();
+
+            if (card != null && card.Zone == ZoneKind.DuckZone &&
+                card.RowNet == row && card.ColNet == col)
+            {
+                return card;
+            }
+        }
+        return null; // ไม่เจอ
     }
 
-    // 🔹 หาเป็ดที่อยู่ใน Column ที่กำหนด
-    private DuckCard FindDuckAtMoveAhead(int row, int col)
-    {
-        foreach (Transform child in DuckZone.transform)
-        {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row && d.Column == col)
-                return d;
-        }
-        return null;
-    }
 
-    // 🔹 ซิงก์ตำแหน่งการ์ดไปยังทุก Client
-    [ClientRpc]
-    void RpcUpdateDuckPositions(uint netIdA, uint netIdB)
-    {
-        if (!NetworkClient.spawned.TryGetValue(netIdA, out NetworkIdentity niA) ||
-            !NetworkClient.spawned.TryGetValue(netIdB, out NetworkIdentity niB))
-        {
-            // Debug.LogWarning($"[RpcUpdateDuckPositions] Could not find ducks!");
-            return;
-        }
-
-        DuckCard duckA = niA.GetComponent<DuckCard>();
-        DuckCard duckB = niB.GetComponent<DuckCard>();
-
-        if (duckA != null && duckB != null)
-        {
-            int tempIdx = duckA.transform.GetSiblingIndex();
-            duckA.transform.SetSiblingIndex(duckB.transform.GetSiblingIndex());
-            duckB.transform.SetSiblingIndex(tempIdx);
-
-            // Debug.Log($"[RpcUpdateDuckPositions] Updated positions: {duckA.name} <-> {duckB.name}");
-        }
-    }
+    // (ลบ 🔹 ซิงก์ตำแหน่งการ์ดไปยังทุก Client (RpcUpdateDuckPositions) ทิ้ง)
 
     // ========================
-    // HangBack Logic
+    // HangBack Logic (Refactored)
     // ========================
 
-    [Command(requiresAuthority = false)]
-    public void CmdHangBackClick(NetworkIdentity clickedCard)
-    {
-        if (!isHangBackActive) return;
-        if (clickedCard == null) return;
-
-        DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
-        if (selectedDuck == null) return;
-
-        int currentCol = selectedDuck.Column;
-        int targetCol = currentCol + 1; // ถอยหลังไปทางขวา
-
-        DuckCard targetDuck = FindDuckAtHangBack(0, targetCol);
-        if (targetDuck == null)
-        {
-            // Debug.LogWarning($"[CmdHangBackClick] No duck at column {targetCol}, can't swap!");
-            return;
-        }
-
-        // 🔹 **1) ตรวจสอบว่ามีเป้าเล็งที่การ์ดทั้งสองใบหรือไม่ และเก็บ Column ของเป้านั้น**
-        Dictionary<int, TargetFollow> targetMap = new Dictionary<int, TargetFollow>();
-
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
-        {
-            if (tf.targetNetId == selectedDuck.netId)
-            {
-                targetMap[selectedDuck.Column] = tf;
-            }
-            else if (tf.targetNetId == targetDuck.netId)
-            {
-                targetMap[targetDuck.Column] = tf;
-            }
-        }
-
-        // 🔹 **2) ทำลายเป้าเล็งทั้งหมดที่เกี่ยวข้อง**
-        foreach (var tf in targetMap.Values)
-        {
-            NetworkServer.Destroy(tf.gameObject);
-        }
-
-        // 🔹 **3) สลับตำแหน่งการ์ด**
-        SwapDuckColumns(selectedDuck, targetDuck);
-
-        // Debug.Log($"[CmdHangBackClick] Swapped {selectedDuck.name} (col={selectedDuck.Column}) <-> {targetDuck.name} (col={targetDuck.Column})");
-
-        // 🔹 **4) Sync ตำแหน่งการ์ดไป Client**
-        RpcUpdateDuckPositions(selectedDuck.netId, targetDuck.netId);
-
-        // 🔹 **5) สร้างเป้าเล็งใหม่ที่ตำแหน่งเดิม**
-        foreach (var entry in targetMap)
-        {
-            int originalCol = entry.Key;
-            TargetFollow oldTarget = entry.Value;
-
-            DuckCard newDuckAtCol = FindDuckAtHangBack(0, originalCol);
-            if (newDuckAtCol != null)
-            {
-                CmdSpawnTargetForDuck(newDuckAtCol.netId);
-                // Debug.Log($"[CmdHangBackClick] Recreated target at column {originalCol} for {newDuckAtCol.name}");
-            }
-        }
-
-        // ปิดโหมด
-        CmdDeactivateHangBack();
-    }
-
-    // 🔹 หา DuckCard ที่อยู่ใน Column ที่กำหนด
-    private DuckCard FindDuckAtHangBack(int row, int col)
-    {
-        foreach (Transform child in DuckZone.transform)
-        {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row && d.Column == col)
-                return d;
-        }
-        return null;
-    }
-
-
-
-
-
-
-    // 🔹 ฟังก์ชันปิดโหมด Hang Back
-    [Command(requiresAuthority = false)]
-    public void CmdDeactivateHangBack()
-    {
-        isHangBackActive = false;
-        // Debug.Log("[CmdDeactivateHangBack] HangBack mode off on server!");
-        RpcDisableHangBack();
-    }
-
-    [ClientRpc]
-    void RpcDisableHangBack()
-    {
-        // Debug.Log("[RpcDisableHangBack] HangBack mode is now deactivated on all clients.");
-    }
+    // (ตัวแปร isHangBackActive ควรมีอยู่แล้ว)
 
     // 🔹 ฟังก์ชันเปิดโหมด Hang Back
     [Command(requiresAuthority = false)]
@@ -2907,178 +2846,96 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcEnableHangBack] HangBack mode is now active on all clients. Click a duck to swap with the one behind!");
     }
 
-
-    // ========================
-    // FastForward Logic
-    // ========================
+    // 🔹 ฟังก์ชันปิดโหมด Hang Back
     [Command(requiresAuthority = false)]
-    public void CmdFastForwardClick(NetworkIdentity clickedCard)
+    public void CmdDeactivateHangBack()
     {
-        if (!isFastForwardActive) return;
+        isHangBackActive = false;
+        // Debug.Log("[CmdDeactivateHangBack] HangBack mode off on server!");
+        RpcDisableHangBack();
+    }
+
+    [ClientRpc]
+    void RpcDisableHangBack()
+    {
+        // Debug.Log("[RpcDisableHangBack] HangBack mode is now deactivated on all clients.");
+    }
+
+    public bool IsHangBackActive => isHangBackActive;
+
+
+    [Command(requiresAuthority = false)]
+    public void CmdHangBackClick(NetworkIdentity clickedCard)
+    {
+        if (!isHangBackActive) return;
         if (clickedCard == null) return;
 
         DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
         if (selectedDuck == null) return;
 
-        StartCoroutine(FastForwardCoroutine(selectedDuck));
-    }
+        // === FIX: ใช้ RowNet / ColNet ===
+        int curRow = selectedDuck.RowNet;
+        int curCol = selectedDuck.ColNet;
+        int targetCol = curCol + 1; // ถอยหลังไปทางขวา
 
-    [Server]
-    private IEnumerator FastForwardCoroutine(DuckCard selectedDuck)
-    {
-        float delay = 0.3f; // หน่วงเวลาแต่ละรอบ
-
-        Dictionary<int, TargetFollow> targetMap = new Dictionary<int, TargetFollow>();
-
-        // 🔹 เก็บตำแหน่งเป้าก่อนลบ
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
+        // === FIX: ใช้ FindDuckAt (ตัวที่แก้แล้ว) ===
+        DuckCard targetDuck = FindDuckAt(curRow, targetCol);
+        if (targetDuck == null)
         {
-            if (tf.targetNetId == selectedDuck.netId)
-            {
-                targetMap[selectedDuck.Column] = tf;
-            }
-            else
-            {
-                DuckCard duck = FindDuckByNetId(tf.targetNetId);
-                if (duck != null)
-                {
-                    targetMap[duck.Column] = tf;
-                }
-            }
-        }
-
-        // 🔹 ลบเป้าทั้งหมดก่อนเริ่มย้ายการ์ด
-        foreach (var tf in targetMap.Values)
-        {
-            NetworkServer.Destroy(tf.gameObject);
-        }
-
-        // 🔹 ค่อยๆ สลับไปด้านหน้าเรื่อยๆ
-        while (selectedDuck.Column > 0)
-        {
-            int targetCol = selectedDuck.Column - 1;
-            DuckCard targetDuck = FindDuckAtColumn(0, targetCol);
-
-            if (targetDuck == null)
-            {
-                // Debug.LogWarning($"[FastForwardCoroutine] No duck at column {targetCol}, stopping swap.");
-                break;
-            }
-
-            // 🔹 สลับตำแหน่ง Column
-            int tempCol = selectedDuck.Column;
-            selectedDuck.Column = targetDuck.Column;
-            targetDuck.Column = tempCol;
-
-            // Debug.Log($"[FastForwardCoroutine] Swapped {selectedDuck.name} (col={selectedDuck.Column}) <-> {targetDuck.name} (col={targetDuck.Column})");
-
-            // 🔹 ซิงค์ตำแหน่งไปทุก Client
-            RpcUpdateDuckPositions(selectedDuck.netId, targetDuck.netId);
-
-            yield return new WaitForSeconds(delay); // รอให้เห็นการสลับ
-        }
-
-        // 🔹 คืนเป้าเล็งกลับไปที่ตำแหน่งเดิม
-        foreach (var entry in targetMap)
-        {
-            int originalCol = entry.Key;
-            DuckCard newDuckAtCol = FindDuckAtColumn(0, originalCol);
-            if (newDuckAtCol != null)
-            {
-                CmdSpawnTargetForDuck(newDuckAtCol.netId);
-                // Debug.Log($"[FastForwardCoroutine] Recreated target at column {originalCol} for {newDuckAtCol.name}");
-            }
-        }
-
-        // 🔹 ปิดโหมด
-        CmdDeactivateFastForward();
-    }
-
-
-    // 🔹 สลับตำแหน่งของการ์ดผ่าน Server เพื่อ Sync กับ Client
-    [Command(requiresAuthority = false)]
-    private void CmdSwapDuckColumns(uint netIdA, uint netIdB)
-    {
-        if (!NetworkClient.spawned.TryGetValue(netIdA, out NetworkIdentity niA) ||
-            !NetworkClient.spawned.TryGetValue(netIdB, out NetworkIdentity niB))
-        {
-            // Debug.LogWarning($"[CmdSwapDuckColumns] Could not find ducks!");
+            // Debug.LogWarning($"[CmdHangBackClick] No duck at ({curRow}, {targetCol}), can't swap!");
             return;
         }
 
-        DuckCard duckA = niA.GetComponent<DuckCard>();
-        DuckCard duckB = niB.GetComponent<DuckCard>();
+        // 🔹 1) ตรวจสอบว่ามีเป้าเล็งที่การ์ดทั้งสองใบหรือไม่
+        bool selectedHadTarget = IsCardTargeted(selectedDuck.netId);
+        bool targetHadTarget = IsCardTargeted(targetDuck.netId);
 
-        if (duckA != null && duckB != null)
+        // 🔹 2) ทำลายเป้าเล็งทั้งหมดที่เกี่ยวข้อง (ถ้ามี)
+        if (selectedHadTarget)
         {
-            // 🔹 สลับค่าของ Column
-            int tempCol = duckA.Column;
-            duckA.Column = duckB.Column;
-            duckB.Column = tempCol;
-
-            // 🔹 ส่งไปให้ Client Sync
-            RpcUpdateDuckPositions();
+            RemoveTargetFromCard(selectedDuck.netId);
         }
-    }
-
-
-
-    // 🔹 หา DuckCard โดยใช้ NetId
-    private DuckCard FindDuckByNetId(uint netId)
-    {
-        foreach (Transform child in DuckZone.transform)
+        if (targetHadTarget)
         {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.netId == netId)
-                return d;
+            RemoveTargetFromCard(targetDuck.netId);
         }
-        return null;
-    }
 
-    // 🔹 หา DuckCard ที่อยู่ใน Column ที่กำหนด
-    private DuckCard FindDuckAtColumn(int row, int col)
-    {
-        foreach (Transform child in DuckZone.transform)
+        // 🔹 3) สลับตำแหน่งการ์ด (โดยการสลับ SyncVar)
+        // (Server เปลี่ยนค่านี้ -> Client ทุกคนจะอัปเดต UI เองผ่าน Hook)
+        selectedDuck.ColNet = targetCol;
+        targetDuck.ColNet = curCol;
+
+        // Debug.Log($"[CmdHangBackClick] Swapped {selectedDuck.name} (now at {selectedDuck.ColNet}) <-> {targetDuck.name} (now at {targetDuck.ColNet})");
+
+        // 🔹 4) (ลบทิ้ง) RpcUpdateDuckPositions ไม่จำเป็นต้องใช้
+
+        // 🔹 5) สร้างเป้าเล็งใหม่ "ที่ตำแหน่งเดิม" (ให้เป็ดตัวใหม่ที่ย้ายมา)
+
+        // ถ้า "ใบที่เลือก" (selectedDuck) เคยมีเป้า, ให้สร้างเป้าให้ "ใบที่มาแทน" (targetDuck)
+        if (selectedHadTarget)
         {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row && d.Column == col)
-                return d;
+            CmdSpawnTargetForDuck(targetDuck.netId); // (สมมติว่ามี CmdSpawnTargetForDuck อยู่แล้ว)
+            // Debug.Log($"[CmdHangBackClick] Recreated target at column {curCol} for new duck {targetDuck.name}");
         }
-        return null;
-    }
 
-    // 🔹 Sync ตำแหน่งไปยังทุก Client
-    [ClientRpc]
-    void RpcUpdateDuckPositions()
-    {
-        foreach (Transform child in DuckZone.transform)
+        // ถ้า "ใบเป้าหมาย" (targetDuck) เคยมีเป้า, ให้สร้างเป้าให้ "ใบที่มาแทน" (selectedDuck)
+        if (targetHadTarget)
         {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null)
-            {
-                d.transform.SetSiblingIndex(d.Column);
-            }
+            CmdSpawnTargetForDuck(selectedDuck.netId);
+            // Debug.Log($"[CmdHangBackClick] Recreated target at column {targetCol} for new duck {selectedDuck.name}");
         }
+
+        // ปิดโหมด
+        CmdDeactivateHangBack();
     }
 
+    // (ลบ 🔹 หา DuckCard ที่อยู่ใน Column ที่กำหนด (FindDuckAtHangBack) ทิ้ง)
+    // (เพราะเราใช้ FindDuckAt(row, col) ตัวที่ถูกต้องแทนแล้ว)
 
 
-
-    // 🔹 ฟังก์ชันปิดโหมด Fast Forward
-    [Command(requiresAuthority = false)]
-    public void CmdDeactivateFastForward()
-    {
-        isFastForwardActive = false;
-        // Debug.Log("[CmdDeactivateFastForward] FastForward mode off on server!");
-        RpcDisableFastForward();
-    }
-
-    [ClientRpc]
-    void RpcDisableFastForward()
-    {
-        // Debug.Log("[RpcDisableFastForward] FastForward mode is now deactivated on all clients.");
-    }
+    // ========================
+    // FastForward Logic (Refactored)
+    // ========================
 
     // 🔹 ฟังก์ชันเปิดโหมด Fast Forward
     [Command(requiresAuthority = false)]
@@ -3098,254 +2955,169 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcEnableFastForward] FastForward mode is now active on all clients. Click a duck to move to the front!");
     }
 
-
-
-
-
-
-
-    // ========================
-    // Disorderly Conduckt Logic
-    // ========================
+    // 🔹 ฟังก์ชันปิดโหมด Fast Forward
     [Command(requiresAuthority = false)]
-    public void CmdDisorderlyClick(NetworkIdentity clickedCard)
+    public void CmdDeactivateFastForward()
     {
-        if (!isDisorderlyConducktActive) return;
+        isFastForwardActive = false;
+        // Debug.Log("[CmdDeactivateFastForward] FastForward mode off on server!");
+        RpcDisableFastForward();
+    }
+
+    [ClientRpc]
+    void RpcDisableFastForward()
+    {
+        // Debug.Log("[RpcDisableFastForward] FastForward mode is now deactivated on all clients.");
+    }
+
+    public bool IsFastForwardActive => isFastForwardActive;
+
+
+    [Command(requiresAuthority = false)]
+    public void CmdFastForwardClick(NetworkIdentity clickedCard)
+    {
+        if (!isFastForwardActive) return;
         if (clickedCard == null) return;
 
         DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
         if (selectedDuck == null) return;
 
-        // ถ้าไม่มีการ์ดที่เลือกก่อนหน้า => เก็บเป็นใบแรก
-        if (firstSelectedDuck == null)
-        {
-            firstSelectedDuck = selectedDuck;
-            // Debug.Log($"[CmdDisorderlyClick] First selected: {selectedDuck.name} (Col: {selectedDuck.Column})");
-            return;
-        }
+        StartCoroutine(FastForwardCoroutine(selectedDuck));
+    }
 
-        // ถ้าเลือกการ์ดที่สอง => เช็คว่าอยู่ติดกันหรือเปล่า
-        DuckCard secondDuck = selectedDuck;
-        if (Mathf.Abs(firstSelectedDuck.Column - secondDuck.Column) != 1)
-        {
-            // Debug.LogWarning("[CmdDisorderlyClick] Ducks are not adjacent, ignoring!");
-            firstSelectedDuck = null; // รีเซ็ตการเลือก
-            return;
-        }
+    [Server]
+    private IEnumerator FastForwardCoroutine(DuckCard selectedDuck)
+    {
+        float delay = 0.3f; // หน่วงเวลาแต่ละรอบ
+        int curRow = selectedDuck.RowNet; // สมมติว่าทำในแถวของเป็ดที่เลือก
 
-        // 🔹 บันทึกตำแหน่งเป้าหมายทั้งหมดก่อนทำการสลับ
-        List<int> targetColumns = new List<int>();
-        List<uint> targetNetIds = new List<uint>();
+        // 🔹 1) เก็บตำแหน่งเป้า (ColNet) ทั้งหมดในแถวนี้ก่อน
+        List<int> originalTargetColumns = new List<int>();
+        List<TargetFollow> targetsToDestroy = new List<TargetFollow>();
 
-        Dictionary<int, TargetFollow> targetMap = new Dictionary<int, TargetFollow>();
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-
         foreach (var tf in allTargets)
         {
-            if (tf.targetNetId == selectedDuck.netId)
+            // (ใช้ FindDuckAt(row, col) ไม่ได้ เพราะเราไม่รู้ col/row ของเป้า)
+            // (ต้องใช้ FindDuckByNetId ที่ถูกต้อง)
+            DuckCard duck = FindDuckByNetId(tf.targetNetId);
+
+            if (duck != null && duck.RowNet == curRow)
             {
-                targetMap[selectedDuck.Column] = tf;
-            }
-            else
-            {
-                DuckCard duck = FindDuckByNetId(tf.targetNetId);
-                if (duck != null)
+                if (!originalTargetColumns.Contains(duck.ColNet))
                 {
-                    targetMap[duck.Column] = tf;
+                    originalTargetColumns.Add(duck.ColNet);
                 }
+                targetsToDestroy.Add(tf);
             }
         }
 
-        foreach (var tf in allTargets)
-        {
-            if (tf.targetNetId == firstSelectedDuck.netId)
-            {
-                targetColumns.Add(firstSelectedDuck.Column);
-                targetNetIds.Add(tf.targetNetId);
-            }
-            else if (tf.targetNetId == secondDuck.netId)
-            {
-                targetColumns.Add(secondDuck.Column);
-                targetNetIds.Add(tf.targetNetId);
-            }
-        }
-
-        // 🔹 ลบเป้าทั้งหมดที่เกี่ยวข้องทั้งใน server และ client
-        // foreach (var tf in allTargets)
-        // {
-        //     NetworkServer.Destroy(tf.gameObject);
-        //     // if (targetNetIds.Contains(tf.targetNetId))
-        //     // {
-        //     //     NetworkServer.Destroy(tf.gameObject); // ลบจาก server
-        //     // }
-        // }
-
-        foreach (var tf in targetMap.Values)
+        // 🔹 2) ลบเป้าทั้งหมดก่อนเริ่มย้ายการ์ด
+        foreach (var tf in targetsToDestroy)
         {
             NetworkServer.Destroy(tf.gameObject);
         }
 
-        // 🔹 สลับตำแหน่งการ์ด
-        SwapDuckColumns(firstSelectedDuck, secondDuck);
-
-        // Debug.Log($"[CmdDisorderlyClick] Swapped {firstSelectedDuck.name} (Col: {firstSelectedDuck.Column}) <-> {secondDuck.name} (Col: {secondDuck.Column})");
-
-        // 🔹 ซิงค์ตำแหน่งการ์ดไป Client
-        RpcUpdateDuckPositionsForDuckforDisorderlyConduckt(firstSelectedDuck.netId, secondDuck.netId);
-
-        // // 🔹 คืนเป้ากลับไปที่ตำแหน่งเดิมทั้งใน server และ client
-        // RpcRecreateTargets(targetColumns, targetNetIds);
-
-        // 🔹 คืนเป้าเล็งกลับไปที่ตำแหน่งเดิม
-        foreach (var entry in targetMap)
+        // 🔹 3) ค่อยๆ สลับไปด้านหน้าเรื่อยๆ
+        // === FIX: ใช้ ColNet และ FindDuckAt ที่ถูกต้อง ===
+        while (selectedDuck.ColNet > 0)
         {
-            int originalCol = entry.Key;
-            DuckCard newDuckAtCol = FindDuckAtColumn(0, originalCol);
+            int currentCol = selectedDuck.ColNet;
+            int targetCol = currentCol - 1;
+            DuckCard targetDuck = FindDuckAt(curRow, targetCol); // ใช้ Helper ที่ถูกต้อง
+
+            if (targetDuck == null)
+            {
+                // Debug.LogWarning($"[FastForwardCoroutine] No duck at column {targetCol}, stopping swap.");
+                break;
+            }
+
+            // 🔹 สลับตำแหน่ง (SyncVar)
+            // (Server เปลี่ยน -> Client ทุกคนอัปเดต UI เอง)
+            selectedDuck.ColNet = targetCol;
+            targetDuck.ColNet = currentCol;
+
+            // Debug.Log($"[FastForwardCoroutine] Swapped {selectedDuck.name} (now at {selectedDuck.ColNet}) <-> {targetDuck.name} (now at {targetDuck.ColNet})");
+
+            // 🔹 (ลบ RpcUpdateDuckPositions ทิ้ง)
+
+            yield return new WaitForSeconds(delay); // รอให้เห็นการสลับ
+        }
+
+        // 🔹 4) คืนเป้าเล็งกลับไปที่ตำแหน่งเดิม
+
+        // (รอ 1 frame ให้ SyncVar ตัวสุดท้ายส่งไปถึง Client ก่อน)
+        yield return null;
+
+        foreach (int originalCol in originalTargetColumns)
+        {
+            DuckCard newDuckAtCol = FindDuckAt(curRow, originalCol); // ใช้ Helper ที่ถูกต้อง
             if (newDuckAtCol != null)
             {
-                CmdSpawnTargetForDuck(newDuckAtCol.netId);
+                CmdSpawnTargetForDuck(newDuckAtCol.netId); // (สมมติว่ามี CmdSpawnTargetForDuck)
                 // Debug.Log($"[FastForwardCoroutine] Recreated target at column {originalCol} for {newDuckAtCol.name}");
             }
         }
 
-        // รีเซ็ตการเลือก
-        firstSelectedDuck = null;
-
-        // 🔹 ปิดโหมด Disorderly Conduckt
-        CmdDeactivateDisorderlyConduckt();
+        // 🔹 5) ปิดโหมด
+        CmdDeactivateFastForward();
     }
 
-    // เพิ่มการลบเป้าใน Client
-    [ClientRpc]
-    void RpcDestroyTargetsOnClient(uint targetNetId)
-    {
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
-        {
-            if (tf.targetNetId == targetNetId)
-            {
-                Destroy(tf.gameObject);
-            }
-        }
-    }
 
-    // ซิงค์ตำแหน่งการ์ดไปยัง Client
-    [ClientRpc]
-    void RpcUpdateDuckPositionsForDuckforDisorderlyConduckt(uint netIdA, uint netIdB)
-    {
-        if (!NetworkClient.spawned.TryGetValue(netIdA, out var niA) ||
-            !NetworkClient.spawned.TryGetValue(netIdB, out var niB))
-        {
-            // Debug.LogWarning($"[RpcUpdateDuckPositions] Could not find ducks!");
-            return;
-        }
+    // === (ลบ Helper ที่ผิดทิ้งทั้งหมด) ===
+    // [Command] private void CmdSwapDuckColumns(...)  <-- ลบทิ้ง
+    // private DuckCard FindDuckByNetId(...)           <-- ลบทิ้ง (หรือแก้ให้ถูก)
+    // private DuckCard FindDuckAtColumn(...)          <-- ลบทิ้ง
+    // [ClientRpc] void RpcUpdateDuckPositions()       <-- ลบทิ้ง
 
-        DuckCard duckA = niA.GetComponent<DuckCard>();
-        DuckCard duckB = niB.GetComponent<DuckCard>();
 
-        if (duckA != null && duckB != null)
-        {
-            int tempIdx = duckA.transform.GetSiblingIndex();
-            duckA.transform.SetSiblingIndex(duckB.transform.GetSiblingIndex());
-            duckB.transform.SetSiblingIndex(tempIdx);
-
-            // Debug.Log($"[RpcUpdateDuckPositions] Updated positions: {duckA.name} <-> {duckB.name}");
-        }
-    }
+    // === (เพิ่ม Helper ที่ถูกต้อง (ถ้ายังไม่มี)) ===
 
     [Server]
-    private IEnumerator RecreateTargetsAfterSwap(Dictionary<int, uint> targetMap)
+    private DuckCard FindDuckByNetId(uint netId)
     {
-        yield return null; // รอให้ Grid Layout Group ปรับการ์ดก่อน
-
-        foreach (var entry in targetMap)
+        // === FIX: หาจาก NetworkServer.spawned ===
+        if (NetworkServer.spawned.TryGetValue(netId, out NetworkIdentity ni))
         {
-            int originalCol = entry.Key;
-            uint oldTargetNetId = entry.Value;
-
-            DuckCard newDuckAtCol = FindDuckAtColumnforDisorderlyConduckt(0, originalCol);
-            if (newDuckAtCol != null)
-            {
-                CmdSpawnTargetForDuckforDisorderlyConduckt(newDuckAtCol.netId);
-                // Debug.Log($"[RecreateTargetsAfterSwap] Recreated target at column {originalCol} for {newDuckAtCol.name}");
-            }
-        }
-    }
-
-
-
-    // ฟังก์ชันคืนเป้าเล็งกลับไปที่ตำแหน่งเดิมทั้งใน server และ client
-    [ClientRpc]
-    void RpcRecreateTargets(List<int> targetColumns, List<uint> targetNetIds)
-    {
-        if (targetColumns.Count != targetNetIds.Count)
-        {
-            // Debug.LogError("[RpcRecreateTargets] Mismatch between columns and targetNetIds!");
-            return;
-        }
-
-        // สร้างเป้าหมายใหม่ในตำแหน่งเดิมหลังการสลับ
-        for (int i = 0; i < targetColumns.Count; i++)
-        {
-            int originalCol = targetColumns[i];
-            uint oldTargetNetId = targetNetIds[i];
-
-            // ค้นหาการ์ดใหม่ที่อยู่ในคอลัมน์เดิม
-            DuckCard newDuckAtCol = FindDuckAtColumnforDisorderlyConduckt(0, originalCol);
-            if (newDuckAtCol != null)
-            {
-                CmdSpawnTargetForDuckforDisorderlyConduckt(newDuckAtCol.netId);
-                // Debug.Log($"[RpcRecreateTargets] Recreated target at column {originalCol} for {newDuckAtCol.name}");
-            }
-        }
-    }
-
-    // ฟังก์ชันสร้างเป้าหมายใหม่
-    [Server]
-    private void CmdSpawnTargetForDuckforDisorderlyConduckt(uint duckNetId)
-    {
-        if (!NetworkClient.spawned.TryGetValue(duckNetId, out NetworkIdentity duckNi))
-        {
-            // Debug.LogWarning($"[CmdSpawnTargetForDuck] Duck netId={duckNetId} not found!");
-            return;
-        }
-
-        if (targetPrefab == null)
-        {
-            // Debug.LogError("[CmdSpawnTargetForDuck] targetPrefab is null!");
-            return;
-        }
-
-        GameObject newTarget = Instantiate(targetPrefab);
-        NetworkServer.Spawn(newTarget);
-
-        NetworkIdentity targetNi = newTarget.GetComponent<NetworkIdentity>();
-        RpcSetTargetNetId(targetNi, duckNi);
-    }
-
-    // ฟังก์ชันค้นหาการ์ดเป็ดในคอลัมน์
-    private DuckCard FindDuckAtColumnforDisorderlyConduckt(int row, int col)
-    {
-        foreach (Transform child in DuckZone.transform)
-        {
-            DuckCard d = child.GetComponent<DuckCard>();
-            if (d != null && d.Row == row && d.Column == col)
-                return d;
+            return ni.GetComponent<DuckCard>();
         }
         return null;
     }
 
+    [Server]
+    private DuckCard FindDuckAt(int row, int col)
+    {
+        // === FIX: หาจาก NetworkServer.spawned ===
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
+        {
+            DuckCard card = netId.GetComponent<DuckCard>();
+
+            if (card != null && card.Zone == ZoneKind.DuckZone &&
+                card.RowNet == row && card.ColNet == col)
+            {
+                return card;
+            }
+        }
+        return null; // ไม่เจอ
+    }
 
 
 
+    // ========================
+    // Disorderly Conduckt Logic (Refactored)
+    // ========================
+
+    // (ตัวแปร isDisorderlyConducktActive และ firstSelectedDuck (DuckCard) ควรมีอยู่แล้ว)
+
+    // 🔹 ฟังก์ชันเปิดโหมด
     [Command(requiresAuthority = false)]
     public void CmdActivateDisorderlyConduckt()
     {
         if (!isDisorderlyConducktActive)
         {
             isDisorderlyConducktActive = true;
+            firstSelectedDuck = null; // รีเซ็ตทุกครั้งที่เปิดโหมด
             // Debug.Log("[CmdActivateDisorderlyConduckt] Disorderly Conduckt mode active!");
-
             RpcEnableDisorderlyConduckt();
         }
     }
@@ -3357,8 +3129,7 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcEnableDisorderlyConduckt] Disorderly Conduckt mode is active! Click two adjacent ducks to swap.");
     }
 
-
-    // 🔹 ปิดโหมด Disorderly Conduckt
+    // 🔹 ฟังก์ชันปิดโหมด
     [Command(requiresAuthority = false)]
     public void CmdDeactivateDisorderlyConduckt()
     {
@@ -3375,11 +3146,141 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("[RpcDisableDisorderlyConduckt] DisorderlyConduckt mode is now deactivated on all clients.");
     }
 
+
+    [Command(requiresAuthority = false)]
+    public void CmdDisorderlyClick(NetworkIdentity clickedCard)
+    {
+        if (!isDisorderlyConducktActive) return;
+        if (clickedCard == null) return;
+
+        DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
+        if (selectedDuck == null) return;
+
+        // ถ้าไม่มีการ์ดที่เลือกก่อนหน้า => เก็บเป็นใบแรก
+        if (firstSelectedDuck == null)
+        {
+            firstSelectedDuck = selectedDuck;
+            // Debug.Log($"[CmdDisorderlyClick] First selected: {selectedDuck.name} (Col: {selectedDuck.ColNet})");
+            return;
+        }
+
+        // ถ้าเลือกการ์ดใบเดิม => ยกเลิก
+        if (firstSelectedDuck == selectedDuck)
+        {
+            firstSelectedDuck = null;
+            // Debug.Log($"[CmdDisorderlyClick] Selection cancelled.");
+            return;
+        }
+
+        // ถ้าเลือกการ์ดที่สอง => เช็คว่าอยู่ติดกันหรือเปล่า
+        DuckCard secondDuck = selectedDuck;
+
+        // === FIX: ใช้ ColNet และ RowNet (สมมติว่าต้องแถวเดียวกัน) ===
+        bool sameRow = firstSelectedDuck.RowNet == secondDuck.RowNet;
+        bool adjacentCol = Mathf.Abs(firstSelectedDuck.ColNet - secondDuck.ColNet) == 1;
+
+        if (!sameRow || !adjacentCol)
+        {
+            // Debug.LogWarning("[CmdDisorderlyClick] Ducks are not adjacent in the same row, ignoring!");
+            firstSelectedDuck = selectedDuck; // ให้ใบนี้เป็นใบแรกแทน (UX ที่ดี)
+            return;
+        }
+
+        // --- เริ่มกระบวนการสลับ (เพราะ adjacent) ---
+
+        // 🔹 1) บันทึกว่าใบไหนมีเป้า
+        bool firstHadTarget = IsCardTargeted(firstSelectedDuck.netId);
+        bool secondHadTarget = IsCardTargeted(secondDuck.netId);
+
+        // 🔹 2) ลบเป้าทั้งหมดที่เกี่ยวข้อง
+        if (firstHadTarget) RemoveTargetFromCard(firstSelectedDuck.netId);
+        if (secondHadTarget) RemoveTargetFromCard(secondDuck.netId);
+
+        // 🔹 3) สลับตำแหน่งการ์ด (โดยการสลับ SyncVar)
+        // === FIX: สลับ ColNet โดยตรง ===
+        int tempCol = firstSelectedDuck.ColNet;
+        firstSelectedDuck.ColNet = secondDuck.ColNet;
+        secondDuck.ColNet = tempCol;
+
+        // (ถ้าต้องสลับ RowNet ด้วย ก็ทำตรงนี้)
+        // int tempRow = firstSelectedDuck.RowNet;
+        // firstSelectedDuck.RowNet = secondDuck.RowNet;
+        // secondDuck.RowNet = tempRow;
+
+        // Debug.Log($"[CmdDisorderlyClick] Swapped {firstSelectedDuck.name} (now at {firstSelectedDuck.ColNet}) <-> {secondDuck.name} (now at {secondDuck.ColNet})");
+
+        // 🔹 4) (ลบทิ้ง) RpcUpdateDuckPositions... ไม่จำเป็นต้องใช้
+
+        // 🔹 5) คืนเป้ากลับไปที่ตำแหน่งเดิม (ให้เป็ดตัวใหม่ที่มาแทน)
+        if (firstHadTarget)
+        {
+            CmdSpawnTargetForDuck(secondDuck.netId); // ใบที่ 1 เคยมีเป้า -> สร้างให้ใบที่ 2 (ที่ย้ายมาแทน)
+        }
+        if (secondHadTarget)
+        {
+            CmdSpawnTargetForDuck(firstSelectedDuck.netId); // ใบที่ 2 เคยมีเป้า -> สร้างให้ใบที่ 1 (ที่ย้ายมาแทน)
+        }
+
+        // รีเซ็ตการเลือก (เพื่อให้คลิกคู่ต่อไปได้)
+        firstSelectedDuck = null;
+
+        // (ถ้าสกิลนี้ใช้ครั้งเดียวจบ ให้เรียก CmdDeactivateDisorderlyConduckt())
+        // CmdDeactivateDisorderlyConduckt(); 
+    }
+
+    // === (ลบ Helper ที่ผิดทิ้งทั้งหมด) ===
+    // [ClientRpc] void RpcDestroyTargetsOnClient(...)                 <-- ลบทิ้ง
+    // [ClientRpc] void RpcUpdateDuckPositionsForDuck...(...)          <-- ลบทิ้ง
+    // [Server] private IEnumerator RecreateTargetsAfterSwap(...)      <-- ลบทิ้ง
+    // [ClientRpc] void RpcRecreateTargets(...)                        <-- ลบทิ้ง
+    // [Server] private void CmdSpawnTargetForDuckforDisorderly...()  <-- ลบทิ้ง (ใช้ตัวปกติ)
+    // private DuckCard FindDuckAtColumnforDisorderlyConduckt(...)    <-- ลบทิ้ง
+
+
+    // === (ใช้ Helper ที่ถูกต้อง (ถ้ายังไม่มี)) ===
+
+    // (ใช้ CmdSpawnTargetForDuck ตัวที่แก้ใน LineForward)
+    [Command(requiresAuthority = false)]
+    private void CmdSpawnTargetForDuck(uint duckNetId)
+    {
+        // === FIX: ใช้ NetworkServer.spawned ===
+        if (!NetworkServer.spawned.TryGetValue(duckNetId, out NetworkIdentity duckNi))
+        {
+            // Debug.LogWarning($"[CmdSpawnTargetForDuck] Duck netId={duckNetId} not found!");
+            return;
+        }
+        if (targetPrefab == null) return;
+
+        GameObject newTarget = Instantiate(targetPrefab);
+        NetworkServer.Spawn(newTarget);
+        NetworkIdentity targetNi = newTarget.GetComponent<NetworkIdentity>();
+        RpcSetTargetNetId(targetNi, duckNi); // (สมมติว่ามี RpcSetTargetNetId อยู่)
+    }
+
+    // (ใช้ FindDuckAt ตัวที่แก้ใน FastForward)
+    [Server]
+    private DuckCard FindDuckAt(int row, int col)
+    {
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
+        {
+            DuckCard card = netId.GetComponent<DuckCard>();
+            if (card != null && card.Zone == ZoneKind.DuckZone &&
+                card.RowNet == row && card.ColNet == col)
+            {
+                return card;
+            }
+        }
+        return null; // ไม่เจอ
+    }
+
+
     // ========================
-    // Duck Shuffle  Logic
+    // Duck Shuffle  Logic (Refactored)
     // ========================
     public void TryDuckShuffle()
     {
+        // (อันนี้เรียกจาก Client)
+        if (!isLocalPlayer) return;
         CmdActivateDuckShuffle();
     }
 
@@ -3389,25 +3290,24 @@ public class PlayerManager : NetworkBehaviour
         if (isDuckShuffleActive) return;
         isDuckShuffleActive = true;
 
-        // 1) เก็บเป้าก่อน
+        // 1) เก็บเป้าก่อน (ใช้ Helper ที่แก้แล้ว)
         var oldTargets = CollectTargetColumns();
 
-        // 2) คืนทุกใบใน zone → pool แล้วทำลาย
-        foreach (Transform child in DuckZone.transform)
-        {
-            if (child.TryGetComponent<DuckCard>(out var duck))
-            {
-                CardPoolManager.ReturnCard(duck.gameObject);    // +1 pool
-                NetworkServer.Destroy(duck.gameObject);
-            }
-        }
+        // 2) คืนทุกใบใน zone → pool แล้วทำลาย (ใช้ Helper ที่แก้แล้ว)
+        RemoveAllDucks();
 
         // 3) ลบเป้าเดิม
-        RemoveAllTargets();
-        // UpdateDuckColumns();
+        RemoveAllTargets(); // (สมมติว่ามี RemoveAllTargets() ที่ถูกต้อง)
+
         // 4) รีฟิลใหม่ถึง 6 ใบ
-        int toDeal = 6 - GetDuckCardCountInDuckZone();
-        for (int i = 0; i < toDeal; i++)
+        if (DuckZone == null)
+        {
+            // Debug.LogError("DuckZone is null!");
+            return;
+        }
+
+        int needed = 6; // (Shuffle คือเติม 6 ใบใหม่เสมอ)
+        for (int i = 0; i < needed; i++)
         {
             if (!CardPoolManager.HasCards()) break;
 
@@ -3415,26 +3315,25 @@ public class PlayerManager : NetworkBehaviour
             GameObject cardGO = CardPoolManager.DrawRandomCard(DuckZone.transform);
             if (cardGO == null) break;
 
-            // 2) ตั้งค่า Row/Column ให้ถูกต้อง (Column = index หลัง parent)
+            // 2) ตั้งค่า Row/Column (SyncVar) ให้ถูกต้อง
             var duck = cardGO.GetComponent<DuckCard>();
             if (duck != null)
             {
-                duck.Row = 0;
-                // childCount ยังไม่เพิ่มใบนี้หรือเพิ่มแล้ว? 
-                // DrawRandomCard ใส่ไว้บน transform แล้ว childCount เพิ่มแล้ว
-                duck.Column = DuckZone.transform.childCount - 1;
+                // === FIX: ตั้งค่า SyncVar ===
+                duck.RowNet = 0;
+                duck.ColNet = i; // ใช้ i เป็น ColNet ที่ถูกต้อง
+                duck.Zone = ZoneKind.DuckZone;
             }
 
             // 3) Spawn & RPC add
             NetworkServer.Spawn(cardGO);
-            RpcAddCardToDuckZone(cardGO);
+            RpcAddCardToDuckZone(cardGO); // (สมมติว่ามี RpcAddCardToDuckZone)
         }
-        // UpdateDuckColumns();
+
         // 5) สร้างเป้าย้อน
         StartCoroutine(RecreateTargetsAfterShuffle(oldTargets));
 
-        StartCoroutine(DelayedLog());
-
+        StartCoroutine(DelayedLog()); // (สมมติว่ามี DelayedLog)
 
         // 6) ปิดโหมด
         CmdDeactivateDuckShuffle();
@@ -3444,24 +3343,22 @@ public class PlayerManager : NetworkBehaviour
     [Server]
     private IEnumerator RecreateTargetsAfterShuffle(List<int> oldCols)
     {
-        yield return StartCoroutine(RefillNextFrameDuckShuffle());
+        // (ลบ RefillNextFrameDuckShuffle() ที่ซ้ำซ้อนทิ้ง)
+
         // รอ 1 เฟรมให้ layout ปรับตำแหน่งเสร็จ
         yield return null;
-        // UpdateDuckColumns();
 
-        // ค้น DuckCard แต่ละใบใน row 0
-        List<DuckCard> ducks = new List<DuckCard>();
-        foreach (Transform child in DuckZone.transform)
-            if (child.TryGetComponent(out DuckCard dc) && dc.Row == 0)
-                ducks.Add(dc);
+        // ค้น DuckCard แต่ละใบใน row 0 (ใช้ Helper ที่แก้แล้ว)
+        List<DuckCard> ducks = FindDucksInRow(0);
 
         // สร้างเป้าย้อนกลับ
         foreach (int col in oldCols)
         {
-            var duckAtCol = ducks.Find(d => d.Column == col);
+            // === FIX: ค้นหาด้วย ColNet ===
+            var duckAtCol = ducks.Find(d => d.ColNet == col);
             if (duckAtCol != null)
             {
-                CmdSpawnTargetForDuck(duckAtCol.netId);
+                CmdSpawnTargetForDuck(duckAtCol.netId); // (สมมติว่ามี CmdSpawnTargetForDuck)
                 // Debug.Log($"[DuckShuffle] Recreated target at col {col} for {duckAtCol.name}");
             }
         }
@@ -3482,52 +3379,77 @@ public class PlayerManager : NetworkBehaviour
     }
 
     // ========================
-    // ลบการ์ดทั้งหมดจาก DuckZone
+    // Helpers (Refactored)
     // ========================
+
+    [Server]
     private void RemoveAllDucks()
     {
-        DuckCard[] allDucks = FindObjectsOfType<DuckCard>();
+        // === FIX: วนหาจาก NetworkServer.spawned (ชัวร์ที่สุด) ===
+        List<GameObject> ducksToDestroy = new List<GameObject>();
 
-        foreach (var duck in allDucks)
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
-            NetworkServer.Destroy(duck.gameObject);
-            // Debug.Log($"[RemoveAllDucks] Destroyed duck: {duck.name}");
+            // หาเป็ดที่อยู่ใน DuckZone เท่านั้น
+            if (netId.TryGetComponent(out DuckCard duck) && duck.Zone == ZoneKind.DuckZone)
+            {
+                ducksToDestroy.Add(duck.gameObject);
+            }
+        }
+
+        // ทำลาย (แยก List เพื่อไม่ให้ Collection เปลี่ยนขณะวนลูป)
+        foreach (var duckGO in ducksToDestroy)
+        {
+            CardPoolManager.ReturnCard(duckGO); // +1 pool
+            NetworkServer.Destroy(duckGO);
+            // Debug.Log($"[RemoveAllDucks] Destroyed duck: {duckGO.name}");
         }
     }
 
-
-
-    // ========================
-    // เติมการ์ดใหม่ (`RefillNextFrame()` ถูกใช้ในขั้นตอนที่ 4)
-    // ========================
     [Server]
-    private IEnumerator RefillNextFrameDuckShuffle()
+    private List<int> CollectTargetColumns()
     {
-        yield return null;
-        RefillDuckZoneIfNeededDuckShuffle();
+        // (นี่คือ Helper ตัวที่แก้แล้วจาก LineForward)
+        List<int> targetColumns = new List<int>();
+        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
+
+        foreach (var tf in allTargets)
+        {
+            if (NetworkServer.spawned.TryGetValue(tf.targetNetId, out NetworkIdentity duckNi))
+            {
+                DuckCard duck = duckNi.GetComponent<DuckCard>();
+
+                // === FIX: ใช้ ColNet ===
+                if (duck != null && !targetColumns.Contains(duck.ColNet))
+                {
+                    targetColumns.Add(duck.ColNet);
+                }
+            }
+        }
+        targetColumns.Sort();
+        return targetColumns;
     }
 
     [Server]
-    private void RefillDuckZoneIfNeededDuckShuffle()
+    private List<DuckCard> FindDucksInRow(int row)
     {
-        if (DuckZone == null) return;
-        int currentCount = GetDuckCardCountInDuckZone();
-        if (currentCount >= 6) return;
-        if (!CardPoolManager.HasCards())
+        // (นี่คือ Helper ตัวที่แก้แล้วจาก LineForward)
+        List<DuckCard> list = new List<DuckCard>();
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
-            // Debug.LogWarning("[RefillDuckZone] No cards left in pool!");
-            return;
+            DuckCard d = netId.GetComponent<DuckCard>();
+            // === FIX: ใช้ RowNet และ Zone ===
+            if (d != null && d.Zone == ZoneKind.DuckZone && d.RowNet == row)
+            {
+                list.Add(d);
+            }
         }
-
-        int needed = 6 - currentCount;
-        for (int i = 0; i < needed; i++)
-        {
-            GameObject newCard = CardPoolManager.DrawRandomCard(DuckZone.transform);
-            if (newCard == null) break;
-            NetworkServer.Spawn(newCard);
-            RpcAddCardToDuckZone(newCard);
-        }
+        return list;
     }
+
+
+    // (ลบ RefillNextFrameDuckShuffle() และ RefillDuckZoneIfNeededDuckShuffle() ที่ซ้ำซ้อนทิ้ง)
+
 
     // ========================
     // GivePeaceAChance Logic
@@ -3546,10 +3468,8 @@ public class PlayerManager : NetworkBehaviour
         isGivePeaceActive = true;
         // Debug.Log("[CmdActivateGivePeaceAChance] Removing all targets...");
 
-        // ลบเป้าเล็งทั้งหมด
+        // ลบเป้าเล็งทั้งหมด (ใช้ Helper [Server] ที่แก้แล้ว)
         RemoveAllTargets();
-
-
 
         // ปิดโหมด
         CmdDeactivateGivePeaceAChance();
@@ -3569,8 +3489,9 @@ public class PlayerManager : NetworkBehaviour
     }
 
     // ========================
-    // Resurrection  Logic
+    // Resurrection  Logic (Refactored)
     // ========================
+
     // เปลี่ยนชื่อเมธอดให้ไม่ชนกับชื่อคลาสหรือฟิลด์เดิม
     public void TryUseResurrection()
     {
@@ -3578,22 +3499,38 @@ public class PlayerManager : NetworkBehaviour
         CmdActivateResurrectionMode();
     }
 
-    [Command]
+    [Command] // (Command นี้ควรเป็น requiresAuthority = true (default) เพราะผู้เล่นเรียกเอง)
     private void CmdActivateResurrectionMode()
     {
         if (isResurrectionModeActive) return;
         isResurrectionModeActive = true;
 
-        const int maxPerColor = 5;
+        const int maxPerColor = 5; // (สมมติว่า max คือ 5)
 
-        // 1) ดึงจำนวนรวม (pool + zone)
+        // 1) ดึงจำนวนรวม (pool + zone) (ใช้ Helper ที่แก้แล้ว)
         var totalCounts = GetTotalDuckCounts();
 
         // 2) หาเฉพาะสีที่มีน้อยกว่า maxPerColor
         var lowColors = new List<string>();
-        foreach (var kv in totalCounts)
-            if (kv.Value < maxPerColor)
-                lowColors.Add(kv.Key);
+
+        // (เราควรรู้จักสีทั้งหมดจาก CardPoolManager.GetAllColorKeys() หรือที่คล้ายกัน)
+        // (ถ้า GetTotalDuckCounts() คืนค่าเฉพาะสีที่มี, เราต้องเช็กสีที่ "ไม่มีเลย" (0) ด้วย)
+
+        // (สมมติว่า CardPoolManager มีสีทั้งหมด)
+        foreach (string color in CardPoolManager.GetAllColorKeys())
+        {
+            int currentCount = 0;
+            if (!totalCounts.TryGetValue(color, out currentCount))
+            {
+                currentCount = 0; // ถ้าไม่มีเลย = 0
+            }
+
+            if (currentCount < maxPerColor)
+            {
+                lowColors.Add(color);
+            }
+        }
+
 
         if (lowColors.Count > 0)
         {
@@ -3602,14 +3539,14 @@ public class PlayerManager : NetworkBehaviour
             string color = lowColors[idx];
 
             CardPoolManager.AddToPool(color);
-            // Debug.Log($"[Resurrection] Added one {color} back to pool (now total {totalCounts[color] + 1})");
+            // Debug.Log($"[Resurrection] Added one {color} back to pool");
         }
         else
         {
             // Debug.LogWarning("[Resurrection] No color below max count—nothing added");
         }
 
-        StartCoroutine(DelayedLog());
+        // StartCoroutine(DelayedLog()); // (ถ้ามี DelayedLog)
 
         CmdDeactivateResurrectionMode();
     }
@@ -3624,17 +3561,34 @@ public class PlayerManager : NetworkBehaviour
     [ClientRpc]
     private void RpcDisableResurrectionMode()
     {
-
+        // (Client-side UI update)
     }
 
+    // === NEW HELPER (Refactored) ===
+    [Server]
+    private Dictionary<string, int> GetTotalDuckCounts()
+    {
+        // 1. เอาจำนวนจากใน Pool มาก่อน
+        Dictionary<string, int> counts = CardPoolManager.GetPoolCounts(); // (สมมติว่ามีฟังก์ชันนี้)
 
+        // 2. วนหาเป็ดใน DuckZone (ที่ active ใน Server)
+        foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
+        {
+            DuckCard card = netId.GetComponent<DuckCard>();
 
+            // (เช็กว่า 1. เป็นเป็ด, 2. อยู่ใน DuckZone, 3. มีสี (สมมติว่ามี .ColorKey))
+            if (card != null && card.Zone == ZoneKind.DuckZone && !string.IsNullOrEmpty(card.ColorKey))
+            {
+                if (!counts.ContainsKey(card.ColorKey))
+                {
+                    counts[card.ColorKey] = 0;
+                }
+                counts[card.ColorKey]++;
+            }
+        }
 
-
-
-
-
-
+        return counts;
+    }
 
 
 
@@ -3814,7 +3768,6 @@ public class PlayerManager : NetworkBehaviour
         CmdDeactivateDuckShuffle();
         CmdDeactivateGivePeaceAChance();
         CmdDeactivateResurrectionMode();
-        // CmdDeactivateDuckAndCoverMode();
     }
 
 
@@ -3871,4 +3824,28 @@ public class PlayerManager : NetworkBehaviour
             Debug.Log("การ์ดนี้ถูกคลิกแล้ว " + increment.NumberOfClicks + " times!");
         }
     }
+}
+
+// =================================================================
+// นิยาม SkillMode Enum 
+// =================================================================
+public enum SkillMode
+{
+    None,
+    Shoot,
+    TakeAim,
+    DoubleBarrel,
+    QuickShot,
+    Misfire,
+    TwoBirds,
+    BumpLeft,
+    BumpRight,
+    LineForward,
+    MoveAhead,
+    HangBack,
+    FastForward,
+    DisorderlyConduckt,
+    DuckShuffle,
+    GivePeaceAChance,
+    Resurrection
 }
