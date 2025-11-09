@@ -613,20 +613,95 @@ public class PlayerManager : NetworkBehaviour
     }
 
 
-    // คืน DuckZone ของ "อินสแตนซ์ในซีน" เสมอ
+    // ใช้บน server (เรียกได้ทั้ง server/host) — cache ผลลัพธ์เล็กน้อย
+    [Server]
+    private Transform _cachedDuckZone;
+    [Server]
     private Transform GetSceneDuckZone()
     {
-        // ถ้ามี DuckZone อ้างอยู่ และมันอยู่ในซีนจริง
+        // ถ้ามีค่า cache แล้วยัง valid ให้ใช้
+        if (_cachedDuckZone != null && _cachedDuckZone.gameObject.scene.IsValid() && _cachedDuckZone.gameObject.scene.isLoaded)
+            return _cachedDuckZone;
+
+        // ถ้ามีฟีลด์ DuckZone ที่อ้างไว้ และ valid ให้ใช้
         if (DuckZone != null)
         {
             var t = DuckZone.transform;
             if (t != null && t.gameObject.scene.IsValid() && t.gameObject.scene.isLoaded)
+            {
+                _cachedDuckZone = t;
                 return t;
+            }
         }
+
         // หาใหม่จากชื่อในซีน
         var go = GameObject.Find("DuckZone");
-        return go != null ? go.transform : null;
+        if (go != null)
+        {
+            _cachedDuckZone = go.transform;
+            return _cachedDuckZone;
+        }
+
+        // ไม่เจอ
+        return null;
     }
+
+    // ถ้ามีจังหวะที่ scene อาจเปลี่ยน (unload/load) ให้เคลียร์ cache
+    [Server]
+    private void ClearZoneCaches()
+    {
+        _cachedDuckZone = null;
+    }
+
+    [Server]
+    private void Server_ResequenceDuckZoneColumns()
+    {
+        var dz = GetSceneDuckZone();
+        if (dz == null) return;
+
+        // ดึงการ์ดเป็ดทั้งหมดใน DuckZone
+        var list = new List<DuckCard>();
+        foreach (Transform t in dz)
+        {
+            var dc = t.GetComponent<DuckCard>();
+            if (dc != null) list.Add(dc);
+        }
+
+        // จัดลำดับตามตำแหน่ง X ปัจจุบัน (หรือจะใช้ siblingIndex ก็ได้)
+        list.Sort((a, b) =>
+        {
+            var ra = a.GetComponent<RectTransform>();
+            var rb = b.GetComponent<RectTransform>();
+            float ax = ra ? ra.anchoredPosition.x : a.transform.GetSiblingIndex();
+            float bx = rb ? rb.anchoredPosition.x : b.transform.GetSiblingIndex();
+            return ax.CompareTo(bx);
+        });
+
+        // ไล่กำหนดคอลัมน์ใหม่
+        for (int i = 0; i < list.Count; i++)
+        {
+            var dc = list[i];
+            // ใช้โซนเดิม (DuckZone), แถวเดิม (0), คอลัมน์ใหม่ i
+            dc.ServerAssignToZone(ZoneKind.DuckZone, 0, i);
+        }
+    }
+
+    [Server]
+    private void Server_DestroyAllTargetsFor(uint duckNetId)
+    {
+        // รุ่นใหม่: TargetMarker
+        var markers = FindObjectsOfType<TargetMarker>();
+        foreach (var m in markers)
+            if (m != null && m.FollowDuckNetId == duckNetId)
+                NetworkServer.Destroy(m.gameObject);
+
+        // สำรอง: รุ่นเดิม TargetFollow
+        var follows = FindObjectsOfType<TargetFollow>();
+        foreach (var f in follows)
+            if (f != null && f.targetNetId == duckNetId)
+                NetworkServer.Destroy(f.gameObject);
+    }
+
 
 
 
@@ -1476,58 +1551,37 @@ public class PlayerManager : NetworkBehaviour
     public bool IsShootActive => isShootActive;
 
     /// <summary>
-    /// เรียกตอนคลิกเป้าหมายที่อยากยิง
+    /// เรียกตอนคลิกการ์ดเป็ดที่จะยิง
     /// </summary>
     [Command(requiresAuthority = false)]
     public void CmdShootCard(NetworkIdentity duckCardIdentity)
     {
-        if (!isShootActive)
-        {
-            return;
-        }
+        if (!isShootActive) return;
+        if (duckCardIdentity == null) return;
 
-        // 1) เช็กว่า duckCardIdentity ปกติ
-        if (duckCardIdentity == null)
-        {
-            return;
-        }
-        // 2) ดึง DuckCard
-        DuckCard shotDuck = duckCardIdentity.GetComponent<DuckCard>();
-        if (shotDuck == null)
-        {
-            return;
-        }
+        var shotDuck = duckCardIdentity.GetComponent<DuckCard>();
+        if (shotDuck == null) return;
 
-        int shotRow = shotDuck.Row;
-        int shotCol = shotDuck.Column;
-        // 3) เช็กว่า “มีเป้าเล็ง” ไหม
-        if (!IsCardTargeted(duckCardIdentity))
-        {
-            return;
-        }
+        // ต้องเป็นใบที่ถูกเล็งอยู่เท่านั้น
+        if (!IsCardTargeted(duckCardIdentity)) return;
 
-        // 4) Destroy การ์ด
+        // เก็บตำแหน่งไว้ก่อนเผื่อใช้ (ตอนนี้ row ใช้ 0 ตลอด)
+        int shotRow = shotDuck.RowNet;
+        int shotCol = shotDuck.ColNet;
+
+        // 1) ทำลายเป็ดที่ถูกยิง
         NetworkServer.Destroy(duckCardIdentity.gameObject);
-        // 4.1) ทำลายเป้าเล็งที่ชี้การ์ดนี้
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var target in allTargets)
-        {
-            if (target.targetNetId == duckCardIdentity.netId)
-            {
-                NetworkServer.Destroy(target.gameObject);
-            }
-        }
 
-        // เรียกใช้ HandleDuckShot เพื่อความเป็นระบบเดียวกัน (ถ้ามี)
-        // HandleDuckShot(duckCardIdentity.netId);
+        // 2) ทำลาย target ที่ตามการ์ดนี้อยู่ทั้งหมด
+        Server_DestroyAllTargetsFor(duckCardIdentity.netId);
 
-        // 4.2) เลื่อน column
-        ShiftColumnsDown(shotRow, shotCol);
+        // 3) Resequence: จัด ColNet ใหม่ให้ DuckZone ทั้งแถว
+        Server_ResequenceDuckZoneColumns();
 
-        // 5) ปิด Shoot Mode ทันที
+        // 4) ปิดโหมดยิง
         CmdDeactivateShoot();
 
-        // 6) เติมการ์ดใหม่รอบหน้า (Refill)
+        // 5) เติมการ์ดใหม่รอบหน้า
         StartCoroutine(RefillNextFrame());
     }
 
@@ -1535,30 +1589,31 @@ public class PlayerManager : NetworkBehaviour
     [Server]
     IEnumerator RefillNextFrame()
     {
-        // รอจนจบเฟรม (ให้ Mirror เคลียร์การ์ดที่ถูก Destroy ออกจาก Hierarchy จริง ๆ)
+        // ให้ Mirror เคลียร์วัตถุที่เพิ่ง Destroy ออกจากต้นไม้ซีนก่อน
         yield return null;
-
-        // เรียกเติม
         RefillDuckZoneIfNeeded();
-        // หรือถ้าอยากให้แน่ใจรออีกเฟรม ก็ทำ yield return null อีกรอบได้
     }
 
 
     /// <summary>
-    /// ตัวอย่างฟังก์ชันเช็คว่าการ์ดใบนี้มีเป้าเล็งอยู่ไหม
+    /// การ์ดใบนี้ถูกเล็งอยู่ไหม (รองรับทั้ง TargetMarker แบบใหม่ และ TargetFollow แบบเดิม)
     /// </summary>
     bool IsCardTargeted(NetworkIdentity duckCardIdentity)
     {
-        // สมมติเราหา TargetFollow ที่เป็นเป้าทั้งหมดในฉาก
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var target in allTargets)
-        {
-            // ถ้า targetFollow นี้ชี้ว่า targetNetId = การ์ดที่เราคลิก
-            if (target.targetNetId == duckCardIdentity.netId)
-            {
+        uint duckId = duckCardIdentity.netId;
+
+        // รุ่นใหม่: TargetMarker
+        var markers = FindObjectsOfType<TargetMarker>();
+        foreach (var m in markers)
+            if (m != null && m.FollowDuckNetId == duckId)
                 return true;
-            }
-        }
+
+        // สำรอง: รุ่นเดิม TargetFollow
+        var follows = FindObjectsOfType<TargetFollow>();
+        foreach (var f in follows)
+            if (f != null && f.targetNetId == duckId)
+                return true;
+
         return false;
     }
 
@@ -1566,9 +1621,7 @@ public class PlayerManager : NetworkBehaviour
     // ========================
     // DoubleBarrel Logic
     // ========================
-    /// <summary>
-    /// เรียกเมื่อเล่นการ์ด DoubleBarrel (เช่น วางลง DropZone แล้ว)
-    /// </summary>
+
     [Command]
     public void CmdActivateDoubleBarrel()
     {
@@ -1585,12 +1638,11 @@ public class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcEnableDoubleBarrel()
     {
-        // Debug.Log("DoubleBarrel Mode is now active on all clients. You can place 2 targets on adjacent cards in the same row!");
+        // client-side hint (ถ้าต้องการ UI)
+        // Debug.Log("DoubleBarrel Mode is now active on all clients.");
     }
 
-    /// <summary>
-    /// ปิดโหมด DoubleBarrel
-    /// </summary>
+    /// <summary>ปิดโหมด DoubleBarrel</summary>
     [Command]
     public void CmdDeactivateDoubleBarrel()
     {
@@ -1607,90 +1659,108 @@ public class PlayerManager : NetworkBehaviour
         // Debug.Log("DoubleBarrel Mode is now deactivated on all clients.");
     }
 
-
     public bool IsDoubleBarrelActive => isDoubleBarrelActive;
 
-
     // ========== ฟังก์ชันสำหรับวางเป้าเล็ง 2 ใบ (เรียกจาก DuckCard.OnPointerClick) ==========
-
     [Command(requiresAuthority = false)]
     public void CmdDoubleBarrelClick(NetworkIdentity clickedCard)
     {
         if (!isDoubleBarrelActive) return;
         if (clickedCard == null) return;
 
-        // สมมติว่า doubleBarrelClickCount เก็บจำนวนใบที่คลิก
         if (doubleBarrelClickCount == 0)
         {
             // ใบแรก
             firstClickedCard = clickedCard;
             doubleBarrelClickCount = 1;
-            Debug.Log($"First card = {clickedCard.name}, waiting second...");
+            Debug.Log($"[DoubleBarrel] First card = {clickedCard.name} (waiting second)");
         }
         else if (doubleBarrelClickCount == 1)
         {
             // ใบสอง
-            bool canPlace = CheckAdjacent(firstClickedCard, clickedCard);
-            if (!canPlace)
+            if (firstClickedCard == null)
             {
-                Debug.LogWarning($"[CmdDoubleBarrelClick] {clickedCard.name} is NOT adjacent to {firstClickedCard.name} in same row. Canceling or ignoring.");
+                // safety
+                doubleBarrelClickCount = 0;
                 return;
             }
 
+            bool canPlace = CheckAdjacent(firstClickedCard, clickedCard);
+            if (!canPlace)
+            {
+                Debug.LogWarning($"[DoubleBarrel] {clickedCard.name} is NOT adjacent to {firstClickedCard.name} in same row. Ignoring second click.");
+                // ไม่รีเซ็ตเลยให้ผู้เล่นลองคลิกใหม่ หราจะรีเซ็ตก็ได้:
+                // doubleBarrelClickCount = 0; firstClickedCard = null;
+                return;
+            }
 
-            // ถ้า adjacent → spawn target 2 อัน
-            CmdSpawnTargetDoubleBarre(firstClickedCard);
-            CmdSpawnTargetDoubleBarre(clickedCard);
+            // ถ้า adjacent → spawn target 2 อัน โดยใช้ TargetMarker (ServerAssignToZone) แบบปลอดภัย
+            CmdSpawnTargetDoubleBarrel_Internal(firstClickedCard);
+            CmdSpawnTargetDoubleBarrel_Internal(clickedCard);
+
             // ปิดโหมด
             CmdDeactivateDoubleBarrel();
         }
     }
 
-
-    /// <summary>
-    /// เช็กว่า card1 อยู่แถวเดียวกับ card2 และ index ต่างกัน 1 หรือเปล่า
-    /// วิธีเช็กขึ้นกับระบบคุณ
-    /// </summary>
+    // internal helper ใช้ Server-side สร้าง marker + set zone/col แล้ว Spawn
     [Server]
-    private bool CheckAdjacent(NetworkIdentity card1, NetworkIdentity card2)
+    private void CmdSpawnTargetDoubleBarrel_Internal(NetworkIdentity duckCardIdentity)
     {
-        DuckCard duck1 = card1.GetComponent<DuckCard>();
-        DuckCard duck2 = card2.GetComponent<DuckCard>();
+        if (duckCardIdentity == null || targetPrefab == null) return;
 
-        if (duck1 == null || duck2 == null) return false;
-
-        Debug.Log($"Check: {duck1.name}(r{duck1.Row},c{duck1.Column}), {duck2.name}(r{duck2.Row},c{duck2.Column})");
-        // ต้องอยู่แถวเดียวกัน
-        if (duck1.Row != duck2.Row)
-            return false;
-
-        // ต้องเป็นคอลัมน์ติดกัน (ต่างกันแค่ 1)
-        int diff = Mathf.Abs(duck1.Column - duck2.Column);
-        return (diff == 1);
-    }
-
-    // =============================
-    // ยืมฟังก์ชัน "SpawnTarget" แบบ TekeAim
-    // =============================
-    [Command(requiresAuthority = false)]
-    public void CmdSpawnTargetDoubleBarre(NetworkIdentity duckCardIdentity)
-    {
-        if (duckCardIdentity == null || targetPrefab == null)
+        var dc = duckCardIdentity.GetComponent<DuckCard>();
+        if (dc == null)
         {
-            // Debug.LogError("[CmdSpawnTarget] duckCardIdentity or targetPrefab is null!");
+            Debug.LogWarning("[DoubleBarrel] target card has no DuckCard component.");
             return;
         }
 
-        // 1) สร้างเป้าเล็งบนเซิร์ฟ
         GameObject newTarget = Instantiate(targetPrefab);
 
-        // 2) Spawn ให้ client เห็น
-        NetworkServer.Spawn(newTarget);
+        var marker = newTarget.GetComponent<TargetMarker>();
+        var tf = newTarget.GetComponent<TargetFollow>();
 
-        // 3) บอก client ผ่าน RPC ให้ตั้ง parent + ตำแหน่ง
-        NetworkIdentity targetNi = newTarget.GetComponent<NetworkIdentity>();
-        RpcSetTargetNetId(targetNi, duckCardIdentity);
+        if (marker != null)
+        {
+            // ตั้ง SyncVar ของ marker ก่อน Spawn — late-joiner จะได้ค่า
+            marker.ServerAssignToZone(ZoneKind.TargetZone, 0, dc.ColNet);
+            marker.FollowDuckNetId = duckCardIdentity.netId;
+        }
+        else
+        {
+            // ถ้า Prefab ไม่มี TargetMarker ให้ fallback: ตั้ง TargetFollow.targetNetId ถ้ามี
+            if (tf != null)
+            {
+                tf.targetNetId = duckCardIdentity.netId;
+            }
+        }
+
+        NetworkServer.Spawn(newTarget);
     }
+
+    // =============================
+    // เช็กว่า card1 อยู่แถวเดียวกับ card2 และ index ต่างกัน 1 หรือเปล่า
+    // =============================
+    [Server]
+    private bool CheckAdjacent(NetworkIdentity card1, NetworkIdentity card2)
+    {
+        if (card1 == null || card2 == null) return false;
+
+        var duck1 = card1.GetComponent<DuckCard>();
+        var duck2 = card2.GetComponent<DuckCard>();
+        if (duck1 == null || duck2 == null) return false;
+
+        Debug.Log($"[DoubleBarrel] CheckAdjacent: {duck1.name}(r{duck1.RowNet},c{duck1.ColNet}) vs {duck2.name}(r{duck2.RowNet},c{duck2.ColNet})");
+
+        // ต้องอยู่แถวเดียวกัน
+        if (duck1.RowNet != duck2.RowNet) return false;
+
+        // ต้องเป็นคอลัมน์ติดกัน (ต่างกันแค่ 1)
+        int diff = Mathf.Abs(duck1.ColNet - duck2.ColNet);
+        return diff == 1;
+    }
+
 
 
     // ========================
@@ -1742,30 +1812,26 @@ public class PlayerManager : NetworkBehaviour
     public void CmdQuickShotCard(NetworkIdentity duckCardIdentity)
     {
         // 0) เช็ก QuickShot Mode บนเซิร์ฟ
-        if (!isQuickShotActive)
-        {
-            return;
-        }
+        if (!isQuickShotActive) return;
 
         // 1) เช็กว่า duckCardIdentity ปกติ
-        if (duckCardIdentity == null)
-        {
-            return;
-        }
+        if (duckCardIdentity == null) return;
 
         // 2) ดึง DuckCard
         DuckCard shotDuck = duckCardIdentity.GetComponent<DuckCard>();
-        if (shotDuck == null)
-        {
-            return;
-        }
+        if (shotDuck == null) return;
 
-        int shotRow = shotDuck.Row;
-        int shotCol = shotDuck.Column;
+        // ใช้ RowNet / ColNet ตาม DuckCard เวอร์ชันใหม่
+        int shotRow = shotDuck.RowNet;
+        int shotCol = shotDuck.ColNet;
 
-        // 4) Destroy การ์ด
+        // 3) (ถ้าต้องการ) เช็กว่าการ์ดอยู่ในโซนที่ยิงได้ — ถ้าอยากบังคับให้มีเป้า ก็เรียก IsCardTargeted() ก่อน Destroy
+        // if (!IsCardTargeted(duckCardIdentity)) return;
+
+        // 4) ทำลายการ์ดบนเซิร์ฟ
         NetworkServer.Destroy(duckCardIdentity.gameObject);
-        // 4.1) ทำลายเป้าเล็งที่ชี้การ์ดนี้
+
+        // 4.1) ทำลายเป้าเล็งที่ชี้การ์ดนี้ (ถ้ามี)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var target in allTargets)
         {
@@ -1775,27 +1841,27 @@ public class PlayerManager : NetworkBehaviour
             }
         }
 
-        // 4.2) เลื่อน column
+        // 4.2) เลื่อนคอลัมน์ลง (server-side function ของคุณ)
         ShiftColumnsDown(shotRow, shotCol);
 
-        // 5) ปิด Shoot Mode ทันที
+        // 5) ปิด QuickShot Mode ทันที
         CmdDeactivateQuickShot();
 
-        // 6) เติมการ์ดใหม่รอบหน้า (Refill)
+        // 6) เติมการ์ดใหม่รอบหน้า (Refill) — รันเป็น coroutine ฝั่ง server
         StartCoroutine(RefillNextFrame());
     }
 
+
     // ========================
-    // Misfire Logic
+    // Misfire Logic (ปรับแล้ว)
     // ========================
-    // เรียกตอนวางการ์ด Misfire ลงสนาม
+
     [Command(requiresAuthority = false)]
     public void CmdActivateMisfire()
     {
         if (!isMisfireActive)
         {
             isMisfireActive = true;
-            // Debug.Log("[CmdActivateMisfire] Misfire mode active on Server!");
             RpcEnableMisfire();
         }
     }
@@ -1803,43 +1869,36 @@ public class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcEnableMisfire()
     {
-        // Debug.Log("[RpcEnableMisfire] Misfire mode is now active on all clients. Next shot will misfire to a random adjacent duck!");
+        // แจ้ง client ว่า active
     }
 
     [Command(requiresAuthority = false)]
     public void CmdDeactivateMisfire()
     {
         isMisfireActive = false;
-        // Debug.Log("[CmdDeactivateMisfire] Misfire mode off on Server!");
         RpcDisableMisfire();
     }
 
     [ClientRpc]
     void RpcDisableMisfire()
     {
-        // Debug.Log("[RpcDisableMisfire] Misfire mode is now deactivated on all clients.");
+        // แจ้ง client ว่า inactive
     }
 
     [Command(requiresAuthority = false)]
     public void CmdMisfireClick(NetworkIdentity clickedCard)
     {
-        if (!isMisfireActive)
-        {
-            return;
-        }
-        if (clickedCard == null)
-        {
-            return;
-        }
+        if (!isMisfireActive) return;
+        if (clickedCard == null) return;
 
-        // 1) เช็กว่าการ์ดใบนี้ "มีเป้าเล็ง" จริงไหม
+        // 1) ต้องมีเป้าเล็งที่ชี้การ์ดนี้ก่อน
         if (!IsCardTargeted(clickedCard))
         {
             Debug.LogWarning($"[CmdMisfireClick] {clickedCard.name} is NOT targeted => can't misfire!");
             return;
         }
 
-        // 2) หาดูว่าข้าง ๆ (Adjacent) มีใบไหนบ้าง
+        // 2) ดึง DuckCard component
         DuckCard duckComp = clickedCard.GetComponent<DuckCard>();
         if (duckComp == null)
         {
@@ -1847,24 +1906,27 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
-        // หา "เพื่อนบ้าน" ที่ row เดียวกัน col±1
-        List<NetworkIdentity> neighbors = GetAdjacentDuckCards(duckComp.Row, duckComp.Column);
+        // ใช้ RowNet / ColNet (server-side fields)
+        int row = duckComp.RowNet;
+        int col = duckComp.ColNet;
+
+        // 3) หา adjacent
+        List<NetworkIdentity> neighbors = GetAdjacentDuckCards(row, col);
 
         if (neighbors.Count == 0)
         {
             Debug.Log("[CmdMisfireClick] No adjacent ducks => misfire does nothing!");
-            // จะยิงไม่ออกก็ได้ หรือจะยิงใบนั้นเองก็แล้วแต่
             return;
         }
 
-        // 3) สุ่ม 1 ใบจาก neighbors
-        NetworkIdentity randomNeighbor = neighbors[Random.Range(0, neighbors.Count)];
+        // 4) สุ่ม neighbor หนึ่งตัว
+        var randomNeighbor = neighbors[UnityEngine.Random.Range(0, neighbors.Count)];
 
-        // 4) ยิงการ์ดที่สุ่มได้
+        // 5) ยิงการ์ดที่ถูกสุ่ม
         Debug.Log($"[CmdMisfireClick] MISFIRE -> Shooting {randomNeighbor.name} instead of {clickedCard.name}!");
         ShootCardDirect(randomNeighbor);
 
-        // 5) ทำลายเป้าเล็งบนการ์ดเดิม
+        // 6) ทำลายเป้าเล็งที่ชี้การ์ดเดิม (ถ้ามี)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var t in allTargets)
         {
@@ -1875,25 +1937,33 @@ public class PlayerManager : NetworkBehaviour
             }
         }
 
-        // ปิดโหมด Misfire
+        // ปิดโหมด Misfire และ refill
         CmdDeactivateMisfire();
-
         StartCoroutine(RefillNextFrame());
     }
 
+    // ใช้ GetSceneDuckZone() เพื่อความปลอดภัย (กรณี DuckZone null)
     private List<NetworkIdentity> GetAdjacentDuckCards(int row, int col)
     {
         List<NetworkIdentity> results = new List<NetworkIdentity>();
-        // loop การ์ดทุกใบใน DuckZone
-        foreach (Transform child in DuckZone.transform)
+        var dz = GetSceneDuckZone();
+        if (dz == null)
+        {
+            Debug.LogWarning("[GetAdjacentDuckCards] DuckZone not found in scene!");
+            return results;
+        }
+
+        foreach (Transform child in dz)
         {
             DuckCard duck = child.GetComponent<DuckCard>();
-            if (duck != null && duck.Row == row)
+            if (duck == null) continue;
+
+            // เปรียบเทียบกับ RowNet/ColNet
+            if (duck.RowNet == row)
             {
-                // สมมติ col +/-1 ถือเป็น adjacent
-                if (Mathf.Abs(duck.Column - col) == 1)
+                if (Mathf.Abs(duck.ColNet - col) == 1)
                 {
-                    NetworkIdentity ni = duck.GetComponent<NetworkIdentity>();
+                    var ni = duck.GetComponent<NetworkIdentity>();
                     if (ni != null) results.Add(ni);
                 }
             }
@@ -1905,11 +1975,11 @@ public class PlayerManager : NetworkBehaviour
     {
         if (duckNi == null) return;
 
-        // Destroy การ์ด
+        // ทำลายการ์ด
         NetworkServer.Destroy(duckNi.gameObject);
         Debug.Log($"[ShootCardDirect] Destroyed {duckNi.name}");
 
-
+        // ทำลาย target ที่ชี้การ์ดนี้ (ถ้ามี)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var target in allTargets)
         {
@@ -1920,12 +1990,15 @@ public class PlayerManager : NetworkBehaviour
             }
         }
 
+        // ดึง DuckCard ก่อน Shift (ใช้ RowNet/ColNet)
         DuckCard dc = duckNi.GetComponent<DuckCard>();
         if (dc != null)
         {
-            ShiftColumnsDown(dc.Row, dc.Column);
+            ShiftColumnsDown(dc.RowNet, dc.ColNet);
         }
     }
+
+
     // ========================
     // TwoBirds Logic
     // ========================
