@@ -1548,6 +1548,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2651689605433486275, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_PlaneDistance
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 2651689605433486275, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_VertexColorAlwaysGammaSpace
       value: 0
       objectReference: {fileID: 0}
@@ -1757,7 +1761,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9091652746738788873, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -661.86
+      value: -661.86005
       objectReference: {fileID: 0}
     - target: {fileID: 9091652746738788873, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_AnchoredPosition.y

@@ -53,7 +53,7 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
     [TargetRpc]
     void TargetColorDenied(NetworkConnection target, int index)
     {
-        Debug.LogWarning($"[Lobby] สี {index} ถูกใช้แล้ว เลือกไม่ได้");
+        // Debug.LogWarning($"[Lobby] สี {index} ถูกใช้แล้ว เลือกไม่ได้");
         // TODO: ถ้ามี popup/toast เรียกแสดงที่นี่
     }
 

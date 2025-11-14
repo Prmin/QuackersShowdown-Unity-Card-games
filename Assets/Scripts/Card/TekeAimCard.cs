@@ -5,18 +5,14 @@ using Mirror;
 
 public class TekeAimCard : NetworkBehaviour
 {
-    // (ถ้าอยากอ้างอิงอะไรใน PlayerManager ก็ใส่ได้)
-    // public PlayerManager PlayerMgr; // อาจไม่ต้องถ้าเราจะหาเองผ่าน NetworkClient
-
-    // ฟังก์ชันนี้จะถูกเรียก เมื่อเราคลิกการ์ด TekeAim
     public void OnTekeAimCardClicked()
     {
         Debug.Log($"[TekeAimCard] {gameObject.name} was clicked!");
 
-        // 1) หาตัว PlayerManager ของ LocalPlayer (ผ่าน NetworkClient.connection.identity)
+        // 1) หา PlayerManager ของเรา
         if (NetworkClient.connection == null || NetworkClient.connection.identity == null)
         {
-            Debug.LogError("No local player identity found! (NetworkClient.connection.identity is null)");
+            Debug.LogError("No local player identity found!");
             return;
         }
         PlayerManager localPlayerManager = NetworkClient.connection.identity.GetComponent<PlayerManager>();
@@ -26,9 +22,8 @@ public class TekeAimCard : NetworkBehaviour
             return;
         }
 
-        // 2) สมมติจะเรียก [Command] ที่อยู่ใน PlayerManager
-        Debug.Log("[TekeAimCard] Calling CmdActivateTekeAim on the server...");
-        localPlayerManager.CmdActivateTekeAim();
+        // 2) (FIX) เรียกใช้ระบบ SkillMode ใหม่
+        Debug.Log("[TekeAimCard] Calling CmdSetSkillMode(SkillMode.TakeAim) on the server...");
+        localPlayerManager.CmdSetSkillMode(SkillMode.TakeAim);
     }
 }
-

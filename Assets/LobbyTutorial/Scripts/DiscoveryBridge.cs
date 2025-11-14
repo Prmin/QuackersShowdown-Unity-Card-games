@@ -47,7 +47,7 @@ public class DiscoveryBridge : MonoBehaviour
 
         discovery.StopDiscovery();
         discovery.StartDiscovery();
-        Debug.Log("[DiscoveryBridge] StartDiscovery()");
+        // Debug.Log("[DiscoveryBridge] StartDiscovery()");
 
         StartCoroutine(ScanTimeout());
     }
