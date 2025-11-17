@@ -142,65 +142,13 @@ public class PlayerManager : NetworkBehaviour
     //////////////////////////////////////////////////////////////////////
     public static PlayerManager localInstance;
 
-    // // ========== Resurrection  State ==========
-    // private bool isResurrectionModeActive = false;
-    // // ========== GivePeaceAChance  State ==========
-    // private bool isGivePeaceActive = false;
-    // // ========== DuckShuffle  State ==========
-    // [SyncVar] private bool isDuckShuffleActive = false;
-    // public bool IsDuckShuffleActive => isDuckShuffleActive;
-    // // ========== DisorderlyConduckt  State ==========
-    // [SyncVar] private bool isDisorderlyConducktActive = false;
-    // public bool IsDisorderlyConducktActive => isDisorderlyConducktActive;
     private DuckCard firstSelectedDuck = null; // เก็บการ์ดใบแรกที่เลือก
-
-    // // ========== FastForward  State ==========
-    // [SyncVar] private bool isFastForwardActive = false;
-    // public bool IsFastForwardActive => isFastForwardActive;
-    // // ========== HangBack  State ==========
-    // [SyncVar] private bool isHangBackActive = false;
-    // public bool IsHangBackActive => isHangBackActive;
-    // // ========== MoveAhead  State ==========
-    // [SyncVar] private bool isMoveAheadActive = false;
-    // public bool IsMoveAheadActive => isMoveAheadActive;
-    // // ========== LineForward  State ==========
-    // [SerializeField] private GameObject cardPoolLineForward; // สมมติว่าเป็น Parent วาง "การ์ดที่กลับสู่ pool"
-    // public bool isLineForwardActive = false;
-
-    // public bool IsLineForwardActive => isLineForwardActive;
-    // // ========== BumpRight  State ==========
-    // [SyncVar] private bool isBumpRightActive;
-    // public bool IsBumpRightActive => isBumpRightActive;
-    // // ========== BumpLeft  State ==========
-    // [SyncVar] private bool isBumpLeftActive;
-    // public bool IsBumpLeftActive => isBumpLeftActive;
-
-    // // ========== TwoBirds State ==========
-    // [SyncVar] private bool isTwoBirdsActive;
-    // public bool IsTwoBirdsActive => isTwoBirdsActive;
 
     private NetworkIdentity firstTwoBirdsCard = null;
     private int twoBirdsClickCount = 0;
-
-    // // ========== DoubleBarrel State ==========
-    // [SyncVar] private bool isDoubleBarrelActive = false;
-
-    // // ตัวนับว่าเราคลิกการ์ด DoubleBarrel ไปกี่ใบแล้ว (0,1,...)
     private int doubleBarrelClickCount = 0;
     // // เก็บ Card ใบแรกที่คลิก
     private NetworkIdentity firstClickedCard = null;
-
-    // //  ========== Misfire State ==========
-    // [SyncVar] private bool isMisfireActive = false;
-    // // สำหรับเช็กว่าอยู่ในโหมด MisfireAim หรือเปล่า
-    // public bool IsMisfireActive => isMisfireActive;
-
-
-    // //  ========== Shoot State ==========
-    // [SyncVar] bool isShootActive;
-    // //  ========== QuickShot State ==========
-    // [SyncVar] bool isQuickShotActive;
-
     [SerializeField] private GameObject targetPrefab;
 
     // ============= Card Collections =============
@@ -460,43 +408,47 @@ public class PlayerManager : NetworkBehaviour
     [Client]
     private void StartAutoDrawIfLocal()
     {
-        if (isLocalPlayer)
-            StartCoroutine(AutoDrawCards());
+        // if (isLocalPlayer)
+        //     StartCoroutine(AutoDrawCards());
     }
-
 
 
 
     public override void OnStartClient()
     {
         base.OnStartClient();
-
-        // 1) ผูก Barrier ฝั่งไคลเอนต์ (กันซ้ำภายใน)
         TryBindBarrierClient();
 
-        // 2) หาโซนแชร์ในซีน
-        DropZone = GameObject.Find("DropZone");
-        DuckZone = GameObject.Find("DuckZone");
-
-        // 3) แคช EnemyArea1..5 จากซีน (ถ้ายังไม่เจอจะพยายามหาใหม่ในฟังก์ชัน)
-        CacheEnemySlotsFromScene();
-
-        // 4) ถ้าเป็นไคลเอนต์ที่เราเป็นเจ้าของ → ชี้ PlayerArea
-        var ni = GetComponent<NetworkIdentity>();
-        if (ni != null && ni.isOwned)
+        // Resolve UI zones via Main Canvas -> Image hierarchy
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        if (mainCanvas == null)
         {
-            PlayerArea = GameObject.Find("PlayerArea");
+            Debug.LogError("[PlayerManager.OnStartClient] 'Main Canvas' not found!");
+            return;
         }
 
-        // 5) คำนวณเลย์เอาต์ตาม “วงกลมตายตัว 1..6” ให้ทุกคนบนไคลเอนต์นี้
-        //    (จะ map ตัวเราไป PlayerArea, คนอื่นไป EnemyArea1..5 ตาม (seat - localSeat))
+        Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
+        if (uiRoot == null)
+        {
+            Debug.LogError("[PlayerManager.OnStartClient] 'Image' container not found!");
+            return;
+        }
+
+        DuckZone = FindChildRecursive(uiRoot, "DuckZone")?.gameObject;
+        DropZone = FindChildRecursive(uiRoot, "DropZone")?.gameObject;
+        TargetZone = FindChildRecursive(uiRoot, "TargetZone")?.gameObject;
+        EnemyArea = FindChildRecursive(uiRoot, "EnemyArea")?.gameObject;
+        PlayerArea = FindChildRecursive(uiRoot, "PlayerArea")?.gameObject;
+
+        if (DuckZone == null) Debug.LogError("[OnStartClient] 'DuckZone' not found!");
+        if (DropZone == null) Debug.LogError("[OnStartClient] 'DropZone' not found!");
+        if (TargetZone == null) Debug.LogError("[OnStartClient] 'TargetZone' not found!");
+        if (PlayerArea == null) Debug.LogWarning("[OnStartClient] 'PlayerArea' not found!");
+        if (EnemyArea == null) Debug.LogWarning("[OnStartClient] 'EnemyArea' not found!");
+
+        CacheEnemySlotsFromScene();
         RecomputeLocalLayoutBySeat();
-
-        // 6) (ตัวเลือก) ถ้ายังไม่ได้ defer ไปให้ Barrier ก็เริ่มจั่วออโต้เหมือนเดิม
-        if (ni != null && ni.isOwned && !DeferInitialDealToBarrier)
-            StartCoroutine(AutoDrawCards());
     }
-
 
     public override void OnStopClient()
     {
@@ -526,24 +478,62 @@ public class PlayerManager : NetworkBehaviour
     // หา/แคช EnemyArea1..5 จาก Scene
     private void CacheEnemySlotsFromScene()
     {
-        if (s_enemySlots != null && s_enemySlots.All(t => t != null)) return;
-
-        var root = GameObject.Find(enemiesAreaRootName);
-        if (root == null)
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        if (mainCanvas == null)
         {
-            // ไม่มี EnemiesArea ก็ข้ามไป (จะ fallback ไปใช้ EnemyArea เดียว)
+            Debug.LogWarning("[CacheEnemySlots] 'Main Canvas' not found!");
             s_enemySlots = null;
             return;
         }
 
-        s_enemySlots = new Transform[5];
-        for (int i = 0; i < 5; i++)
+        Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
+        if (uiRoot == null)
+        {
+            Debug.LogWarning("[CacheEnemySlots] 'Image' container not found!");
+            s_enemySlots = null;
+            return;
+        }
+
+        var root = FindChildRecursive(uiRoot, enemiesAreaRootName);
+        if (root == null)
+        {
+            Debug.LogWarning($"[CacheEnemySlots] '{enemiesAreaRootName}' not found!");
+            s_enemySlots = null;
+            return;
+        }
+
+        if (s_enemySlots == null || s_enemySlots.Length != 5)
+            s_enemySlots = new Transform[5];
+
+        for (int i = 0; i < s_enemySlots.Length; i++)
         {
             string childName = $"{enemySlotPrefix}{i + 1}";
-            var child = root.transform.Find(childName);
-            if (child == null) child = GameObject.Find(childName)?.transform;
+            var child = FindChildRecursive(root, childName);
+            if (child == null)
+            {
+                string altChild = $"{enemySlotPrefix}{i}";
+                child = FindChildRecursive(root, altChild);
+            }
+
             s_enemySlots[i] = child;
+            if (child == null)
+                Debug.LogWarning($"[CacheEnemySlots] '{childName}' not found!");
         }
+    }
+
+    private Transform FindChildRecursive(Transform parent, string childName)
+    {
+        if (parent == null) return null;
+        foreach (Transform child in parent)
+        {
+            if (child.name == childName)
+                return child;
+
+            Transform found = FindChildRecursive(child, childName);
+            if (found != null)
+                return found;
+        }
+        return null;
     }
 
     /// คืน Transform ของสล็อตตามค่า rel (0..5)
@@ -975,25 +965,27 @@ public class PlayerManager : NetworkBehaviour
         if (s_matchStarted) return;
         s_matchStarted = true;
 
-        // เอาอินสแตนซ์ใดก็ได้เพื่อดึง prefab reference
-        var any = FindObjectsOfType<PlayerManager>().FirstOrDefault();
-        if (any == null) return;
+        var players = FindObjectsOfType<PlayerManager>().ToList();
+        if (players.Count == 0) return;
 
-        // 1) สร้างเด็คจาก “สีที่ผู้เล่นเลือก” + Marsh (สีละ 5)
+        var host = players.First();
+
+        // 1) Build duck deck from lobby selections (guarantee Marsh + fallback color)
         var duckPrefabs = new Dictionary<string, GameObject>
-    {
-        { "DuckBlue",   any.DuckBluePrefab   },
-        { "DuckOrange", any.DuckOrangePrefab },
-        { "DuckPink",   any.DuckPinkPrefab   },
-        { "DuckGreen",  any.DuckGreenPrefab  },
-        { "DuckYellow", any.DuckYellowPrefab },
-        { "DuckPurple", any.DuckPurplePrefab },
-        { "Marsh",      any.MarshPrefab      },
-    };
+        {
+            { "DuckBlue",   host.DuckBluePrefab   },
+            { "DuckOrange", host.DuckOrangePrefab },
+            { "DuckPink",   host.DuckPinkPrefab   },
+            { "DuckGreen",  host.DuckGreenPrefab  },
+            { "DuckYellow", host.DuckYellowPrefab },
+            { "DuckPurple", host.DuckPurplePrefab },
+            { "Marsh",      host.MarshPrefab      },
+        };
 
         var selected = Server_GetSelectedDuckKeysFromRoom();
         selected.Add("Marsh");
-        if (selected.SetEquals(new[] { "Marsh" })) selected.Add("DuckBlue"); // safety
+        if (selected.SetEquals(new[] { "Marsh" }))
+            selected.Add("DuckBlue");
 
         var selectedPrefabs = duckPrefabs
             .Where(kv => selected.Contains(kv.Key) && kv.Value != null)
@@ -1001,15 +993,24 @@ public class PlayerManager : NetworkBehaviour
 
         CardPoolManager.Initialize(selectedPrefabs, initialCount: 5);
 
-        // 2) เติม DuckZone ให้ครบ 6 ใบ
-        any.RefillDuckZoneIfNeeded();
+        // 2) Ensure the shared DuckZone is filled before we begin
+        host.RefillDuckZoneIfNeeded();
 
-        // 3) เลือกผู้เริ่มจากใบบนสุด (ข้าม Marsh) + สร้างลำดับเทิร์น
+        // 3) Randomize the starting seat / order from the newly built deck
         Server_PickStarterFromTopDuckCard_AndBuildOrder();
+
+        // 4) Deal three action cards to every connected player
+        foreach (var pm in players)
+        {
+            var conn = pm.connectionToClient;
+            if (conn == null) continue;
+
+            for (int i = 0; i < 3; i++)
+                host.Server_DrawActionCardFor(conn, pm.netId);
+        }
+
+        Debug.Log("[OnBarrierGo_Server] Deck prepared, turn order computed, and 3 action cards dealt to all players");
     }
-
-
-
 
 
     [Server]
@@ -1408,32 +1409,41 @@ public class PlayerManager : NetworkBehaviour
         SpawnAndAddCardToDuckZone(drawnCard);
     }
 
-    private IEnumerator AutoDrawCards()
-    {
-        yield return new WaitForSeconds(3f); // รอ 3 วินาทีหลังเริ่มเกม
+    // private IEnumerator AutoDrawCards()
+    // {
+    //     yield return new WaitForSeconds(3f); // รอ 3 วินาทีหลังเริ่มเกม
 
-        while (true)
+    //     while (true)
+    //     {
+    //         if (PlayerArea != null && PlayerArea.transform.childCount < 3)
+    //         {
+    //             CmdDrawActionCard();
+    //         }
+    //         yield return new WaitForSeconds(1f);
+    //     }
+    // }
+
+    // ===== Helper: นับจำนวนการ์ดในโซน (สำหรับผู้เล่นคนเดียว) =====
+    [Server]
+    private int Server_CountCardsInZone(ZoneKind z, NetworkConnectionToClient owner)
+    {
+        if (owner == null) return 0;
+
+        int c = 0;
+        foreach (var dc in FindObjectsOfType<DuckCard>())
         {
-            if (PlayerArea != null && PlayerArea.transform.childCount < 3)
+            // เช็กว่า 1. อยู่โซนที่ต้องการ 2. เจ้าของคือคนนี้
+            if (dc.zone == z && dc.netIdentity != null && dc.netIdentity.connectionToClient == owner)
             {
-                CmdDrawActionCard();
+                c++;
             }
-            yield return new WaitForSeconds(1f);
         }
+        return c;
     }
 
-    // ✅ Client ขอจั่วการ์ดโดยเรียก Command
-    public void DrawActionCard()
-    {
-        if (isLocalPlayer)
-        {
-            CmdDrawActionCard();
-        }
-    }
-
-    // ✅ Command ให้ Client ขอจั่วการ์ดจาก Server
-    [Command]
-    public void CmdDrawActionCard()
+    //  Server สั่งจั่วการ์ดให้ผู้เล่น (conn)
+    [Server]
+    private void Server_DrawActionCardFor(NetworkConnectionToClient conn, uint ownerPMNetId)
     {
         string cardName = GetRandomActionCardFromPool();
         if (string.IsNullOrEmpty(cardName))
@@ -1449,13 +1459,61 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
-        GameObject spawnedCard = Instantiate(prefab, Vector2.zero, Quaternion.identity);
-        NetworkServer.Spawn(spawnedCard, connectionToClient);
+        GameObject spawnedCard = Instantiate(prefab);
+        NetworkServer.Spawn(spawnedCard, conn); // Spawn โดยให้ Client (conn) เป็นเจ้าของ
 
-        Debug.Log($"🎴 {connectionToClient} drew an action card: {spawnedCard.name}");
+        Debug.Log($"🎴 {conn} drew an action card: {spawnedCard.name}");
+
+        // (สำคัญ) บอกการ์ดว่าต้องไปอยู่ PlayerArea
+        var dc = spawnedCard.GetComponent<DuckCard>();
+        if (dc != null)
+        {
+            // บอกการ์ดใบนี้ว่า "เจ้าของ" คือ PlayerManager ที่มี netId นี้
+            dc.ownerPlayerManagerNetId = ownerPMNetId;
+            // Client ที่เป็นเจ้าของจะเห็นการ์ดนี้ใน PlayerArea ผ่าน Hook (OnZoneChanged)
+            dc.ServerAssignToZone(ZoneKind.PlayerArea, 0, 0);
+        }
 
         var spawnedNi = spawnedCard.GetComponent<NetworkIdentity>();
         RpcShowCard(spawnedNi, "Dealt");
+    }
+
+
+    // ✅ Client ขอจั่วการ์ดโดยเรียก Command
+    public void DrawActionCard()
+    {
+        if (isLocalPlayer)
+        {
+            CmdDrawActionCard();
+        }
+    }
+
+    // ✅ Command ให้ Client ขอจั่วการ์ดจาก Server
+    [Command]
+    public void CmdDrawActionCard()
+    {
+        // string cardName = GetRandomActionCardFromPool();
+        // if (string.IsNullOrEmpty(cardName))
+        // {
+        //     Debug.LogWarning("❌ No action cards left in the pool!");
+        //     return;
+        // }
+
+        // GameObject prefab = FindCardPrefabByName(cardName);
+        // if (prefab == null)
+        // {
+        //     Debug.LogError($"❌ Cannot find prefab for card: {cardName}");
+        //     return;
+        // }
+
+        // GameObject spawnedCard = Instantiate(prefab, Vector2.zero, Quaternion.identity);
+        // NetworkServer.Spawn(spawnedCard, connectionToClient);
+
+        // Debug.Log($"🎴 {connectionToClient} drew an action card: {spawnedCard.name}");
+
+        // var spawnedNi = spawnedCard.GetComponent<NetworkIdentity>();
+        // RpcShowCard(spawnedNi, "Dealt");
+        Server_DrawActionCardFor(connectionToClient, this.netId);
     }
 
 
@@ -1487,52 +1545,51 @@ public class PlayerManager : NetworkBehaviour
 
         if (card.scene.isLoaded)
         {
-            // ---------------------------------------------------------
-            // 1. (สำคัญ) อัปเดตสถานะ SyncVar บน Server ให้ถูกต้อง
-            // ---------------------------------------------------------
             var duck = card.GetComponent<DuckCard>();
             if (duck != null)
             {
                 Transform dropZoneT = GetSceneDropZone();
                 int newCol = dropZoneT != null ? dropZoneT.childCount : 0;
-
-                // คำสั่งนี้จะเปลี่ยน SyncVar -> Client ทุกคนจะย้าย Parent อัตโนมัติผ่าน Hook
                 duck.ServerAssignToZone(ZoneKind.DropZone, 0, newCol);
 
-                // ====================================================
-                // 📝 LOG LOGIC: เช็กว่า Server เห็นการ์ดใน DropZone ครบไหม
-                // ====================================================
-                Debug.Log($"[Server-CmdPlayCard] 📥 Moving '{card.name}' to DropZone at index {newCol}");
-
-                if (dropZoneT != null)
-                {
-                    string allCardsInDropZone = "";
-                    int count = 0;
-                    // วนลูปดูลูกทั้งหมดใน DropZone ของ Server
-                    foreach (Transform child in dropZoneT)
-                    {
-                        allCardsInDropZone += $"[{count}] {child.name}, ";
-                        count++;
-                    }
-                    Debug.Log($"[Server-CmdPlayCard] 🧐 Current DropZone Contents ({count} cards): {allCardsInDropZone}");
-                }
-                else
-                {
-                    Debug.LogError("[Server-CmdPlayCard] ❌ DropZone Transform is NULL on Server!");
-                }
-                // ====================================================
+                // (Log Logic ของคุณ...)
+                Debug.Log($"[Server-CmdPlayCard] 📥 Moving '{card.name}'...");
+                // ...
             }
 
-            // ---------------------------------------------------------
-            // 2. เรียก Rpc เพื่อจัดการ Logic พิเศษ (Flip, Activation)
-            // ---------------------------------------------------------
             RpcShowCard(card.GetComponent<NetworkIdentity>(), "Played");
+
+            // ---------------------------------------------------------
+            // 🚀  ตรวจสอบและจั่วการ์ดใหม่
+            // ---------------------------------------------------------
+            // (สำคัญ) หน่วงเวลา 1 เฟรม ให้ SyncVar (zone) ของการ์ดที่เพิ่งเล่น อัปเดตเสร็จก่อน
+            StartCoroutine(DrawNextCardCoroutine(connectionToClient));
         }
         else
         {
             Debug.LogError("Card has been destroyed or not found in the scene.");
         }
     }
+
+
+    // Helper ฟังก์ชันข้างบนเรียก Coroutine 
+    [Server]
+    private IEnumerator DrawNextCardCoroutine(NetworkConnectionToClient conn)
+    {
+        // รอให้การ์ดที่เพิ่งเล่น (DuckCard) อัปเดต SyncVar 'zone' เป็น DropZone ก่อน
+        yield return null;
+
+        // (ใช้ Helper ใหม่) นับการ์ดในมือ (PlayerArea) ของผู้เล่นคนนี้
+        // (เราจะสร้างฟังก์ชันนี้ในข้อ 3)
+        int cardsInHand = Server_CountCardsInZone(ZoneKind.PlayerArea, conn);
+
+        if (cardsInHand < 3)
+        {
+            uint ownerPMNetId = conn.identity.netId;
+            Server_DrawActionCardFor(conn, ownerPMNetId);
+        }
+    }
+
 
     private void RemoveCardFromGame(GameObject card)
     {
@@ -2515,8 +2572,8 @@ public class PlayerManager : NetworkBehaviour
     // ========================
     // ShowCard Logic
     // ========================
-    [ClientRpc]
     // FIX 1: ClientRpc ต้องรับ NetworkIdentity
+    [ClientRpc]
     void RpcShowCard(NetworkIdentity cardIdentity, string type)
     {
         if (cardIdentity == null)
@@ -2524,29 +2581,31 @@ public class PlayerManager : NetworkBehaviour
             Debug.LogError("[RpcShowCard] cardIdentity is null!");
             return;
         }
-        // Debug.Logโค้ดสำหรับดีบัก
+
         Debug.Log($"[RpcShowCard] called for {cardIdentity.netId} type={type} isOwned={cardIdentity.isOwned}");
         GameObject card = cardIdentity.gameObject;
 
         if (type == "Dealt")
         {
-            if (cardIdentity.isOwned && PlayerArea != null)
-                card.transform.SetParent(PlayerArea.transform, false);
-            else if (EnemyArea != null)
+            // ⛔️ [FIX] ลบ (หรือ Comment out) บรรทัด SetParent นี้ทิ้ง ⛔️
+            // if (cardIdentity.isOwned && PlayerArea != null)
+            //     card.transform.SetParent(PlayerArea.transform, false); 
+
+            // ✅ เหลือไว้แค่โค้ด "Flip" การ์ดของศัตรู ✅
+            // (แก้จาก 'if (!cardIdentity.isOwned...)' เป็น 'if' เฉยๆ)
+            if (!cardIdentity.isOwned && EnemyArea != null)
             {
-                card.transform.SetParent(EnemyArea.transform, false);
+                // card.transform.SetParent(EnemyArea.transform, false); // (อันนี้ Comment out ถูกแล้ว)
                 card.GetComponent<CardFlipper>()?.Flip();
             }
         }
         else if (type == "Played")
         {
-            if (DropZone != null)
-            {
-                Debug.Log($"[RpcShowCard] setting parent to DropZone for {card.name}");
-                card.transform.SetParent(DropZone.transform, false);
-            }
+            // (ส่วนนี้ Comment out ถูกต้องแล้ว)
+            // if (DropZone != null)
+            // { ... }
 
-            // บังคับให้การ์ดเปิดและรีคัลคูล UI
+            // (โค้ดที่เหลือถูกต้อง)
             card.SetActive(true);
             Canvas.ForceUpdateCanvases();
 
@@ -2557,13 +2616,13 @@ public class PlayerManager : NetworkBehaviour
             if (!cardIdentity.isOwned)
                 card.GetComponent<CardFlipper>()?.Flip();
 
-            // FIX 2: ถ้าเราเป็นคนเล่นการ์ดใบนี้ ให้เรียก HandleCardActivation
             if (isLocalPlayer && cardIdentity.isOwned)
             {
                 HandleCardActivation(card);
             }
         }
     }
+
 
     // (ฟังก์ชันนี้ทำงานบน Client ของคนที่เล่นการ์ด)
     private void HandleCardActivation(GameObject card)

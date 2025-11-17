@@ -14,7 +14,23 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     [SyncVar(hook = nameof(OnRowChanged))] public int RowNet;
     [SyncVar(hook = nameof(OnColChanged))] public int ColNet;
 
+    //SyncVar นี้จะบอก Client ทุกคนว่า "PlayerManager netId ไหน" เป็นเจ้าของการ์ดใบนี้
+    [SyncVar]
+    public uint ownerPlayerManagerNetId;
 
+    private Coroutine _adoptCoroutine;
+
+
+    // Helper เพื่อหา PlayerManager ที่ "เป็นเจ้าของ" การ์ดใบนี้
+    private PlayerManager GetOwnerPlayerManager()
+    {
+        if (ownerPlayerManagerNetId == 0) return null;
+        if (NetworkClient.spawned.TryGetValue(ownerPlayerManagerNetId, out NetworkIdentity ownerIdentity))
+        {
+            return ownerIdentity.GetComponent<PlayerManager>();
+        }
+        return null;
+    }
 
     void Update()
     {
@@ -75,48 +91,115 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     public override void OnStartClient()
     {
         base.OnStartClient();
-        AdoptToZone();   // จัด parent ให้ตรงโซนปัจจุบัน
-        ApplyLayout();   // วางตำแหน่งตาม RowNet/ColNet
-        ApplySiblingIndex(); // ให้ลำดับตรงกับ ColNet
+
+        if (_adoptCoroutine != null)
+            StopCoroutine(_adoptCoroutine);
+        _adoptCoroutine = StartCoroutine(AdoptToZoneRoutine());
+
+        HandleTransformUpdate();
     }
 
-    // ============== หา Transform ของโซนจากซีน ==============
+    // =================== หา Transform ของโซนจากซีน ==============
     private Transform ResolveZoneTransform(ZoneKind z)
     {
+        var localManager = PlayerManager.localInstance;
+        var ownerManager = GetOwnerPlayerManager();
+        bool belongsToLocal = localManager != null && ownerManager != null && ownerManager.netId == localManager.netId;
+
         switch (z)
         {
-            case ZoneKind.DuckZone: return GameObject.Find("DuckZone")?.transform;
-            case ZoneKind.DropZone: return GameObject.Find("DropZone")?.transform;
-            case ZoneKind.PlayerArea: return GameObject.Find("PlayerArea")?.transform;
-            default: return null;
+            case ZoneKind.DuckZone:
+                if (localManager != null && localManager.DuckZone != null)
+                    return localManager.DuckZone.transform;
+                return FindZoneRecursive(z);
+
+            case ZoneKind.DropZone:
+                if (localManager != null && localManager.DropZone != null)
+                    return localManager.DropZone.transform;
+                return FindZoneRecursive(z);
+
+            case ZoneKind.TargetZone:
+                if (localManager != null && localManager.TargetZone != null)
+                    return localManager.TargetZone.transform;
+                return FindZoneRecursive(z);
+
+            case ZoneKind.PlayerArea:
+                if (localManager == null || ownerManager == null)
+                {
+                    // ยังไม่มีข้อมูลเพียงพอ ให้ fallback ชั่วคราว
+                    return FindZoneRecursive(ZoneKind.PlayerArea, preferEnemy: !belongsToLocal);
+                }
+
+                if (belongsToLocal)
+                {
+                    if (localManager.PlayerArea != null)
+                        return localManager.PlayerArea.transform;
+                    return FindZoneRecursive(ZoneKind.PlayerArea, preferEnemy: false);
+                }
+
+                if (ownerManager.EnemyArea != null)
+                    return ownerManager.EnemyArea.transform;
+
+                if (localManager.EnemyArea != null)
+                    return localManager.EnemyArea.transform;
+
+                return FindZoneRecursive(ZoneKind.PlayerArea, preferEnemy: true);
         }
+
+        return null;
     }
 
+    // Helper: fallback recursive search on Main Canvas/Image
+    private Transform FindZoneRecursive(ZoneKind z, bool preferEnemy = false)
+    {
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        if (mainCanvas == null) return null;
+
+        Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
+        if (uiRoot == null) return null;
+
+        string zoneName = "";
+        switch (z)
+        {
+            case ZoneKind.DuckZone: zoneName = "DuckZone"; break;
+            case ZoneKind.DropZone: zoneName = "DropZone"; break;
+            case ZoneKind.TargetZone: zoneName = "TargetZone"; break;
+            case ZoneKind.PlayerArea: zoneName = preferEnemy ? "EnemyArea" : "PlayerArea"; break;
+        }
+
+        return FindChildRecursive(uiRoot, zoneName);
+    }
+
+    // Helper: ค้นหาลูกแบบ Recursive
+    private Transform FindChildRecursive(Transform parent, string childName)
+    {
+        if (parent == null) return null;
+
+        foreach (Transform child in parent)
+        {
+            if (child.name == childName)
+                return child;
+
+            Transform found = FindChildRecursive(child, childName);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
+
     // ย้ายเข้า parent ของโซน (client-side; idempotent)
-    private void AdoptToZone()
+    private bool AdoptToZone()
     {
         var parentTransform = ResolveZoneTransform(zone);
+        if (parentTransform == null)
+            return false;
 
-        // กันเหนียว: ถ้าหา DropZone ไม่เจอ ให้หาใหม่
-        if (parentTransform == null && zone == ZoneKind.DropZone)
-        {
-            var go = GameObject.Find("DropZone");
-            if (go != null) parentTransform = go.transform;
-        }
+        if (transform.parent != parentTransform)
+            transform.SetParent(parentTransform, false);
 
-        if (parentTransform != null)
-        {
-            // ตรวจสอบว่า Parent เปลี่ยนหรือไม่
-            if (transform.parent != parentTransform)
-            {
-                // ★ worldPositionStays = false คือหัวใจสำคัญ
-                // มันจะพยายามรีเซ็ต local transform ให้เกาะติด parent ทันที
-                transform.SetParent(parentTransform, false);
-            }
-
-            // ★ บังคับ Layer ให้ตรงกับ Parent (แก้ปัญหามองไม่เห็นข้าม Layer)
-            SetLayerRecursively(gameObject, parentTransform.gameObject.layer);
-        }
+        SetLayerRecursively(gameObject, parentTransform.gameObject.layer);
+        return true;
     }
 
     // ฟังก์ชันช่วยเปลี่ยน Layer ทั้งตัวและลูกๆ
@@ -184,31 +267,64 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     // ============== Hooks ของ SyncVar ==============
     private void OnZoneChanged(ZoneKind oldZ, ZoneKind newZ)
     {
-        Debug.Log($"[DuckCard {netId}] OnZoneChanged: {oldZ} -> {newZ} parent={transform.parent?.name}");
-        AdoptToZone();
-        ApplyLayout();
-        ApplySiblingIndex();
-
-
-        // บังคับเปิด ไม่น่าจะเป็นสาเหตุหลัก แต่กันเหนียว
-        gameObject.SetActive(true);
-
-        // บังคับให้ Canvas จะรีคัลคูลเลย์เอาต์ (ช่วยในกรณี race)
-        Canvas.ForceUpdateCanvases();
+        HandleTransformUpdate();
     }
 
     private void OnRowChanged(int oldRow, int newRow)
     {
-        ApplyLayout();
+        HandleTransformUpdate();
     }
 
     private void OnColChanged(int oldCol, int newCol)
     {
-        ApplyLayout();
-        ApplySiblingIndex();
+        HandleTransformUpdate();
     }
 
-    // ============== ฝั่ง Server: ตั้งโซน/พิกัดแบบถูกหลัก Mirror ==============
+    private void HandleTransformUpdate()
+    {
+        // ถ้า Client ยังไม่พร้อม (ยังไม่ Active) อย่าเพิ่งทำ
+        if (!NetworkClient.active) return;
+
+        // พยายามย้าย Parent และจัดตำแหน่ง
+        // ถ้าล้มเหลว (เพราะ Parent ยังโหลดไม่เสร็จ) ให้ลองใหม่
+        if (AdoptToZone())
+        {
+            ApplyLayout();
+            ApplySiblingIndex();
+        }
+        else
+        {
+            if (_adoptCoroutine != null)
+                StopCoroutine(_adoptCoroutine);
+            _adoptCoroutine = StartCoroutine(AdoptToZoneRoutine());
+        }
+    }
+
+    // (เพิ่มฟังก์ชันนี้)
+    // Coroutine ที่จะ "พยายามใหม่" ทุกเฟรมจนกว่าจะหา Parent เจอ
+    private IEnumerator AdoptToZoneRoutine()
+    {
+        const int attempts = 30;
+        var wait = new WaitForSeconds(0.1f);
+
+        for (int i = 0; i < attempts; i++)
+        {
+            if (AdoptToZone())
+            {
+                ApplyLayout();
+                ApplySiblingIndex();
+                _adoptCoroutine = null;
+                yield break;
+            }
+
+            yield return wait;
+        }
+
+        Debug.LogWarning($"[DuckCard] {name} (netId={netId}) could not find its Parent Zone ({zone}) after {attempts} attempts!");
+        _adoptCoroutine = null;
+    }
+
+    // ============== Server: zone assignment helpers for Mirror ==============
     [Server]
     public void ServerAssignToZone(ZoneKind newZone, int row, int col)
     {
