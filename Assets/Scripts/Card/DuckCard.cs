@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using Mirror;
 using UnityEngine.EventSystems;
 
@@ -214,7 +215,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         //    - ไม่ยุ่งกับ DuckZone เลย
         //    - ไม่ยุ่งกับการ์ดศัตรู (ให้ ResolveZoneTransform ใช้ ownerManager.EnemyArea ไป)
         if (parentTransform == null &&
-            zone == ZoneKind.PlayerArea &&                      // fallback แค่ตอน PlayerArea
+            zone == ZoneKind.PlayerArea &&
             isOwned &&
             PlayerManager.localInstance != null &&
             PlayerManager.localInstance.PlayerArea != null)
@@ -234,12 +235,27 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         // 4) เจอ parent แล้ว → ย้ายเข้าไป
         if (transform.parent != parentTransform)
         {
-            // false = ใช้ค่า localPos/localScale เดิม (ให้ GridLayoutGroup / Layout จัดต่อ)
+            // false = ใช้ค่า localPos/localScale เดิม (ให้ LayoutGroup จัดต่อถ้ามี)
             transform.SetParent(parentTransform, false);
             Debug.Log($"[DuckCard] ✅ {name} moved to zone={zone} under {parentTransform.name}");
         }
 
-        // ให้เรียงลำดับตามที่ spawn มา (GridLayout จะอ่านจาก sibling order)
+        // 4.1 ถ้า parent ไม่มี LayoutGroup → รีเซ็ตให้การ์ดมาอยู่กลาง parent
+        bool parentHasLayout =
+            parentTransform.GetComponent<LayoutGroup>() != null;
+
+        if (!parentHasLayout && transform is RectTransform rt)
+        {
+            // anchor กลาง + pos กลาง + scale ปกติ
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.localScale = Vector3.one;
+            rt.localRotation = Quaternion.identity;
+        }
+
+        // ให้เรียงลำดับตามที่ spawn มา (GridLayout จะอ่านตามลำดับลูก)
         transform.SetAsLastSibling();
 
         // sync layer กับ parent (กันปัญหาวาดไม่ขึ้น)
@@ -353,21 +369,25 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     // Coroutine ที่จะ "พยายามใหม่" ทุกเฟรมจนกว่าจะหา Parent เจอ
     private IEnumerator AdoptToZoneRoutine()
     {
-        // รอให้ PlayerManager และ Canvas พร้อมก่อน
         for (int i = 0; i < 30; i++)
         {
             yield return new WaitForSeconds(0.1f);
 
             if (AdoptToZone())
             {
-                ApplyLayout();
+                // ❌ ไม่ต้องให้ระบบเก่าจัด layout แล้ว
+                // ApplyLayout();
+
+                // แค่จัดลำดับ sibling ให้ถูก (สำคัญสำหรับ GridLayoutGroup / มือผู้เล่น)
                 ApplySiblingIndex();
+
                 Debug.Log($"[DuckCard] ✅ {name} adopted to zone={zone} after {i + 1} attempts");
                 yield break;
             }
         }
 
-        Debug.LogError($"[DuckCard] ❌ {name} (netId={netId}) could not adopt to zone={zone} after 30 attempts");
+        Debug.LogError(
+            $"[DuckCard] ❌ {name} (netId={netId}) could not adopt to zone={zone} after 30 attempts");
     }
 
     // ============== Server: zone assignment helpers for Mirror ==============
