@@ -35,8 +35,9 @@ public enum SkillMode
 }
 
 
-public class PlayerManager : NetworkBehaviour
+public partial class PlayerManager : NetworkBehaviour
 {
+    
 
     // ตัวแปร State กลาง
     [SyncVar(hook = nameof(OnSkillModeChanged))]
@@ -141,6 +142,22 @@ public class PlayerManager : NetworkBehaviour
 
     //////////////////////////////////////////////////////////////////////
     public static PlayerManager localInstance;
+
+    public static uint LocalPlayerNetId
+    {
+        get
+        {
+            if (localInstance != null)
+            {
+                var ni = localInstance.GetComponent<NetworkIdentity>();
+                if (ni != null)
+                    return ni.netId;
+            }
+
+            var connIdentity = NetworkClient.connection?.identity;
+            return connIdentity != null ? connIdentity.netId : 0;
+        }
+    }
 
     private DuckCard firstSelectedDuck = null; // เก็บการ์ดใบแรกที่เลือก
 
@@ -1549,9 +1566,9 @@ public class PlayerManager : NetworkBehaviour
         if (dc != null)
         {
             // บอกการ์ดใบนี้ว่า "เจ้าของ" คือ PlayerManager ที่มี netId นี้
-            dc.ownerPlayerManagerNetId = ownerPMNetId;
+            dc.ownerNetId = ownerPMNetId;
             // Client ที่เป็นเจ้าของจะเห็นการ์ดนี้ใน PlayerArea ผ่าน Hook (OnZoneChanged)
-            dc.ServerAssignToZone(ZoneKind.PlayerArea, 0, 0);
+            dc.ServerAssignToZone(ZoneKind.PlayerArea, 0, -1);
         }
 
         var spawnedNi = spawnedCard.GetComponent<NetworkIdentity>();
