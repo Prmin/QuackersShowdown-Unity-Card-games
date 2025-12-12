@@ -197,6 +197,7 @@ public class LobbyUI : MonoBehaviour
         }
 
         int myIdx = LobbyRoomPlayer.Local ? LobbyRoomPlayer.Local.duckColorIndex : -1;
+        bool isReady = LobbyRoomPlayer.Local ? LobbyRoomPlayer.Local.readyToBegin : false;
 
         for (int i = 0; i < 6; i++)
         {
@@ -204,7 +205,8 @@ public class LobbyUI : MonoBehaviour
             if (!btn) continue;
 
             bool takenByOther = used[i] && i != myIdx;
-            btn.interactable = !takenByOther && i != myIdx;
+            // ถ้ากด Ready แล้ว ให้ปิดปุ่มเลือกสีทั้งหมดจนกว่าจะ Unready
+            btn.interactable = !isReady && !takenByOther && i != myIdx;
         }
     }
 }

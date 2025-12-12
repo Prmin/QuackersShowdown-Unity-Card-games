@@ -1601,7 +1601,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5057798795498874766, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_CellSize.x
-      value: 100
+      value: 120
       objectReference: {fileID: 0}
     - target: {fileID: 5403961612016476819, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_SizeDelta.x

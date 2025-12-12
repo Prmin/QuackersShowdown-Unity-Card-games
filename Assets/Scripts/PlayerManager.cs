@@ -10,7 +10,7 @@ using Random = UnityEngine.Random;
 
 
 // =================================================================
-// นิยาม SkillMode Enum 
+// ????? SkillMode Enum 
 // =================================================================
 
 public enum SkillMode
@@ -37,9 +37,9 @@ public enum SkillMode
 
 public partial class PlayerManager : NetworkBehaviour
 {
-    
 
-    // ตัวแปร State กลาง
+
+    // ?????? State ????
     [SyncVar(hook = nameof(OnSkillModeChanged))]
     public SkillMode activeSkillMode = SkillMode.None;
 
@@ -48,16 +48,16 @@ public partial class PlayerManager : NetworkBehaviour
     private static bool s_barrierHooksBoundServer = false;
     private static bool s_barrierHooksBoundClient = false;
 
-    // ให้ barrier เป็นคนสั่งเริ่มแจก/เริ่มเกม (ค่าเริ่ม true)
-    // ถ้ากลับไปใช้ดีเลย์เดิม ให้ตั้งเป็น false
+    // ??? barrier ??????????????????/???????? (???????? true)
+    // ?????????????????????? ??????????? false
     public static bool DeferInitialDealToBarrier = true;
 
-    // ป้องกันเริ่มแมตช์ซ้ำ เมื่อ BarrierGoServer ถูกยิงหลายครั้ง
+    // ???????????????????? ????? BarrierGoServer ???????????????
     private static bool s_matchStarted = false;
 
     // ============= GameObject References =============
 
-    // การ์ด แอคชั่น
+    // ????? ???????
     public GameObject Shoot;
     public GameObject TekeAim;
     public GameObject DoubleBarrel;
@@ -96,8 +96,6 @@ public partial class PlayerManager : NetworkBehaviour
 
 
 
-
-
     /////////////////////////////////////////////////////////
     public GameObject PlayerArea;
     public GameObject EnemyArea;
@@ -124,18 +122,18 @@ public partial class PlayerManager : NetworkBehaviour
     [SerializeField] private GameObject targetCoverPrefab;
 
     ///////////////////////////////////
-    // === NEW: รองรับ 5 ช่องศัตรู ===
+    // === NEW: ?????? 5 ????????? ===
     [Header("Enemies Slots (up to 5)")]
-    [SerializeField] private string enemiesAreaRootName = "EnemiesArea";   // ชื่อ parent
+    [SerializeField] private string enemiesAreaRootName = "EnemiesArea";   // ???? parent
     [SerializeField] private string enemySlotPrefix = "EnemyArea";      // EnemyArea1..5
 
-    // ที่นั่งของผู้เล่น (ใช้ที่นี่เพื่อจัดตำแหน่งศัตรูให้คงที่)
+    // ????????????????? (?????????????????????????????????????)
     [SyncVar] public int seatIndex = -1;
 
-    // แคชสล็อตศัตรู (ฝั่ง client ใช้รวมกัน)
+    // ????????????? (???? client ?????????)
     private static Transform[] s_enemySlots = null;
 
-    // map: netId ของ PlayerManager (ศัตรู) -> slot index [0..4]
+    // map: netId ??? PlayerManager (?????) -> slot index [0..4]
     private static readonly Dictionary<uint, int> s_remoteSlotIndex = new Dictionary<uint, int>();
 
 
@@ -159,12 +157,12 @@ public partial class PlayerManager : NetworkBehaviour
         }
     }
 
-    private DuckCard firstSelectedDuck = null; // เก็บการ์ดใบแรกที่เลือก
+    private DuckCard firstSelectedDuck = null; // ??????????????????????
 
     private NetworkIdentity firstTwoBirdsCard = null;
     private int twoBirdsClickCount = 0;
     private int doubleBarrelClickCount = 0;
-    // // เก็บ Card ใบแรกที่คลิก
+    // // ???? Card ????????????
     private NetworkIdentity firstClickedCard = null;
     [SerializeField] private GameObject targetPrefab;
 
@@ -172,7 +170,7 @@ public partial class PlayerManager : NetworkBehaviour
     [SyncVar] public int playerID;
     [Header("Action Card Prefab List")]
     [SerializeField]
-    private List<GameObject> actionCardPrefabList; // Prefabs ของการ์ดแอคชั่นทั้งหมด
+    private List<GameObject> actionCardPrefabList; // Prefabs ??????????????????????
     private Dictionary<string, GameObject> actionCardPrefabMap;
 
     private List<GameObject> cards = new List<GameObject>();
@@ -187,7 +185,7 @@ public partial class PlayerManager : NetworkBehaviour
 
     void Start()
     {
-        // ถ้า DuckZone ไม่ใช่ null ให้ Subscribe Event OnCardClicked ให้การ์ดข้างใน
+        // ??? DuckZone ?????? null ??? Subscribe Event OnCardClicked ??????????????
         if (DuckZone != null)
         {
 
@@ -215,24 +213,24 @@ public partial class PlayerManager : NetworkBehaviour
 
     // ///////////////////////////////////////////  Turn  ////////////////////////////////////////////////////////////////////
 
-    // === Turn state (เทิร์นแรก + ออเดอร์ซ้ายมือ) ===
-    // Mirror ห้าม SyncVar แบบ static → เก็บ static ใช้ในโค้ด
+    // === Turn state (????????? + ??????????????) ===
+    // Mirror ???? SyncVar ??? static ? ???? static ?????????
     private static int s_currentTurnSeat = -1;
 
-    // สำเนาแบบ SyncVar (instance) เพื่อซิงก์ไป client ทุกคน
+    // ???????? SyncVar (instance) ???????????? client ?????
     [SyncVar(hook = nameof(OnTurnSeatChanged))]
     private int _currentTurnSeatNet = -1;
 
-    // Hook: ถูกเรียกบน client เมื่อค่า _currentTurnSeatNet เปลี่ยน
+    // Hook: ?????????? client ???????? _currentTurnSeatNet ???????
     private void OnTurnSeatChanged(int oldValue, int newValue)
     {
         s_currentTurnSeat = newValue;
     }
 
-    // ออเดอร์เทิร์น (ใช้ภายในโค้ด)
+    // ????????????? (????????????)
     private static readonly List<int> s_turnOrder = new List<int>();
 
-    // สีเป็ดผู้เล่น (SyncVar นี้ของคุณอยู่เดิม)
+    // ????????????? (SyncVar ?????????????????)
     [SyncVar] public int duckColorIndex = 0; // 0..N-1
 
 
@@ -248,135 +246,135 @@ public partial class PlayerManager : NetworkBehaviour
     //  Core State Logic 
     // ========================
 
-    // (Optional) Hook สำหรับ Client UI 
+    // (Optional) Hook ?????? Client UI 
     void OnSkillModeChanged(SkillMode oldMode, SkillMode newMode)
     {
         // Debug.Log($"[Client] Skill mode changed from {oldMode} to {newMode}");
-        // (เช่น UIManager.Instance.HighlightSkillButton(newMode);)
+        // (???? UIManager.Instance.HighlightSkillButton(newMode);)
     }
 
-    // Command หลักสำหรับ Client (Local Player) ใช้เปลี่ยนโหมด
+    // Command ?????????? Client (Local Player) ??????????????
     [Command]
     public void CmdSetSkillMode(SkillMode newMode)
     {
-        // Server เป็นคนเปลี่ยนค่า SyncVar นี้
+        // Server ???????????????? SyncVar ???
         activeSkillMode = newMode;
 
-        // --- 🚀 3.1 (ย้าย Logic สกิลที่ "รันทันที" มาไว้ที่นี่) ---
+        // --- ?? 3.1 (???? Logic ??????? "????????" ???????????) ---
 
         bool modeShouldClose = false;
 
         if (newMode == SkillMode.LineForward)
         {
-            CmdActivateLineForward(); // (เรียก Logic เดิม)
-            modeShouldClose = true; // ทำงานเสร็จ ปิดโหมด
+            CmdActivateLineForward(); // (????? Logic ????)
+            modeShouldClose = true; // ?????????? ???????
         }
         else if (newMode == SkillMode.DuckShuffle)
         {
-            CmdActivateDuckShuffle(); // (เรียก Logic เดิม)
-            modeShouldClose = true; // ทำงานเสร็จ ปิดโหมด
+            CmdActivateDuckShuffle(); // (????? Logic ????)
+            modeShouldClose = true; // ?????????? ???????
         }
         else if (newMode == SkillMode.GivePeaceAChance)
         {
-            CmdActivateGivePeaceAChance(); // (เรียก Logic เดิม)
-            modeShouldClose = true; // ทำงานเสร็จ ปิดโหมด
+            CmdActivateGivePeaceAChance(); // (????? Logic ????)
+            modeShouldClose = true; // ?????????? ???????
         }
         else if (newMode == SkillMode.Resurrection)
         {
-            CmdActivateResurrectionMode(); // (เรียก Logic เดิม)
-            modeShouldClose = true; // ทำงานเสร็จ ปิดโหมด
+            CmdActivateResurrectionMode(); // (????? Logic ????)
+            modeShouldClose = true; // ?????????? ???????
         }
 
-        // (สกิลที่ "ทำงานทันที" อื่นๆ ก็ย้ายมาที่นี่)
+        // (??????? "??????????" ????? ??????????????)
 
-        // ถ้าสกิลที่ทำงานทันที ควรปิดโหมดเลย
+        // ???????????????????? ?????????????
         if (modeShouldClose)
         {
             activeSkillMode = SkillMode.None;
         }
     }
 
-    // Logic กลางสำหรับ "คลิกเป็ด" (เรียกจาก DuckCard.cs)
+    // Logic ?????????? "????????" (???????? DuckCard.cs)
     public void HandleDuckCardClick(DuckCard clickedCard)
     {
         if (!isLocalPlayer) return;
 
-        // เช็กแค่ตัวแปรเดียว!
+        // ??????????????????!
         switch (activeSkillMode)
         {
             case SkillMode.None:
-                // ไม่ได้ใช้สกิล
+                // ?????????????
                 break;
 
-            // --- 🚀 3.2 (สกิลที่รอคลิกเป็ด) ---
+            // --- ?? 3.2 (?????????????????) ---
 
             case SkillMode.Shoot:
                 CmdShootCard(clickedCard.netIdentity);
-                // (CmdShootCard จะปิดโหมดเอง)
+                // (CmdShootCard ????????????)
                 break;
 
             case SkillMode.TakeAim:
                 CmdSpawnTarget(clickedCard.netIdentity);
-                CmdSetSkillMode(SkillMode.None); // TakeAim เป็นสกิลเดียวที่ HandleClick ต้องสั่งปิดโหมดเอง
+                CmdSetSkillMode(SkillMode.None); // TakeAim ???????????????? HandleClick ??????????????????
                 break;
 
             case SkillMode.DoubleBarrel:
                 CmdDoubleBarrelClick(clickedCard.netIdentity);
-                // (CmdDoubleBarrelClick จะปิดโหมดเองเมื่อครบ)
+                // (CmdDoubleBarrelClick ????????????????????)
                 break;
 
             case SkillMode.QuickShot:
                 CmdQuickShotCard(clickedCard.netIdentity);
-                // (CmdQuickShotCard จะปิดโหมดเอง)
+                // (CmdQuickShotCard ????????????)
                 break;
 
             case SkillMode.Misfire:
                 CmdMisfireClick(clickedCard.netIdentity);
-                // (CmdMisfireClick จะปิดโหมดเอง)
+                // (CmdMisfireClick ????????????)
                 break;
 
             case SkillMode.TwoBirds:
                 CmdTwoBirdsClick(clickedCard.netIdentity);
-                // (CmdTwoBirdsClick จะปิดโหมดเองเมื่อครบ)
+                // (CmdTwoBirdsClick ????????????????????)
                 break;
 
             case SkillMode.BumpLeft:
                 CmdBumpLeftClick(clickedCard.netIdentity);
-                // (CmdBumpLeftClick จะปิดโหมดเอง)
+                // (CmdBumpLeftClick ????????????)
                 break;
 
             case SkillMode.BumpRight:
                 CmdBumpRightClick(clickedCard.netIdentity);
-                // (CmdBumpRightClick จะปิดโหมดเอง)
+                // (CmdBumpRightClick ????????????)
                 break;
 
             case SkillMode.MoveAhead:
                 CmdMoveAheadClick(clickedCard.netIdentity);
-                // (CmdMoveAheadClick จะปิดโหมดเอง)
+                // (CmdMoveAheadClick ????????????)
                 break;
 
             case SkillMode.HangBack:
                 CmdHangBackClick(clickedCard.netIdentity);
-                // (CmdHangBackClick จะปิดโหมดเอง)
+                // (CmdHangBackClick ????????????)
                 break;
 
             case SkillMode.FastForward:
                 CmdFastForwardClick(clickedCard.netIdentity);
-                // (CmdFastForwardClick จะปิดโหมดเอง)
+                // (CmdFastForwardClick ????????????)
                 break;
 
             case SkillMode.DisorderlyConduckt:
                 CmdDisorderlyClick(clickedCard.netIdentity);
-                // (DisorderlyConduckt จะคุม state 2-click เอง และไม่ปิดโหมด)
+                // (DisorderlyConduckt ????? state 2-click ??? ?????????????)
                 break;
 
-            // --- (เคสสำหรับสกิลที่ทำงานทันที) ---
+            // --- (??????????????????????????) ---
             case SkillMode.LineForward:
             case SkillMode.DuckShuffle:
             case SkillMode.GivePeaceAChance:
             case SkillMode.Resurrection:
-                // ไม่ควรเกิดเคสนี้ เพราะสกิลทำงานทันทีใน CmdSetSkillMode
-                // แต่ใส่ไว้เผื่อกันเหนียว
+                // ???????????????? ????????????????????? CmdSetSkillMode
+                // ???????????????????????
                 break;
 
             default:
@@ -386,17 +384,10 @@ public partial class PlayerManager : NetworkBehaviour
     }
 
 
-
-
-
-
-
-
-
     //////////////////////////////////////////  Barrier ////////////////////////////////////////////////////////////////////
 
 
-    // ไคลเอนต์: หลัง barrier ปล่อย ให้ local player เริ่มวงจั่วอัตโนมัติ
+    // ????????: ???? barrier ????? ??? local player ????????????????????
     [Client]
     private static void OnBarrierGo_Client()
     {
@@ -404,7 +395,7 @@ public partial class PlayerManager : NetworkBehaviour
             localInstance.StartAutoDrawIfLocal();
     }
 
-    // ผูก event จาก GameplayLoadCoordinator แค่ครั้งเดียว
+    // ??? event ??? GameplayLoadCoordinator ?????????????
     [Server]
     private static void TryBindBarrierServer()
     {
@@ -421,7 +412,7 @@ public partial class PlayerManager : NetworkBehaviour
         GameplayLoadCoordinator.BarrierGoClient += OnBarrierGo_Client;
     }
 
-    // อินสแตนซ์: สั่งเริ่มวงจั่วเฉพาะของ local player
+    // ?????????: ??????????????????????? local player
     [Client]
     private void StartAutoDrawIfLocal()
     {
@@ -437,23 +428,23 @@ public partial class PlayerManager : NetworkBehaviour
 
         TryBindBarrierClient();
 
-        // หาตัว Main Canvas
+        // ????? Main Canvas
         Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
         if (mainCanvas == null)
         {
-            Debug.LogError("[PlayerManager.OnStartClient] ❌ 'Main Canvas' not found");
+            Debug.LogError("[PlayerManager.OnStartClient] ? 'Main Canvas' not found");
             return;
         }
 
-        // หา root UI ที่ชื่อ "Image" (ซ้อนอยู่ใต้ Main Canvas)
+        // ?? root UI ??????? "Image" (??????????? Main Canvas)
         Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
         if (uiRoot == null)
         {
-            Debug.LogError("[PlayerManager.OnStartClient] ❌ 'Image' root not found under Main Canvas");
+            Debug.LogError("[PlayerManager.OnStartClient] ? 'Image' root not found under Main Canvas");
             return;
         }
 
-        // หาโซนหลัก ๆ
+        // ????????? ?
         DuckZone = FindChildRecursive(uiRoot, "DuckZone")?.gameObject;
         DropZone = FindChildRecursive(uiRoot, "DropZone")?.gameObject;
         TargetZone = FindChildRecursive(uiRoot, "TargetZone")?.gameObject;
@@ -462,19 +453,19 @@ public partial class PlayerManager : NetworkBehaviour
         var ni = GetComponent<NetworkIdentity>();
         if (ni != null && ni.isOwned)
         {
-            // เราคือ local player
+            // ?????? local player
             PlayerArea = FindChildRecursive(uiRoot, "PlayerArea")?.gameObject;
             localInstance = this;
         }
 
-        if (DuckZone == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ DuckZone not found");
-        if (DropZone == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ DropZone not found");
-        if (TargetZone == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ TargetZone not found");
-        if (EnemyArea == null) Debug.LogError("[PlayerManager.OnStartClient] ❌ EnemyArea not found");
+        if (DuckZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? DuckZone not found");
+        if (DropZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? DropZone not found");
+        if (TargetZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? TargetZone not found");
+        if (EnemyArea == null) Debug.LogError("[PlayerManager.OnStartClient] ? EnemyArea not found");
         if (ni != null && ni.isOwned && PlayerArea == null)
-            Debug.LogError("[PlayerManager.OnStartClient] ❌ PlayerArea not found for local player");
+            Debug.LogError("[PlayerManager.OnStartClient] ? PlayerArea not found for local player");
 
-        Debug.Log("[PlayerManager.OnStartClient] ✅ Zones found successfully");
+        Debug.Log("[PlayerManager.OnStartClient] ? Zones found successfully");
 
         CacheEnemySlotsFromScene();
         RecomputeLocalLayoutBySeat();
@@ -484,7 +475,7 @@ public partial class PlayerManager : NetworkBehaviour
     public override void OnStopClient()
     {
         base.OnStopClient();
-        // เมื่อมีคนหายไป → จัดสรรสล็อตศัตรูใหม่
+        // ?????????????? ? ????????????????????
         RecomputeLocalLayoutBySeat();
     }
 
@@ -505,8 +496,8 @@ public partial class PlayerManager : NetworkBehaviour
         }
     }
 
-    // Helper หา/จัดสรรสล็อตศัตรู
-    // หา/แคช EnemyArea1..5 จาก Scene
+    // Helper ??/????????????????
+    // ??/??? EnemyArea1..5 ??? Scene
     private void CacheEnemySlotsFromScene()
     {
         Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
@@ -581,17 +572,17 @@ public partial class PlayerManager : NetworkBehaviour
         return null;
     }
 
-    /// คืน Transform ของสล็อตตามค่า rel (0..5)
-    /// rel=0 -> PlayerArea (ของ local), rel=1..5 -> EnemyArea1..5
+    /// ??? Transform ?????????????? rel (0..5)
+    /// rel=0 -> PlayerArea (??? local), rel=1..5 -> EnemyArea1..5
     private Transform GetSlotByRelIndex(int rel)
     {
         if (rel == 0)
         {
-            // สำหรับ local เท่านั้น: ใช้ PlayerArea ที่เราหามาใน OnStartClient
+            // ?????? local ????????: ??? PlayerArea ???????????? OnStartClient
             return PlayerArea != null ? PlayerArea.transform : null;
         }
 
-        // ให้แน่ใจว่าเราแคช EnemyArea1..5 แล้ว
+        // ????????????????? EnemyArea1..5 ????
         if (s_enemySlots == null || s_enemySlots.Any(t => t == null))
             CacheEnemySlotsFromScene();
 
@@ -603,11 +594,11 @@ public partial class PlayerManager : NetworkBehaviour
     }
 
 
-    // เลือก slot ให้ PlayerManager (ศัตรูตัวนี้) ตามลำดับ seatIndex ของทุกคน (ยกเว้น local)
+    // ????? slot ??? PlayerManager (???????????) ???????? seatIndex ???????? (?????? local)
     [Client]
     private void RecomputeLocalLayoutBySeat()
     {
-        // หา local seat
+        // ?? local seat
         var owned = FindObjectsOfType<PlayerManager>()
             .FirstOrDefault(p =>
             {
@@ -617,18 +608,18 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (owned == null)
         {
-            // ยังหา local ไม่เจอ รอเฟรมถัดไป
+            // ????? local ?????? ???????????
             StartCoroutine(_RecomputeNextFrame());
             return;
         }
 
         int localSeat = Mathf.Clamp(owned.seatIndex, 0, 5);
 
-        // นับทั้งหมด (2..6)
+        // ?????????? (2..6)
         var all = FindObjectsOfType<PlayerManager>().ToList();
         int total = Mathf.Clamp(all.Count, 2, 6);
 
-        // เคลียร์แมพสล็อตเก่า
+        // ???????????????????
         s_remoteSlotIndex.Clear();
 
         foreach (var pm in all)
@@ -636,30 +627,30 @@ public partial class PlayerManager : NetworkBehaviour
             var ni = pm.GetComponent<NetworkIdentity>();
             if (ni != null && ni.isOwned)
             {
-                // ของเรา → PlayerArea เสมอ (rel=0)
+                // ?????? ? PlayerArea ???? (rel=0)
                 pm.PlayerArea = GameObject.Find("PlayerArea");
                 continue;
             }
 
-            // ของศัตรู → คำนวณ rel แล้วแมปไป EnemyArea1..5
+            // ???????? ? ????? rel ????????? EnemyArea1..5
             int rel = ((pm.seatIndex - localSeat) % 6 + 6) % 6; // safe mod
-            if (rel == 0) rel = 1; // กันเหตุ edge (ไม่ควรเกิดหาก seatIndex ไม่ชนกัน)
+            if (rel == 0) rel = 1; // ??????? edge (????????????? seatIndex ????????)
 
             var t = GetSlotByRelIndex(rel);
             if (t != null)
             {
                 pm.EnemyArea = t.gameObject;
-                // เก็บดัชนีไว้ถ้าจำเป็น (เช่นเอาไป anim/จัดเรียง UI)
+                // ????????????????????? (????????? anim/???????? UI)
                 s_remoteSlotIndex[pm.netId] = rel - 1; // 0..4
             }
             else
             {
-                // fallback เดิม
+                // fallback ????
                 pm.EnemyArea = GameObject.Find("EnemyArea");
             }
         }
 
-        // (ออปชัน) ดีบักดูผล
+        // (??????) ?????????
         // Debug.Log($"[Layout] localSeat={localSeat}, total={total}");
         // foreach (var pm in all) Debug.Log($" [Seat] netId={pm.netId} seat={pm.seatIndex} rel={((pm.seatIndex - localSeat + 6) % 6)}");
     }
@@ -670,7 +661,7 @@ public partial class PlayerManager : NetworkBehaviour
         RecomputeLocalLayoutBySeat();
     }
 
-    // คืน Transform ของสล็อตศัตรูที่ถูกจองให้ PlayerManager ตัวนี้ (ถ้าไม่มีจะเป็น null)
+    // ??? Transform ????????????????????????? PlayerManager ?????? (?????????????? null)
     private Transform GetMyEnemySlot()
     {
         if (s_enemySlots == null) return null;
@@ -736,31 +727,31 @@ public partial class PlayerManager : NetworkBehaviour
         Debug.Log($"[OnStartClient] {zoneName} => {(go != null ? go.name : "NULL")}");
     }
 
-    // server: แจก seatIndex ช่องว่างถัดไป 0..5
+    // server: ??? seatIndex ????????????? 0..5
     [Server]
     private void EnsureSeatIndexAssigned()
     {
         if (seatIndex >= 0) return;
 
-        // เก็บที่นั่งที่ถูกใช้ไปแล้ว
+        // ??????????????????????????
         var used = new HashSet<int>();
         foreach (var pm in FindObjectsOfType<PlayerManager>())
             if (pm.seatIndex >= 0) used.Add(pm.seatIndex);
 
-        // หาเลขว่าง 0..5
+        // ????????? 0..5
         for (int i = 0; i < 6; i++)
             if (!used.Contains(i)) { seatIndex = i; return; }
 
-        // กันพลาด
+        // ???????
         seatIndex = 5;
     }
 
 
-    // ลำดับสีต้อง “ตรงกับ index ที่เลือกในล็อบบี้”
+    // ??????????? �?????? index ?????????????????�
     private static readonly string[] DUCK_KEYS_BY_INDEX =
     {
     "DuckBlue", "DuckOrange", "DuckPink", "DuckGreen", "DuckYellow", "DuckPurple"
-    // ปรับให้ตรงกับ index จริงของคุณได้เลย
+    // ????????????? index ????????????????
     };
 
     private static string ColorIndexToDuckKey(int idx)
@@ -772,7 +763,7 @@ public partial class PlayerManager : NetworkBehaviour
     private static HashSet<string> Server_GetSelectedDuckKeysFromLobby()
     {
         var keys = new HashSet<string>();
-        // อ่านจาก PlayerManager ทุกตัว (ต้องให้ PlayerManager มี/รับค่า duckColorIndex มาจากล็อบบี้)
+        // ??????? PlayerManager ?????? (??????? PlayerManager ??/?????? duckColorIndex ????????????)
         foreach (var pm in FindObjectsOfType<PlayerManager>())
         {
             string key = ColorIndexToDuckKey(pm.duckColorIndex);
@@ -781,17 +772,17 @@ public partial class PlayerManager : NetworkBehaviour
         return keys;
     }
 
-    // ถูกเรียกจาก OnBarrierGo_Server() หลังทุกคนโหลดเสร็จ
+    // ??????????? OnBarrierGo_Server() ??????????????????
     [Server]
     private void Server_BeginMatch_AfterBarrier()
     {
-        // 1) เติม DuckZone ให้ครบ 6 จาก pool ที่ “เฉพาะสีที่เลือก”
+        // 1) ???? DuckZone ?????? 6 ??? pool ??? �???????????????�
         RefillDuckZoneIfNeeded();
 
-        // 2) เลือกคนเริ่มจากสีของ “การ์ดบนสุด”
+        // 2) ???????????????????? �??????????�
         Server_PickStarterFromTopDuckCard_AndBuildOrder();
 
-        // (ถ้ามีระบบเทิร์น) เริ่มเทิร์นแรกได้เลย เช่น:
+        // (???????????????) ???????????????????? ????:
         // TurnSystem.Server_BeginFirstTurn(s_currentTurnSeat, s_turnOrder);
     }
 
@@ -801,10 +792,10 @@ public partial class PlayerManager : NetworkBehaviour
         var any = FindObjectsOfType<PlayerManager>().FirstOrDefault();
         if (any == null || any.DuckZone == null) return;
 
-        // ✅ ทำให้แน่ใจว่าเราทำงานกับ Transform เสมอ
+        // ? ???????????????????????? Transform ????
         var zone = any.DuckZone.transform;
 
-        // หาใบบนสุดที่ "ไม่ใช่ Marsh"
+        // ???????????? "?????? Marsh"
         string topKey = null;
         DuckCard topDuck = null;
         for (int i = zone.childCount - 1; i >= 0; i--)
@@ -825,7 +816,7 @@ public partial class PlayerManager : NetworkBehaviour
         var players = FindObjectsOfType<PlayerManager>().ToList();
         int total = Mathf.Clamp(players.Count, 2, 6);
 
-        // ถ้าทั้งกองเป็น Marsh หรือหาคีย์ไม่ได้ → fallback เป็นที่นั่งต่ำสุด
+        // ?????????????? Marsh ???????????????? ? fallback ?????????????????
         PlayerManager starter = null;
         if (!string.IsNullOrEmpty(topKey))
             starter = players.FirstOrDefault(p => ColorIndexToDuckKey(p.duckColorIndex) == topKey);
@@ -836,10 +827,10 @@ public partial class PlayerManager : NetworkBehaviour
         s_currentTurnSeat = (starter != null) ? starter.seatIndex : 0;
         if (any != null)
         {
-            any._currentTurnSeatNet = s_currentTurnSeat; // เซิร์ฟเวอร์เซ็ต → Mirror sync ไปทุก client → hook อัปเดต static
+            any._currentTurnSeatNet = s_currentTurnSeat; // ??????????????? ? Mirror sync ????? client ? hook ?????? static
         }
 
-        // ลำดับซ้ายมือ (ถ้าทิศตรงข้าม ให้เปลี่ยน +i เป็น -i)
+        // ???????????? (????????????? ?????????? +i ???? -i)
         s_turnOrder.Clear();
         for (int i = 0; i < total; i++)
         {
@@ -849,24 +840,32 @@ public partial class PlayerManager : NetworkBehaviour
 
         Debug.Log($"[Turn] Starter seat = {s_currentTurnSeat}, order = {string.Join(",", s_turnOrder)}");
 
-        // ✅ แจ้งทุกคลไคลเอนต์ให้คำนวณเลย์เอาต์ใหม่ตามวงกลมตายตัว 1..6
-        var caller = any; // ใช้อินสแตนซ์ PM ใดก็ได้บนเซิร์ฟเวอร์
+        // ? ???????????????????????????????????????????????????? 1..6
+        var caller = any; // ???????????? PM ????????????????????
         if (caller != null)
-            caller.RpcRecomputeLayoutAllClients();  // <<< เพิ่มตรงนี้
+            caller.RpcRecomputeLayoutAllClients();  // <<< ???????????
     }
 
     [ClientRpc]
     public void RpcRecomputeLayoutAllClients()
     {
-        RecomputeLocalLayoutBySeat();
+        if (!NetworkClient.active) return;
+        try
+        {
+            RecomputeLocalLayoutBySeat();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[RpcRecomputeLayoutAllClients] ขัดข้อง: {ex}");
+        }
     }
 
-    // แปลงชื่อ GameObject การ์ด → DuckKey ("DuckBlue"...)
+    // ???????? GameObject ????? ? DuckKey ("DuckBlue"...)
     private static string ExtractDuckKeyFromCard(GameObject go)
     {
         var name = go.name.Replace("(Clone)", "").Trim();
 
-        // Marsh มาก่อนเพื่อแมตช์แบบชัดๆ
+        // Marsh ???????????????????????
         if (name.IndexOf("Marsh", System.StringComparison.OrdinalIgnoreCase) >= 0)
             return "Marsh";
 
@@ -879,16 +878,16 @@ public partial class PlayerManager : NetworkBehaviour
     }
 
 
-    // ใช้บน server (เรียกได้ทั้ง server/host) — cache ผลลัพธ์เล็กน้อย
+    // ????? server (???????????? server/host) � cache ???????????????
     private Transform _cachedDuckZone;
     [Server]
     private Transform GetSceneDuckZone()
     {
-        // ถ้ามีค่า cache แล้วยัง valid ให้ใช้
+        // ???????? cache ??????? valid ??????
         if (_cachedDuckZone != null && _cachedDuckZone.gameObject.scene.IsValid() && _cachedDuckZone.gameObject.scene.isLoaded)
             return _cachedDuckZone;
 
-        // ถ้ามีฟีลด์ DuckZone ที่อ้างไว้ และ valid ให้ใช้
+        // ?????????? DuckZone ?????????? ??? valid ??????
         if (DuckZone != null)
         {
             var t = DuckZone.transform;
@@ -899,7 +898,7 @@ public partial class PlayerManager : NetworkBehaviour
             }
         }
 
-        // หาใหม่จากชื่อในซีน
+        // ??????????????????
         var go = GameObject.Find("DuckZone");
         if (go != null)
         {
@@ -907,11 +906,11 @@ public partial class PlayerManager : NetworkBehaviour
             return _cachedDuckZone;
         }
 
-        // ไม่เจอ
+        // ??????
         return null;
     }
 
-    // ถ้ามีจังหวะที่ scene อาจเปลี่ยน (unload/load) ให้เคลียร์ cache
+    // ?????????????? scene ?????????? (unload/load) ?????????? cache
     [Server]
     private void ClearZoneCaches()
     {
@@ -924,7 +923,7 @@ public partial class PlayerManager : NetworkBehaviour
         var dz = GetSceneDuckZone();
         if (dz == null) return;
 
-        // ดึงการ์ดเป็ดทั้งหมดใน DuckZone
+        // ????????????????????? DuckZone
         var list = new List<DuckCard>();
         foreach (Transform t in dz)
         {
@@ -932,7 +931,7 @@ public partial class PlayerManager : NetworkBehaviour
             if (dc != null) list.Add(dc);
         }
 
-        // จัดลำดับตามตำแหน่ง X ปัจจุบัน (หรือจะใช้ siblingIndex ก็ได้)
+        // ?????????????????? X ???????? (????????? siblingIndex ?????)
         list.Sort((a, b) =>
         {
             var ra = a.GetComponent<RectTransform>();
@@ -942,11 +941,11 @@ public partial class PlayerManager : NetworkBehaviour
             return ax.CompareTo(bx);
         });
 
-        // ไล่กำหนดคอลัมน์ใหม่
+        // ???????????????????
         for (int i = 0; i < list.Count; i++)
         {
             var dc = list[i];
-            // ใช้โซนเดิม (DuckZone), แถวเดิม (0), คอลัมน์ใหม่ i
+            // ?????????? (DuckZone), ??????? (0), ??????????? i
             dc.ServerAssignToZone(ZoneKind.DuckZone, 0, i);
         }
     }
@@ -954,13 +953,13 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void Server_DestroyAllTargetsFor(uint duckNetId)
     {
-        // รุ่นใหม่: TargetMarker
+        // ????????: TargetMarker
         var markers = FindObjectsOfType<TargetMarker>();
         foreach (var m in markers)
             if (m != null && m.FollowDuckNetId == duckNetId)
                 NetworkServer.Destroy(m.gameObject);
 
-        // สำรอง: รุ่นเดิม TargetFollow
+        // ?????: ???????? TargetFollow
         var follows = FindObjectsOfType<TargetFollow>();
         foreach (var f in follows)
             if (f != null && f.targetNetId == duckNetId)
@@ -970,7 +969,7 @@ public partial class PlayerManager : NetworkBehaviour
 
 
 
-    // ====(ส่วน server helpers) 
+    // ====(???? server helpers) 
 
     [Server]
     private Transform GetSceneDropZone() => GameObject.Find("DropZone")?.transform;
@@ -993,18 +992,9 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (col < 0 && parent != null) col = parent.childCount;
 
-        // บอกการ์ดให้เซ็ตโซน/ตำแหน่ง (DuckCard จะจัด parent ทั้ง server+client ผ่าน SyncVar hook)
+        // ??????????????????/??????? (DuckCard ????? parent ???? server+client ???? SyncVar hook)
         dc.ServerAssignToZone(zone, row, col);
     }
-
-
-
-
-
-
-
-
-
 
 
     // ========================
@@ -1014,14 +1004,14 @@ public partial class PlayerManager : NetworkBehaviour
     {
         base.OnStartServer();
 
-        // 1) ผูก Barrier ฝั่งเซิร์ฟเวอร์
+        // 1) ??? Barrier ???????????????
         TryBindBarrierServer();
 
-        // 2) เซ็ตที่นั่ง + เด็ค Action เท่านั้น (เด็คเป็ดไปทำตอน Barrier)
+        // 2) ??????????? + ???? Action ???????? (??????????????? Barrier)
         EnsureSeatIndexAssigned();
         InitializeActionCardPool();
 
-        // 3) แม็ป Prefab ของ Action Card ให้คำสั่งจั่วใช้งานได้
+        // 3) ???? Prefab ??? Action Card ??????????????????????
         actionCardPrefabMap = new Dictionary<string, GameObject>();
         if (resurrectionPrefab != null) actionCardPrefabMap["Resurrection"] = resurrectionPrefab;
         if (duckAndCoverPrefab != null) actionCardPrefabMap["DuckAndCover"] = duckAndCoverPrefab;
@@ -1029,7 +1019,7 @@ public partial class PlayerManager : NetworkBehaviour
             if (prefab != null && !actionCardPrefabMap.ContainsKey(prefab.name))
                 actionCardPrefabMap[prefab.name] = prefab;
 
-        // ❌ อย่าประกอบเด็คเป็ด/อย่าเติม DuckZone ที่นี่
+        // ? ??????????????????/???????? DuckZone ??????
         CmdSyncDuckCards();
     }
 
@@ -1038,7 +1028,7 @@ public partial class PlayerManager : NetworkBehaviour
     private static HashSet<string> Server_GetSelectedDuckKeysFromRoom()
     {
         var keys = new HashSet<string>();
-        // อ่านจาก PlayerManager (GamePlayer) ที่ถูกคัดลอกจากล็อบบี้มาแล้ว
+        // ??????? PlayerManager (GamePlayer) ????????????????????????????
         foreach (var pm in FindObjectsOfType<PlayerManager>())
         {
             int idx = pm.duckColorIndex;
@@ -1046,11 +1036,11 @@ public partial class PlayerManager : NetworkBehaviour
                 keys.Add(DUCK_KEYS_BY_INDEX[idx]);
         }
 
-        // log รายชื่อ + index ที่เกมเพลย์เห็น
+        // log ??????? + index ???????????????
         foreach (var pm in FindObjectsOfType<PlayerManager>())
             Debug.Log($"[Deck][SeenInGameplay] netId={pm.netId} seat={pm.seatIndex} colorIndex={pm.duckColorIndex}");
 
-        // log สรุปชุด key
+        // log ??????? key
         Debug.Log("[Deck][SelectedFromRoom] " + string.Join(",", keys));
 
         return keys;
@@ -1115,22 +1105,22 @@ public partial class PlayerManager : NetworkBehaviour
     {
         actionCardPool.Clear();
 
-        actionCardPool.Add("Shoot", 3);
-        actionCardPool.Add("QuickShot", 3);
-        actionCardPool.Add("TekeAim", 3);
-        actionCardPool.Add("DoubleBarrel", 3);
-        actionCardPool.Add("Misfire", 3);
-        actionCardPool.Add("TwoBirds", 3);
-        actionCardPool.Add("BumpLeft", 3);
-        actionCardPool.Add("BumpRight", 3);
+        actionCardPool.Add("Shoot", 10);
+        // actionCardPool.Add("QuickShot", 10);
+        actionCardPool.Add("TekeAim", 10);
+        actionCardPool.Add("DoubleBarrel", 10);
+        // actionCardPool.Add("Misfire", 10);
+        // actionCardPool.Add("TwoBirds", 3);
+        // actionCardPool.Add("BumpLeft", 3);
+        // actionCardPool.Add("BumpRight", 3);
         actionCardPool.Add("LineForward", 3);
-        actionCardPool.Add("MoveAhead", 3);
-        actionCardPool.Add("HangBack", 3);
-        actionCardPool.Add("FastForward", 3);
-        actionCardPool.Add("DisorderlyConduckt", 3);
-        actionCardPool.Add("DuckShuffle", 3);
-        actionCardPool.Add("GivePeaceAChance", 3);
-        actionCardPool.Add("Resurrection", 3);
+        // actionCardPool.Add("MoveAhead", 3);
+        // actionCardPool.Add("HangBack", 3);
+        // actionCardPool.Add("FastForward", 3);
+        // actionCardPool.Add("DisorderlyConduckt", 3);
+        // actionCardPool.Add("DuckShuffle", 3);
+        // actionCardPool.Add("GivePeaceAChance", 3);
+        // actionCardPool.Add("Resurrection", 3);
 
     }
     private int GetDuckCardCountInDuckZone()
@@ -1140,7 +1130,7 @@ public partial class PlayerManager : NetworkBehaviour
         int count = 0;
         foreach (Transform child in DuckZone.transform)
         {
-            // มี DuckCard component ไหม
+            // ?? DuckCard component ???
             DuckCard duck = child.GetComponent<DuckCard>();
             if (duck != null)
             {
@@ -1150,7 +1140,7 @@ public partial class PlayerManager : NetworkBehaviour
         return count;
     }
 
-    // ===== Helper: นับจำนวนการ์ดในโซน (ฝั่ง Server) =====
+    // ===== Helper: ?????????????????? (???? Server) =====
     [Server]
     private int Server_CountCardsInZone(ZoneKind z)
     {
@@ -1160,7 +1150,7 @@ public partial class PlayerManager : NetworkBehaviour
         return c;
     }
 
-    // ===== เติม DuckZone ถ้าขาด (เรียกซ้ำได้ ปลอดภัย) =====
+    // ===== ???? DuckZone ?????? (??????????? ???????) =====
     [Server]
     private void RefillDuckZoneIfNeeded()
     {
@@ -1169,19 +1159,19 @@ public partial class PlayerManager : NetworkBehaviour
         if (current >= 6) return;
         if (!CardPoolManager.HasCards()) { Debug.LogWarning("[RefillDuckZoneIfNeeded] No cards left in pool."); return; }
 
-        int col = current; // จะเติมต่อจากตำแหน่งที่มีอยู่
+        int col = current; // ????????????????????????????
         while (col < 6 && CardPoolManager.HasCards())
         {
-            var card = CardPoolManager.DrawRandomCard();   // ❗ ไม่ส่ง parent
+            var card = CardPoolManager.DrawRandomCard();   // ? ?????? parent
             if (card == null) break;
 
             var dc = card.GetComponent<DuckCard>();
             if (dc == null) { UnityEngine.Object.Destroy(card); continue; }
 
-            // เซ็ต Zone/Row/Column ผ่าน SyncVar ก่อน Spawn
+            // ???? Zone/Row/Column ???? SyncVar ???? Spawn
             dc.ServerAssignToZone(ZoneKind.DuckZone, 0, col);
 
-            // ค่อย Spawn → SyncVar จะถูกส่งไปทุก client รวมคนมาช้า
+            // ???? Spawn ? SyncVar ????????????? client ??????????
             NetworkServer.Spawn(card);
 
             col++;
@@ -1209,46 +1199,59 @@ public partial class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcSyncDuckCards()
     {
-        if (DuckZone == null)
-        {
-            // Debug.LogWarning("RpcSyncDuckCards: DuckZone not found!");
-            return;
-        }
+        if (!NetworkClient.active) return;
+        if (DuckZone == null) return;
 
-        // ซิงค์การ์ดที่มีอยู่ใน DuckZone ให้ผู้เล่นใหม่
-        foreach (Transform child in DuckZone.transform)
+        try
         {
-            child.SetParent(DuckZone.transform, false);
+            // จัด parent และเรียงตาม ColNet ให้ตรงทุก client
+            var ducks = new System.Collections.Generic.List<DuckCard>();
+            foreach (Transform child in DuckZone.transform)
+            {
+                if (child == null) continue;
+                child.SetParent(DuckZone.transform, false);
+                var dc = child.GetComponent<DuckCard>();
+                if (dc != null) ducks.Add(dc);
+            }
+
+            ducks.Sort((a, b) => a.ColNet.CompareTo(b.ColNet));
+            for (int i = 0; i < ducks.Count; i++)
+            {
+                ducks[i].transform.SetSiblingIndex(i);
+            }
         }
-        // Debug.Log("DuckZone synced for the new player.");
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[RpcSyncDuckCards] ขัดข้อง: {ex}");
+        }
     }
 
-    // ===== สปอนแบบดีเลย์: เติมให้ครบ 6 ใบ โดยอิง ZoneKind + SyncVar =====
+    // ===== ?????????????: ?????????? 6 ?? ?????? ZoneKind + SyncVar =====
     [Server]
     private IEnumerator DealDuckCardsWithDelay()
     {
-        // รอระบบ Mirror/ซีนพร้อมสั้น ๆ
-        yield return new WaitForSeconds(0.25f);
+        // ?????? Mirror/???????????? ?
+        yield return new WaitForSeconds(5f);
 
         int col = Server_CountCardsInZone(ZoneKind.DuckZone);
         if (col < 0) { Debug.LogError("[DealDuckCardsWithDelay] DuckZone count invalid."); yield break; }
 
-        // เติมจนครบ 6 หรือเด็คหมด
+        // ????????? 6 ???????????
         while (col < 6 && CardPoolManager.HasCards())
         {
-            var card = CardPoolManager.DrawRandomCard();   // ❗ ไม่ส่ง parent
+            var card = CardPoolManager.DrawRandomCard();   // ? ?????? parent
             if (card == null) break;
 
             var dc = card.GetComponent<DuckCard>();
             if (dc == null) { UnityEngine.Object.Destroy(card); continue; }
 
-            // ตั้งค่า SyncVar ก่อน Spawn (ให้ late-joiner ได้ค่าถูกต้องตั้งแต่เกิด)
+            // ??????? SyncVar ???? Spawn (??? late-joiner ????????????????????????)
             dc.ServerAssignToZone(ZoneKind.DuckZone, 0, col);
 
             NetworkServer.Spawn(card);
 
             col++;
-            yield return null; // ขยับเฟรมให้ UI/hook ทำงานลื่น ๆ
+            yield return null; // ??????????? UI/hook ????????? ?
         }
     }
 
@@ -1263,7 +1266,7 @@ public partial class PlayerManager : NetworkBehaviour
             return null;
         }
 
-        // สร้าง list เกมการ์ดที่ยังเหลือ (value > 0)
+        // ????? list ??????????????????? (value > 0)
         List<GameObject> availableCards = new List<GameObject>();
         foreach (var kvp in cardPool)
         {
@@ -1280,19 +1283,19 @@ public partial class PlayerManager : NetworkBehaviour
         int randomIndex = Random.Range(0, availableCards.Count);
         GameObject selectedCard = availableCards[randomIndex];
 
-        // ลด stock
+        // ?? stock
         cardPool[selectedCard] -= 1;
 
-        // ถ้าหมดแล้ว ลบออกจาก dictionary ก็ได้
+        // ?????????? ???????? dictionary ?????
         if (cardPool[selectedCard] <= 0)
         {
             cardPool.Remove(selectedCard);
         }
 
-        // พิมพ์ Log บอกว่าเราหยิบการ์ดอะไรมา, เหลือเท่าไหร่
+        // ????? Log ????????????????????????, ?????????????
         Debug.Log($"[GetRandomCardFromPool] Spawned: {selectedCard.name}. Left in that color: {(cardPool.ContainsKey(selectedCard) ? cardPool[selectedCard] : 0)}");
 
-        // ปิดท้ายด้วย log สรุปทั้งหมด
+        // ??????????? log ???????????
         LogTotalDuckCounts();
 
         return selectedCard;
@@ -1300,17 +1303,17 @@ public partial class PlayerManager : NetworkBehaviour
 
 
     /// <summary>
-    /// ตัวอย่างการใช้งาน: พิมพ์สถานะปัจจุบันลง console
+    /// ?????????????????: ???????????????????? console
     /// </summary>
-    [Server]  // สั่งบน server ก็พอ
+    [Server]  // ?????? server ????
     private void LogTotalDuckCounts()
     {
-        // 1) ดูแค่ pool
+        // 1) ????? pool
         var poolCounts = CardPoolManager.GetAllPoolCounts();
         foreach (var kv in poolCounts)
             Debug.Log($"[PoolCounts] {kv.Key}: {kv.Value}");
 
-        // 2) ดูแค่ใน DuckZone
+        // 2) ??????? DuckZone
         var zoneCounts = new Dictionary<string, int>();
         foreach (Transform child in DuckZone.transform)
         {
@@ -1323,7 +1326,7 @@ public partial class PlayerManager : NetworkBehaviour
         foreach (var kv in zoneCounts)
             Debug.Log($"[ZoneCounts] {kv.Key}: {kv.Value}");
 
-        // 3) รวม
+        // 3) ???
         var total = GetTotalDuckCounts();
         foreach (var kv in total)
             Debug.Log($"[TotalCounts] {kv.Key}: {kv.Value}");
@@ -1335,8 +1338,8 @@ public partial class PlayerManager : NetworkBehaviour
 
     private void ReorderDuckZoneLayout()
     {
-        // สมมติ DuckZone อยู่บนแถวเดียว
-        // ระยะห่างการ์ดแต่ละใบ = 150px
+        // ????? DuckZone ??????????????
+        // ???????????????????? = 150px
         float spacing = 150f;
 
         foreach (Transform child in DuckZone.transform)
@@ -1344,11 +1347,11 @@ public partial class PlayerManager : NetworkBehaviour
             DuckCard duck = child.GetComponent<DuckCard>();
             if (duck != null)
             {
-                // สมมติคุณใช้ RectTransform
+                // ??????????? RectTransform
                 RectTransform rt = child.GetComponent<RectTransform>();
                 if (rt != null)
                 {
-                    // เอา row, column ไปคำนวณ
+                    // ??? row, column ???????
                     rt.anchoredPosition = new Vector2(duck.Column * spacing, 0f);
                 }
             }
@@ -1359,13 +1362,13 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void ShiftColumnsDown(int shotRow, int shotCol)
     {
-        // วนทุก child ใน DuckZone
+        // ????? child ?? DuckZone
         foreach (Transform child in DuckZone.transform)
         {
             DuckCard duck = child.GetComponent<DuckCard>();
             if (duck != null)
             {
-                // ถ้าอยู่ row เดียวกัน และ column > shotCol
+                // ??????? row ???????? ??? column > shotCol
                 if (duck.Row == shotRow && duck.Column > shotCol)
                 {
                     duck.Column -= 1;
@@ -1374,7 +1377,7 @@ public partial class PlayerManager : NetworkBehaviour
             }
         }
 
-        // หลังจากเลื่อน column เสร็จ ถ้าคุณมีฟังก์ชัน Layout UI ใหม่ ก็เรียกได้
+        // ????????????? column ????? ???????????????? Layout UI ???? ??????????
         ReorderDuckZoneLayout();
     }
 
@@ -1387,27 +1390,39 @@ public partial class PlayerManager : NetworkBehaviour
         var dz = GetSceneDuckZone();
         if (dz == null) return;
 
-        GameObject card = Instantiate(cardPrefab);   // ⬅️ ไม่ส่ง parent ตรงๆ
+        GameObject card = Instantiate(cardPrefab);   // ?? ?????? parent ????
         NetworkServer.Spawn(card);
 
         if (card.TryGetComponent<DuckCard>(out var duck))
         {
             int realCount = 0; foreach (Transform t in dz) if (t.GetComponent<DuckCard>() != null) realCount++;
-            duck.Row = 0; duck.Column = realCount;   // วางท้ายแถว
+            duck.Row = 0; duck.Column = realCount;   // ??????????
         }
 
-        RpcAddCardToDuckZone(card);                  // ผูก parent ที่ client
+        RpcAddCardToDuckZone(card);                  // ??? parent ??? client
     }
 
 
     [ClientRpc]
     private void RpcAddCardToDuckZone(GameObject card)
     {
-        if (card == null) return;
+        if (!NetworkClient.active) return;
+        if (card == null)
+        {
+            Debug.LogWarning("[RpcAddCardToDuckZone] ????????? null ??????????? parent");
+            return;
+        }
 
-        var dz = GetSceneDuckZone();
-        if (dz != null)
-            card.transform.SetParent(dz, false);
+        try
+        {
+            var dz = GetSceneDuckZone();
+            if (dz != null)
+                card.transform.SetParent(dz, false);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[RpcAddCardToDuckZone] ขัดข้อง: {ex}");
+        }
     }
 
 
@@ -1424,8 +1439,8 @@ public partial class PlayerManager : NetworkBehaviour
 
 
 
-    // 🔹 ฟังก์ชันดึงการ์ดจาก pool
-    // ✅ ฟังก์ชันสุ่มการ์ดจาก pool (ใช้ string แทน GameObject)
+    // ?? ??????????????????? pool
+    // ? ???????????????????? pool (??? string ??? GameObject)
     [Server]
     private string GetRandomActionCardFromPool()
     {
@@ -1441,12 +1456,12 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (availableCards.Count == 0)
         {
-            // Debug.LogWarning("⚠️ No action cards left in the pool!");
+            // Debug.LogWarning("?? No action cards left in the pool!");
             return null;
         }
 
         string selectedCard = availableCards[UnityEngine.Random.Range(0, availableCards.Count)];
-        actionCardPool[selectedCard]--;  // ลดจำนวนการ์ดใน pool
+        actionCardPool[selectedCard]--;  // ?????????????? pool
 
         return selectedCard;
     }
@@ -1465,12 +1480,12 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (availableCards.Count == 0)
         {
-            Debug.LogWarning("⚠️ No duck cards left in the pool!");
+            Debug.LogWarning("?? No duck cards left in the pool!");
             return null;
         }
 
         GameObject selectedCard = availableCards[UnityEngine.Random.Range(0, availableCards.Count)];
-        cardPool[selectedCard]--; // ลดจำนวนการ์ดลง
+        cardPool[selectedCard]--; // ??????????????
         return selectedCard;
     }
 
@@ -1486,29 +1501,29 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     public void DrawRandomActionCard()
     {
-        string cardName = GetRandomActionCardFromPool(); // ✅ รับค่าเป็น string
+        string cardName = GetRandomActionCardFromPool(); // ? ?????????? string
         if (cardName == null)
         {
-            // Debug.LogWarning("❌ No action cards left in the pool!");
+            // Debug.LogWarning("? No action cards left in the pool!");
             return;
         }
 
-        GameObject drawnCard = FindCardPrefabByName(cardName); // ✅ หา GameObject จากชื่อ
+        GameObject drawnCard = FindCardPrefabByName(cardName); // ? ?? GameObject ???????
         if (drawnCard == null)
         {
-            Debug.LogError($"❌ Cannot find prefab for card: {cardName}");
+            Debug.LogError($"? Cannot find prefab for card: {cardName}");
             return;
         }
 
-        Debug.Log($"🎴 Drew action card: {drawnCard.name}");
+        Debug.Log($"?? Drew action card: {drawnCard.name}");
 
-        // Spawn หรือเพิ่มการ์ดให้ผู้เล่น
+        // Spawn ????????????????????????
         SpawnAndAddCardToDuckZone(drawnCard);
     }
 
     // private IEnumerator AutoDrawCards()
     // {
-    //     yield return new WaitForSeconds(3f); // รอ 3 วินาทีหลังเริ่มเกม
+    //     yield return new WaitForSeconds(3f); // ?? 3 ??????????????????
 
     //     while (true)
     //     {
@@ -1520,7 +1535,7 @@ public partial class PlayerManager : NetworkBehaviour
     //     }
     // }
 
-    // ===== Helper: นับจำนวนการ์ดในโซน (สำหรับผู้เล่นคนเดียว) =====
+    // ===== Helper: ?????????????????? (????????????????????) =====
     [Server]
     private int Server_CountCardsInZone(ZoneKind z, NetworkConnectionToClient owner)
     {
@@ -1529,7 +1544,7 @@ public partial class PlayerManager : NetworkBehaviour
         int c = 0;
         foreach (var dc in FindObjectsOfType<DuckCard>())
         {
-            // เช็กว่า 1. อยู่โซนที่ต้องการ 2. เจ้าของคือคนนี้
+            // ??????? 1. ????????????????? 2. ???????????????
             if (dc.zone == z && dc.netIdentity != null && dc.netIdentity.connectionToClient == owner)
             {
                 c++;
@@ -1538,37 +1553,36 @@ public partial class PlayerManager : NetworkBehaviour
         return c;
     }
 
-    //  Server สั่งจั่วการ์ดให้ผู้เล่น (conn)
+    //  Server ??????????????????????? (conn)
     [Server]
     private void Server_DrawActionCardFor(NetworkConnectionToClient conn, uint ownerPMNetId)
     {
         string cardName = GetRandomActionCardFromPool();
         if (string.IsNullOrEmpty(cardName))
         {
-            Debug.LogWarning("❌ No action cards left in the pool!");
+            // Debug.LogWarning("? No action cards left in the pool!");
             return;
         }
 
         GameObject prefab = FindCardPrefabByName(cardName);
         if (prefab == null)
         {
-            Debug.LogError($"❌ Cannot find prefab for card: {cardName}");
+            // Debug.LogError($"? Cannot find prefab for card: {cardName}");
             return;
         }
 
         GameObject spawnedCard = Instantiate(prefab);
-        NetworkServer.Spawn(spawnedCard, conn); // Spawn โดยให้ Client (conn) เป็นเจ้าของ
+        NetworkServer.Spawn(spawnedCard, conn); // Spawn ?????? Client (conn) ???????????
 
-        Debug.Log($"🎴 {conn} drew an action card: {spawnedCard.name}");
+        // Debug.Log($"?? {conn} drew an action card: {spawnedCard.name}");
 
-        // (สำคัญ) บอกการ์ดว่าต้องไปอยู่ PlayerArea
+        // ตั้งเจ้าของและลำดับในมือแบบกำหนดเองตามจำนวนใบปัจจุบันของผู้เล่น
         var dc = spawnedCard.GetComponent<DuckCard>();
         if (dc != null)
         {
-            // บอกการ์ดใบนี้ว่า "เจ้าของ" คือ PlayerManager ที่มี netId นี้
             dc.ownerNetId = ownerPMNetId;
-            // Client ที่เป็นเจ้าของจะเห็นการ์ดนี้ใน PlayerArea ผ่าน Hook (OnZoneChanged)
-            dc.ServerAssignToZone(ZoneKind.PlayerArea, 0, -1);
+            int handCount = Server_CountCardsInZone(ZoneKind.PlayerArea, conn);
+            dc.ServerAssignToZone(ZoneKind.PlayerArea, 0, handCount);
         }
 
         var spawnedNi = spawnedCard.GetComponent<NetworkIdentity>();
@@ -1576,7 +1590,7 @@ public partial class PlayerManager : NetworkBehaviour
     }
 
 
-    // ✅ Client ขอจั่วการ์ดโดยเรียก Command
+    // ? Client ??????????????????? Command
     public void DrawActionCard()
     {
         if (isLocalPlayer)
@@ -1585,28 +1599,28 @@ public partial class PlayerManager : NetworkBehaviour
         }
     }
 
-    // ✅ Command ให้ Client ขอจั่วการ์ดจาก Server
+    // ? Command ??? Client ?????????????? Server
     [Command]
     public void CmdDrawActionCard()
     {
         // string cardName = GetRandomActionCardFromPool();
         // if (string.IsNullOrEmpty(cardName))
         // {
-        //     Debug.LogWarning("❌ No action cards left in the pool!");
+        //     Debug.LogWarning("? No action cards left in the pool!");
         //     return;
         // }
 
         // GameObject prefab = FindCardPrefabByName(cardName);
         // if (prefab == null)
         // {
-        //     Debug.LogError($"❌ Cannot find prefab for card: {cardName}");
+        //     Debug.LogError($"? Cannot find prefab for card: {cardName}");
         //     return;
         // }
 
         // GameObject spawnedCard = Instantiate(prefab, Vector2.zero, Quaternion.identity);
         // NetworkServer.Spawn(spawnedCard, connectionToClient);
 
-        // Debug.Log($"🎴 {connectionToClient} drew an action card: {spawnedCard.name}");
+        // Debug.Log($"?? {connectionToClient} drew an action card: {spawnedCard.name}");
 
         // var spawnedNi = spawnedCard.GetComponent<NetworkIdentity>();
         // RpcShowCard(spawnedNi, "Dealt");
@@ -1619,7 +1633,7 @@ public partial class PlayerManager : NetworkBehaviour
         if (actionCardPrefabMap != null && actionCardPrefabMap.TryGetValue(cardName, out var prefab))
             return prefab;
 
-        Debug.LogWarning($"⚠️ Action card “{cardName}” not found!");
+        Debug.LogWarning($"?? Action card �{cardName}� not found!");
         return null;
     }
 
@@ -1649,17 +1663,17 @@ public partial class PlayerManager : NetworkBehaviour
                 int newCol = dropZoneT != null ? dropZoneT.childCount : 0;
                 duck.ServerAssignToZone(ZoneKind.DropZone, 0, newCol);
 
-                // (Log Logic ของคุณ...)
-                Debug.Log($"[Server-CmdPlayCard] 📥 Moving '{card.name}'...");
+                // (Log Logic ??????...)
+                Debug.Log($"[Server-CmdPlayCard] ?? Moving '{card.name}'...");
                 // ...
             }
 
             RpcShowCard(card.GetComponent<NetworkIdentity>(), "Played");
 
             // ---------------------------------------------------------
-            // 🚀  ตรวจสอบและจั่วการ์ดใหม่
+            // ??  ???????????????????????
             // ---------------------------------------------------------
-            // (สำคัญ) หน่วงเวลา 1 เฟรม ให้ SyncVar (zone) ของการ์ดที่เพิ่งเล่น อัปเดตเสร็จก่อน
+            // (?????) ????????? 1 ???? ??? SyncVar (zone) ???????????????????? ???????????????
             StartCoroutine(DrawNextCardCoroutine(connectionToClient));
         }
         else
@@ -1669,21 +1683,22 @@ public partial class PlayerManager : NetworkBehaviour
     }
 
 
-    // Helper ฟังก์ชันข้างบนเรียก Coroutine 
+    // Helper ??????????????????? Coroutine 
     [Server]
     private IEnumerator DrawNextCardCoroutine(NetworkConnectionToClient conn)
     {
-        // รอให้การ์ดที่เพิ่งเล่น (DuckCard) อัปเดต SyncVar 'zone' เป็น DropZone ก่อน
+        // ?????????????????????? (DuckCard) ?????? SyncVar 'zone' ???? DropZone ????
         yield return null;
 
-        // (ใช้ Helper ใหม่) นับการ์ดในมือ (PlayerArea) ของผู้เล่นคนนี้
-        // (เราจะสร้างฟังก์ชันนี้ในข้อ 3)
+        // (??? Helper ????) ????????????? (PlayerArea) ???????????????
+        // (?????????????????????????? 3)
         int cardsInHand = Server_CountCardsInZone(ZoneKind.PlayerArea, conn);
-
-        if (cardsInHand < 3)
+        while (cardsInHand < 3 && CardPoolManager.HasCards())
         {
             uint ownerPMNetId = conn.identity.netId;
             Server_DrawActionCardFor(conn, ownerPMNetId);
+            cardsInHand++;
+            yield return null; // ????????????????? Spawn/SyncVar ????????????????????????
         }
     }
 
@@ -1691,8 +1706,8 @@ public partial class PlayerManager : NetworkBehaviour
     private void RemoveCardFromGame(GameObject card)
     {
         if (card == null) return;
-        NetworkServer.Destroy(card); // 🔥 ลบทิ้งจากเซิร์ฟเวอร์และซิงก์ไปยัง Client
-        Debug.Log($"🗑️ {card.name} has been removed from the game.");
+        NetworkServer.Destroy(card); // ?? ????????????????????????????????? Client
+        Debug.Log($"??? {card.name} has been removed from the game.");
     }
 
 
@@ -1701,12 +1716,13 @@ public partial class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcLogToClients(string message)
     {
+        if (!NetworkClient.active) return;
         Debug.Log(message);
     }
 
 
     // ========================================================
-    // Helpers สำหรับ LineForward/DuckShuffle
+    // Helpers ?????? LineForward/DuckShuffle
     // ========================================================
 
     [Server]
@@ -1719,7 +1735,7 @@ public partial class PlayerManager : NetworkBehaviour
             if (NetworkServer.spawned.TryGetValue(tf.targetNetId, out NetworkIdentity duckNi))
             {
                 DuckCard duck = duckNi.GetComponent<DuckCard>();
-                // (FIX: ใช้ .zone ตัวเล็ก)
+                // (FIX: ??? .zone ???????)
                 if (duck != null && duck.zone == ZoneKind.DuckZone && !targetColumns.Contains(duck.ColNet))
                 {
                     targetColumns.Add(duck.ColNet);
@@ -1738,7 +1754,7 @@ public partial class PlayerManager : NetworkBehaviour
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
             DuckCard d = netId.GetComponent<DuckCard>();
-            // (FIX: ใช้ .zone ตัวเล็ก)
+            // (FIX: ??? .zone ???????)
             if (d != null && d.zone == ZoneKind.DuckZone && d.RowNet == row)
             {
                 if (d.ColNet < minCol)
@@ -1768,7 +1784,7 @@ public partial class PlayerManager : NetworkBehaviour
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
             DuckCard d = netId.GetComponent<DuckCard>();
-            // (FIX: ใช้ .zone ตัวเล็ก)
+            // (FIX: ??? .zone ???????)
             if (d != null && d.zone == ZoneKind.DuckZone && d.RowNet == row)
             {
                 list.Add(d);
@@ -1781,9 +1797,9 @@ public partial class PlayerManager : NetworkBehaviour
     private IEnumerator RefillAndRecreateTargets(List<int> oldTargetColumns)
     {
         yield return StartCoroutine(RefillNextFrameLineForward());
-        yield return null; // รอ layout
+        yield return null; // ?? layout
 
-        List<DuckCard> ducks = FindDucksInRow(0); // หาเป็ดแถว 0
+        List<DuckCard> ducks = FindDucksInRow(0); // ????????? 0
         foreach (int col in oldTargetColumns)
         {
             DuckCard duckAtCol = ducks.Find(d => d.ColNet == col);
@@ -1804,7 +1820,7 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void RefillDuckZoneIfNeededLineForward()
     {
-        // (FIX: ใช้วิธีนับที่ reliable และ CardPoolManager ที่ไม่อ้า
+        // (FIX: ????????????? reliable ??? CardPoolManager ?????????
         int currentCount = Server_CountCardsInZone(ZoneKind.DuckZone);
         if (currentCount >= 6) return;
         if (!CardPoolManager.HasCards()) return;
@@ -1812,14 +1828,14 @@ public partial class PlayerManager : NetworkBehaviour
         int needed = 6 - currentCount;
         for (int i = 0; i < needed; i++)
         {
-            // (FIX: ใช้ DrawRandomCard() ที่ไม่ Obsolete)
+            // (FIX: ??? DrawRandomCard() ?????? Obsolete)
             GameObject newCard = CardPoolManager.DrawRandomCard();
             if (newCard == null) break;
 
             DuckCard dc = newCard.GetComponent<DuckCard>();
             if (dc != null)
             {
-                // (FIX: ใช้ .zone ตัวเล็ก)
+                // (FIX: ??? .zone ???????)
                 int nextCol = currentCount + i;
                 dc.ServerAssignToZone(ZoneKind.DuckZone, 0, nextCol);
             }
@@ -1836,18 +1852,24 @@ public partial class PlayerManager : NetworkBehaviour
 
 
     // ========================
-    // TekeAim Logic (เก็บไว้เฉพาะที่จำเป็น)
+    // TekeAim Logic (?????????????????????)
     // ========================
-    // ⛔️ (ลบ CmdActivateTekeAim, RpcEnableTekeAim, CmdDeactivateTekeAim, RpcDeactivateTekeAim)
-    // ⛔️ (ลบ isTekeAimActive)
+    // ?? (?? CmdActivateTekeAim, RpcEnableTekeAim, CmdDeactivateTekeAim, RpcDeactivateTekeAim)
+    // ?? (?? isTekeAimActive)
 
-    // (CmdSpawnTarget ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdSpawnTarget ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdSpawnTarget(NetworkIdentity duckCardIdentity)
     {
         if (duckCardIdentity == null || targetPrefab == null) return;
         var dc = duckCardIdentity.GetComponent<DuckCard>();
         if (dc == null) return;
+        if (dc.zone != ZoneKind.DuckZone)
+        {
+            Debug.LogWarning($"[TakeAim] Ignore target spawn: {duckCardIdentity.name} is in zone {dc.zone}");
+            return;
+        }
+        RemoveTargetFromCard(duckCardIdentity); // ?? Target ?????????????????
         GameObject newTarget = Instantiate(targetPrefab);
         var marker = newTarget.GetComponent<TargetMarker>();
         var tf = newTarget.GetComponent<TargetFollow>();
@@ -1860,32 +1882,44 @@ public partial class PlayerManager : NetworkBehaviour
         NetworkServer.Spawn(newTarget);
     }
 
-    // (Helper นี้ยังจำเป็น)
+    // (Helper ????????????)
     [ClientRpc]
     void RpcSetTargetNetId(NetworkIdentity targetIdentity, NetworkIdentity duckCardIdentity)
     {
-        // (โค้ด RpcSetTargetNetId ของคุณ...)
-        if (targetIdentity == null || duckCardIdentity == null) return;
-        TargetFollow tf = targetIdentity.GetComponent<TargetFollow>();
-        if (tf != null)
+        // กัน null/วัตถุหายฝั่ง client
+        if (!NetworkClient.active) return;
+        if (targetIdentity == null || duckCardIdentity == null || duckCardIdentity.gameObject == null)
         {
-            tf.targetNetId = duckCardIdentity.netId;
-            tf.ResetTargetTransform();
+            Debug.LogWarning("[RpcSetTargetNetId] target หรือการ์ดเป้าหมายเป็น null ข้ามการตั้งค่า");
+            return;
         }
-        // (โค้ด RectTransform... ของคุณ)
+
+        try
+        {
+            TargetFollow tf = targetIdentity.GetComponent<TargetFollow>();
+            if (tf != null)
+            {
+                tf.targetNetId = duckCardIdentity.netId;
+                tf.ResetTargetTransform();
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[RpcSetTargetNetId] ขัดข้อง: {ex}");
+        }
     }
 
     // ========================
-    // Shoot Logic (เก็บไว้เฉพาะที่จำเป็น)
+    // Shoot Logic (?????????????????????)
     // ========================
-    // ⛔️ (ลบ CmdActivateShoot, RpcActivateShoot, CmdDeactivateShoot, RpcDeactivateShoot)
-    // ⛔️ (ลบ isShootActive)
+    // ?? (?? CmdActivateShoot, RpcActivateShoot, CmdDeactivateShoot, RpcDeactivateShoot)
+    // ?? (?? isShootActive)
 
-    // (CmdShootCard ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdShootCard ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdShootCard(NetworkIdentity duckCardIdentity)
     {
-        // if (!isShootActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isShootActive) return; // (??????????? bool)
         if (duckCardIdentity == null) return;
         var shotDuck = duckCardIdentity.GetComponent<DuckCard>();
         if (shotDuck == null) return;
@@ -1897,7 +1931,7 @@ public partial class PlayerManager : NetworkBehaviour
         Server_DestroyAllTargetsFor(duckCardIdentity.netId);
         Server_ResequenceDuckZoneColumns();
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
 
         StartCoroutine(RefillNextFrame());
@@ -1910,10 +1944,10 @@ public partial class PlayerManager : NetworkBehaviour
         RefillDuckZoneIfNeeded();
     }
 
-    // (Helper นี้ยังจำเป็น)
+    // (Helper ????????????)
     bool IsCardTargeted(NetworkIdentity duckCardIdentity)
     {
-        // (โค้ด IsCardTargeted ของคุณ...)
+        // (???? IsCardTargeted ??????...)
         uint duckId = duckCardIdentity.netId;
         var markers = FindObjectsOfType<TargetMarker>();
         foreach (var m in markers)
@@ -1928,17 +1962,23 @@ public partial class PlayerManager : NetworkBehaviour
 
 
     // ========================
-    // DoubleBarrel Logic (เก็บไว้เฉพาะที่จำเป็น)
+    // DoubleBarrel Logic (?????????????????????)
     // ========================
-    // ⛔️ (ลบ CmdActivateDoubleBarrel, RpcEnableDoubleBarrel, CmdDeactivateDoubleBarrel, RpcDisableDoubleBarrel)
-    // ⛔️ (ลบ isDoubleBarrelActive)
+    // ?? (?? CmdActivateDoubleBarrel, RpcEnableDoubleBarrel, CmdDeactivateDoubleBarrel, RpcDisableDoubleBarrel)
+    // ?? (?? isDoubleBarrelActive)
 
-    // (CmdDoubleBarrelClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdDoubleBarrelClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdDoubleBarrelClick(NetworkIdentity clickedCard)
     {
-        // if (!isDoubleBarrelActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isDoubleBarrelActive) return; // (??????????? bool)
         if (clickedCard == null) return;
+        var dc = clickedCard.GetComponent<DuckCard>();
+        if (dc == null || dc.zone != ZoneKind.DuckZone)
+        {
+            Debug.LogWarning($"[DoubleBarrel] Ignore click: {clickedCard.name} is not in DuckZone (zone={dc?.zone})");
+            return;
+        }
 
         if (doubleBarrelClickCount == 0)
         {
@@ -1959,7 +1999,7 @@ public partial class PlayerManager : NetworkBehaviour
             CmdSpawnTargetDoubleBarrel_Internal(firstClickedCard);
             CmdSpawnTargetDoubleBarrel_Internal(clickedCard);
 
-            // FIX: ปิดโหมดโดยตรง
+            // FIX: ?????????????
             activeSkillMode = SkillMode.None;
             doubleBarrelClickCount = 0;
             firstClickedCard = null;
@@ -1969,10 +2009,11 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void CmdSpawnTargetDoubleBarrel_Internal(NetworkIdentity duckCardIdentity)
     {
-        // (โค้ด CmdSpawnTargetDoubleBarrel_Internal ของคุณ...)
+        // (???? CmdSpawnTargetDoubleBarrel_Internal ??????...)
         if (duckCardIdentity == null || targetPrefab == null) return;
         var dc = duckCardIdentity.GetComponent<DuckCard>();
         if (dc == null) return;
+        RemoveTargetFromCard(duckCardIdentity); // ????? Target ???????????? ??????????
         GameObject newTarget = Instantiate(targetPrefab);
         var marker = newTarget.GetComponent<TargetMarker>();
         if (marker != null)
@@ -1986,7 +2027,7 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private bool CheckAdjacent(NetworkIdentity card1, NetworkIdentity card2)
     {
-        // (โค้ด CheckAdjacent ของคุณ...)
+        // (???? CheckAdjacent ??????...)
         if (card1 == null || card2 == null) return false;
         var duck1 = card1.GetComponent<DuckCard>();
         var duck2 = card2.GetComponent<DuckCard>();
@@ -1997,16 +2038,16 @@ public partial class PlayerManager : NetworkBehaviour
     }
 
     // ========================
-    // Quick Shot Logic (เก็บไว้เฉพาะที่จำเป็น)
+    // Quick Shot Logic (?????????????????????)
     // ========================
-    // ⛔️ (ลบ CmdActivateQuickShot, RpcActivateQuickShot, CmdDeactivateQuickShot, RpcDeactivateQuickShot)
-    // ⛔️ (ลบ isQuickShotActive)
+    // ?? (?? CmdActivateQuickShot, RpcActivateQuickShot, CmdDeactivateQuickShot, RpcDeactivateQuickShot)
+    // ?? (?? isQuickShotActive)
 
-    // (CmdQuickShotCard ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdQuickShotCard ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdQuickShotCard(NetworkIdentity duckCardIdentity)
     {
-        // if (!isQuickShotActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isQuickShotActive) return; // (??????????? bool)
         if (duckCardIdentity == null) return;
         DuckCard shotDuck = duckCardIdentity.GetComponent<DuckCard>();
         if (shotDuck == null) return;
@@ -2015,7 +2056,7 @@ public partial class PlayerManager : NetworkBehaviour
         int shotCol = shotDuck.ColNet;
         NetworkServer.Destroy(duckCardIdentity.gameObject);
 
-        // (ทำลายเป้า)
+        // (?????????)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var target in allTargets)
         {
@@ -2023,26 +2064,26 @@ public partial class PlayerManager : NetworkBehaviour
                 NetworkServer.Destroy(target.gameObject);
         }
 
-        // (สมมติว่ามี ShiftColumnsDown)
+        // (?????????? ShiftColumnsDown)
         ShiftColumnsDown(shotRow, shotCol);
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
 
         StartCoroutine(RefillNextFrame());
     }
 
     // ========================
-    // Misfire Logic (เก็บไว้เฉพาะที่จำเป็น)
+    // Misfire Logic (?????????????????????)
     // ========================
-    // ⛔️ (ลบ CmdActivateMisfire, RpcEnableMisfire, CmdDeactivateMisfire, RpcDisableMisfire)
-    // ⛔️ (ลบ isMisfireActive)
+    // ?? (?? CmdActivateMisfire, RpcEnableMisfire, CmdDeactivateMisfire, RpcDisableMisfire)
+    // ?? (?? isMisfireActive)
 
-    // (CmdMisfireClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdMisfireClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdMisfireClick(NetworkIdentity clickedCard)
     {
-        // if (!isMisfireActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isMisfireActive) return; // (??????????? bool)
         if (clickedCard == null) return;
         if (!IsCardTargeted(clickedCard)) return;
         DuckCard duckComp = clickedCard.GetComponent<DuckCard>();
@@ -2054,9 +2095,9 @@ public partial class PlayerManager : NetworkBehaviour
         if (neighbors.Count == 0) return;
 
         var randomNeighbor = neighbors[UnityEngine.Random.Range(0, neighbors.Count)];
-        ShootCardDirect(randomNeighbor); // (ใช้ Helper ยิง)
+        ShootCardDirect(randomNeighbor); // (??? Helper ???)
 
-        // (ทำลายเป้าเดิม)
+        // (?????????????)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var t in allTargets)
         {
@@ -2064,7 +2105,7 @@ public partial class PlayerManager : NetworkBehaviour
                 NetworkServer.Destroy(t.gameObject);
         }
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
 
         StartCoroutine(RefillNextFrame());
@@ -2072,7 +2113,7 @@ public partial class PlayerManager : NetworkBehaviour
 
     private List<NetworkIdentity> GetAdjacentDuckCards(int row, int col)
     {
-        // (โค้ด GetAdjacentDuckCards ของคุณ... แต่ควรแก้ให้วน NetworkServer.spawned)
+        // (???? GetAdjacentDuckCards ??????... ?????????????? NetworkServer.spawned)
         List<NetworkIdentity> results = new List<NetworkIdentity>();
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
@@ -2088,10 +2129,10 @@ public partial class PlayerManager : NetworkBehaviour
 
     private void ShootCardDirect(NetworkIdentity duckNi)
     {
-        // (โค้ด ShootCardDirect ของคุณ...)
+        // (???? ShootCardDirect ??????...)
         if (duckNi == null) return;
         NetworkServer.Destroy(duckNi.gameObject);
-        // (ทำลายเป้า)
+        // (?????????)
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
         foreach (var target in allTargets)
         {
@@ -2101,23 +2142,29 @@ public partial class PlayerManager : NetworkBehaviour
         DuckCard dc = duckNi.GetComponent<DuckCard>();
         if (dc != null)
         {
-            ShiftColumnsDown(dc.RowNet, dc.ColNet); // (สมมติว่ามี Helper นี้)
+            ShiftColumnsDown(dc.RowNet, dc.ColNet); // (?????????? Helper ???)
         }
     }
 
     // ========================
     // TwoBirds Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateTwoBirds, RpcEnableTwoBirds, CmdDeactivateTwoBirds, RpcDisableTwoBirds)
-    // ⛔️ (ลบ isTwoBirdsActive)
+    // ?? (?? CmdActivateTwoBirds, RpcEnableTwoBirds, CmdDeactivateTwoBirds, RpcDisableTwoBirds)
+    // ?? (?? isTwoBirdsActive)
 
-    // (CmdTwoBirdsClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdTwoBirdsClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdTwoBirdsClick(NetworkIdentity clickedCard)
     {
-        // if (!isTwoBirdsActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isTwoBirdsActive) return; // (??????????? bool)
         if (clickedCard == null) return;
         if (!IsCardTargeted(clickedCard)) return;
+        var dcClicked = clickedCard.GetComponent<DuckCard>();
+        if (dcClicked == null || dcClicked.zone != ZoneKind.DuckZone)
+        {
+            Debug.LogWarning($"[TwoBirds] Ignore click: {clickedCard.name} not in DuckZone (zone={dcClicked?.zone})");
+            return;
+        }
 
         if (twoBirdsClickCount == 0)
         {
@@ -2143,6 +2190,7 @@ public partial class PlayerManager : NetworkBehaviour
                 RemoveTargetFromCard(clickedCard);
                 if (col1 > col2) { ShiftColumnsDown(row1, col1); ShiftColumnsDown(row2, col2); }
                 else { ShiftColumnsDown(row2, col2); ShiftColumnsDown(row1, col1); }
+                StartCoroutine(RefillNextFrame());
             }
             else
             {
@@ -2155,11 +2203,12 @@ public partial class PlayerManager : NetworkBehaviour
                         NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
                         RemoveTargetFromCard(firstTwoBirdsCard);
                         ShiftColumnsDown(row1, col1);
+                        StartCoroutine(RefillNextFrame());
                     }
                 }
             }
 
-            // FIX: ปิดโหมดโดยตรง
+            // FIX: ?????????????
             activeSkillMode = SkillMode.None;
             twoBirdsClickCount = 0;
             firstTwoBirdsCard = null;
@@ -2169,7 +2218,7 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private bool CheckAdjacentTwoBirds(NetworkIdentity card1, NetworkIdentity card2)
     {
-        // (โค้ด CheckAdjacentTwoBirds ที่แก้แล้ว...)
+        // (???? CheckAdjacentTwoBirds ??????????...)
         DuckCard dc1 = card1.GetComponent<DuckCard>();
         DuckCard dc2 = card2.GetComponent<DuckCard>();
         if (dc1 == null || dc2 == null) return false;
@@ -2181,30 +2230,31 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void RemoveTargetFromCard(NetworkIdentity duckNi)
     {
-        // (โค้ด RemoveTargetFromCard ที่แก้แล้ว...)
         if (duckNi == null) return;
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
-        {
-            if (tf.targetNetId == duckNi.netId)
-            {
+        uint targetId = duckNi.netId;
+
+        // ลบ TargetFollow ที่ชี้มาที่การ์ดนี้ทุกอัน
+        foreach (var tf in FindObjectsOfType<TargetFollow>())
+            if (tf != null && tf.targetNetId == targetId)
                 NetworkServer.Destroy(tf.gameObject);
-                return;
-            }
-        }
+
+        // ลบ TargetMarker ที่ชี้มาที่การ์ดนี้ทุกอัน (ใน TargetZone)
+        foreach (var mk in FindObjectsOfType<TargetMarker>())
+            if (mk != null && mk.FollowDuckNetId == targetId)
+                NetworkServer.Destroy(mk.gameObject);
     }
 
     // ========================
     // BumpLeft Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateBumpLeft, RpcEnableBumpLeft, CmdDeactivateBumpLeft, RpcDisableBumpLeft)
-    // ⛔️ (ลบ isBumpLeftActive)
+    // ?? (?? CmdActivateBumpLeft, RpcEnableBumpLeft, CmdDeactivateBumpLeft, RpcDisableBumpLeft)
+    // ?? (?? isBumpLeftActive)
 
-    // (CmdBumpLeftClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdBumpLeftClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdBumpLeftClick(NetworkIdentity clickedCard)
     {
-        // if (!isBumpLeftActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isBumpLeftActive) return; // (??????????? bool)
         if (clickedCard == null) return;
         if (!IsCardTargeted(clickedCard)) return;
         DuckCard duck = clickedCard.GetComponent<DuckCard>();
@@ -2214,21 +2264,21 @@ public partial class PlayerManager : NetworkBehaviour
         if (leftDuck == null) return;
         MoveTargetFromTo(clickedCard, leftDuck.GetComponent<NetworkIdentity>());
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
     }
 
     // ========================
     // BumpRight Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateBumpRight, RpcEnableBumpRight, CmdDeactivateBumpRight, RpcDisableBumpRight)
-    // ⛔️ (ลบ isBumpRightActive)
+    // ?? (?? CmdActivateBumpRight, RpcEnableBumpRight, CmdDeactivateBumpRight, RpcDisableBumpRight)
+    // ?? (?? isBumpRightActive)
 
-    // (CmdBumpRightClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdBumpRightClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdBumpRightClick(NetworkIdentity clickedCard)
     {
-        // if (!isBumpRightActive) return; // (ไม่ต้องเช็ก bool)
+        // if (!isBumpRightActive) return; // (??????????? bool)
         if (clickedCard == null) return;
         if (!IsCardTargeted(clickedCard)) return;
         DuckCard duck = clickedCard.GetComponent<DuckCard>();
@@ -2238,30 +2288,43 @@ public partial class PlayerManager : NetworkBehaviour
         if (rightDuck == null) return;
         MoveTargetFromTo(clickedCard, rightDuck.GetComponent<NetworkIdentity>());
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
     }
 
     [Server]
     private void MoveTargetFromTo(NetworkIdentity fromCard, NetworkIdentity toCard)
     {
-        // (โค้ด MoveTargetFromTo ที่แก้แล้ว...)
         if (fromCard == null || toCard == null) return;
-        TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();
-        foreach (var tf in allTargets)
+        // ถ้าปลายทางมี Target อยู่ ลบทิ้งก่อน
+        RemoveTargetFromCard(toCard);
+
+        foreach (var tf in FindObjectsOfType<TargetFollow>())
         {
-            if (tf.targetNetId == fromCard.netId)
+            if (tf != null && tf.targetNetId == fromCard.netId)
             {
-                tf.targetNetId = toCard.netId; // (สมมติ targetNetId เป็น SyncVar)
-                return;
+                tf.targetNetId = toCard.netId;
+                tf.ResetTargetTransform();
+
+                // อัปเดต TargetMarker คู่กัน
+                foreach (var mk in FindObjectsOfType<TargetMarker>())
+                {
+                    if (mk != null && mk.FollowDuckNetId == fromCard.netId)
+                    {
+                        mk.FollowDuckNetId = toCard.netId;
+                        if (toCard.TryGetComponent(out DuckCard dcTo))
+                            mk.ServerAssignToZone(ZoneKind.TargetZone, 0, dcTo.ColNet);
+                    }
+                }
             }
         }
     }
 
+
     [Server]
     private DuckCard FindDuckAt(int row, int col)
     {
-        // (โค้ด FindDuckAt ที่แก้แล้ว...)
+        // (???? FindDuckAt ??????????...)
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
             DuckCard card = netId.GetComponent<DuckCard>();
@@ -2277,41 +2340,58 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     // LineForward Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdDeactivateLineForward, RpcDisableLineForward)
-    // ⛔️ (ลบ isLineForwardActive)
+    // ?? (?? CmdDeactivateLineForward, RpcDisableLineForward)
+    // ?? (?? isLineForwardActive)
 
-    // (TryLineForward เรียก CmdSetSkillMode(SkillMode.LineForward))
-    // (CmdSetSkillMode จะเรียก CmdActivateLineForward)
-    [Command]
+    // (TryLineForward ????? CmdSetSkillMode(SkillMode.LineForward))
+    // (CmdSetSkillMode ??????? CmdActivateLineForward)
+    [Command(requiresAuthority = false)]
     public void CmdActivateLineForward()
     {
-        // (โค้ด CmdActivateLineForward ที่แก้แล้ว...)
+        Debug.Log("[LineForward] ?????????? (CmdActivateLineForward)");
+        // เก็บคอลัมน์เดิมของ Target ไว้ก่อน
         var oldTargets = CollectTargetColumns();
         var leftmost = FindLeftmostDuck(0);
+
         if (leftmost != null)
+        {
+            int removedCol = leftmost.ColNet;
             NetworkServer.Destroy(leftmost.gameObject);
+            RemoveTargetFromCard(leftmost.netIdentity);
+
+            // รีเลขคอลัมน์ใหม่ให้แน่น หลังทำลายใบหน้าสุด
+            Server_ResequenceDuckZoneColumns();
+
+            // ปรับคอลัมน์เก่าของ Target ให้เลื่อนซ้ายตามการเลื่อนแถว
+            for (int i = 0; i < oldTargets.Count; i++)
+            {
+                if (oldTargets[i] > removedCol)
+                    oldTargets[i] -= 1;
+            }
+        }
+
         RemoveAllTargets();
         StartCoroutine(RefillAndRecreateTargets(oldTargets));
         StartCoroutine(DelayedLog());
-        // (CmdSetSkillMode จะปิดโหมดเอง)
+        // (CmdSetSkillMode จะปิดเอง)
     }
 
-    // (Helpers: DelayedLog, CollectTargetColumns, FindLeftmostDuck, RemoveAllTargets, FindDucksInRow, RefillAndRecreateTargets, ... ทั้งหมดอยู่ที่นี่)
-    // ( ... โค้ด Helpers ที่แก้แล้วทั้งหมด ... )
-    // ... (ละไว้เพื่อความกระชับ แต่ต้องใส่โค้ดที่แก้แล้วทั้งหมด) ...
+    // (Helpers: DelayedLog, CollectTargetColumns, FindLeftmostDuck, RemoveAllTargets, FindDucksInRow, RefillAndRecreateTargets, ... ?????????????????)
+    // ( ... ???? Helpers ????????????????? ... )
+    // ... (???????????????????? ???????????????????????????????) ...
 
 
     // ========================
     // Move Ahead Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateMoveAhead, RpcEnableMoveAhead, CmdDeactivateMoveAhead, RpcDisableMoveAhead)
-    // ⛔️ (ลบ isMoveAheadActive)
+    // ?? (?? CmdActivateMoveAhead, RpcEnableMoveAhead, CmdDeactivateMoveAhead, RpcDisableMoveAhead)
+    // ?? (?? isMoveAheadActive)
 
-    // (CmdMoveAheadClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdMoveAheadClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdMoveAheadClick(NetworkIdentity clickedCard)
     {
-        // (โค้ด CmdMoveAheadClick ที่แก้แล้ว...)
+        // (???? CmdMoveAheadClick ??????????...)
         if (clickedCard == null) return;
         DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
         if (selectedDuck == null) return;
@@ -2331,7 +2411,7 @@ public partial class PlayerManager : NetworkBehaviour
         if (selectedHadTarget) CmdSpawnTargetForDuck(targetDuck.netId);
         if (targetHadTarget) CmdSpawnTargetForDuck(selectedDuck.netId);
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
     }
 
@@ -2339,14 +2419,14 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     // HangBack Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateHangBack, RpcEnableHangBack, CmdDeactivateHangBack, RpcDisableHangBack)
-    // ⛔️ (ลบ isHangBackActive)
+    // ?? (?? CmdActivateHangBack, RpcEnableHangBack, CmdDeactivateHangBack, RpcDisableHangBack)
+    // ?? (?? isHangBackActive)
 
-    // (CmdHangBackClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdHangBackClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdHangBackClick(NetworkIdentity clickedCard)
     {
-        // (โค้ด CmdHangBackClick ที่แก้แล้ว...)
+        // (???? CmdHangBackClick ??????????...)
         if (clickedCard == null) return;
         DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
         if (selectedDuck == null) return;
@@ -2366,7 +2446,7 @@ public partial class PlayerManager : NetworkBehaviour
         if (selectedHadTarget) CmdSpawnTargetForDuck(targetDuck.netId);
         if (targetHadTarget) CmdSpawnTargetForDuck(selectedDuck.netId);
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
     }
 
@@ -2374,10 +2454,10 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     // FastForward Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateFastForward, RpcEnableFastForward, CmdDeactivateFastForward, RpcDisableFastForward)
-    // ⛔️ (ลบ isFastForwardActive)
+    // ?? (?? CmdActivateFastForward, RpcEnableFastForward, CmdDeactivateFastForward, RpcDisableFastForward)
+    // ?? (?? isFastForwardActive)
 
-    // (CmdFastForwardClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdFastForwardClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdFastForwardClick(NetworkIdentity clickedCard)
     {
@@ -2386,14 +2466,14 @@ public partial class PlayerManager : NetworkBehaviour
         if (selectedDuck == null) return;
         StartCoroutine(FastForwardCoroutine(selectedDuck));
 
-        // FIX: ปิดโหมดโดยตรง
+        // FIX: ?????????????
         activeSkillMode = SkillMode.None;
     }
 
     [Server]
     private IEnumerator FastForwardCoroutine(DuckCard selectedDuck)
     {
-        // (โค้ด FastForwardCoroutine ที่แก้แล้ว...)
+        // (???? FastForwardCoroutine ??????????...)
         float delay = 0.3f;
         int curRow = selectedDuck.RowNet;
         List<int> originalTargetColumns = new List<int>();
@@ -2430,13 +2510,13 @@ public partial class PlayerManager : NetworkBehaviour
             if (newDuckAtCol != null)
                 CmdSpawnTargetForDuck(newDuckAtCol.netId);
         }
-        // (ปิดโหมดใน CmdFastForwardClick ไปแล้ว)
+        // (????????? CmdFastForwardClick ??????)
     }
 
     [Server]
     private DuckCard FindDuckByNetId(uint netId)
     {
-        // (โค้ด FindDuckByNetId ที่แก้แล้ว...)
+        // (???? FindDuckByNetId ??????????...)
         if (NetworkServer.spawned.TryGetValue(netId, out NetworkIdentity ni))
             return ni.GetComponent<DuckCard>();
         return null;
@@ -2446,14 +2526,14 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     // Disorderly Conduckt Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdActivateDisorderlyConduckt, RpcEnableDisorderlyConduckt, CmdDeactivateDisorderlyConduckt, RpcDisableDisorderlyConduckt)
-    // ⛔️ (ลบ isDisorderlyConducktActive)
+    // ?? (?? CmdActivateDisorderlyConduckt, RpcEnableDisorderlyConduckt, CmdDeactivateDisorderlyConduckt, RpcDisableDisorderlyConduckt)
+    // ?? (?? isDisorderlyConducktActive)
 
-    // (CmdDisorderlyClick ถูกเรียกจาก HandleDuckCardClick)
+    // (CmdDisorderlyClick ??????????? HandleDuckCardClick)
     [Command(requiresAuthority = false)]
     public void CmdDisorderlyClick(NetworkIdentity clickedCard)
     {
-        // (โค้ด CmdDisorderlyClick ที่แก้แล้ว...)
+        // (???? CmdDisorderlyClick ??????????...)
         if (clickedCard == null) return;
         DuckCard selectedDuck = clickedCard.GetComponent<DuckCard>();
         if (selectedDuck == null) return;
@@ -2491,14 +2571,14 @@ public partial class PlayerManager : NetworkBehaviour
         if (secondHadTarget) CmdSpawnTargetForDuck(firstSelectedDuck.netId);
 
         firstSelectedDuck = null;
-        // (โหมดนี้อาจจะอยากให้ Active ค้างไว้ ไม่ต้องปิด)
+        // (??????????????????? Active ??????? ??????????)
         // activeSkillMode = SkillMode.None; 
     }
 
     [Command(requiresAuthority = false)]
     private void CmdSpawnTargetForDuck(uint duckNetId)
     {
-        // (โค้ด CmdSpawnTargetForDuck ที่แก้แล้ว...)
+        // (???? CmdSpawnTargetForDuck ??????????...)
         if (!NetworkServer.spawned.TryGetValue(duckNetId, out NetworkIdentity duckNi))
             return;
         if (targetPrefab == null) return;
@@ -2512,11 +2592,11 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     // Duck Shuffle  Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdDeactivateDuckShuffle, RpcDisableDuckShuffle)
-    // ⛔️ (ลบ isDuckShuffleActive)
+    // ?? (?? CmdDeactivateDuckShuffle, RpcDisableDuckShuffle)
+    // ?? (?? isDuckShuffleActive)
 
-    // (TryDuckShuffle เรียก CmdSetSkillMode(SkillMode.DuckShuffle))
-    // (CmdSetSkillMode จะเรียก CmdActivateDuckShuffle)
+    // (TryDuckShuffle ????? CmdSetSkillMode(SkillMode.DuckShuffle))
+    // (CmdSetSkillMode ??????? CmdActivateDuckShuffle)
     [Command(requiresAuthority = false)]
     public void CmdActivateDuckShuffle()
     {
@@ -2530,21 +2610,21 @@ public partial class PlayerManager : NetworkBehaviour
         {
             if (!CardPoolManager.HasCards()) break;
 
-            // (FIX) เรียก DrawRandomCard() ที่ไม่ Obsolete
+            // (FIX) ????? DrawRandomCard() ?????? Obsolete
             GameObject cardGO = CardPoolManager.DrawRandomCard();
             if (cardGO == null) break;
 
-            // (FIX) ใช้วิธีที่ถูกต้องในการกำหนด Zone/ตำแหน่ง
+            // (FIX) ??????????????????????????? Zone/???????
             var duck = cardGO.GetComponent<DuckCard>();
             if (duck != null)
             {
-                // ฟังก์ชันนี้จะเซ็ต zone, RowNet, ColNet ให้เอง
+                // ????????????????? zone, RowNet, ColNet ??????
                 duck.ServerAssignToZone(ZoneKind.DuckZone, 0, i);
             }
 
             NetworkServer.Spawn(cardGO);
 
-            // (FIX) ลบ RpcAddCardToDuckZone(cardGO) ทิ้ง
+            // (FIX) ?? RpcAddCardToDuckZone(cardGO) ????
         }
 
         StartCoroutine(RecreateTargetsAfterShuffle(oldTargets));
@@ -2554,7 +2634,7 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private IEnumerator RecreateTargetsAfterShuffle(List<int> oldCols)
     {
-        // (โค้ด RecreateTargetsAfterShuffle ที่แก้แล้ว...)
+        // (???? RecreateTargetsAfterShuffle ??????????...)
         yield return null;
         List<DuckCard> ducks = FindDucksInRow(0);
         foreach (int col in oldCols)
@@ -2568,7 +2648,7 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void RemoveAllDucks()
     {
-        // (โค้ด RemoveAllDucks ที่แก้แล้ว...)
+        // (???? RemoveAllDucks ??????????...)
         List<GameObject> ducksToDestroy = new List<GameObject>();
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
@@ -2580,45 +2660,48 @@ public partial class PlayerManager : NetworkBehaviour
             CardPoolManager.ReturnCard(duckGO);
             NetworkServer.Destroy(duckGO);
         }
+
+        // ???? DuckZone ?????? 6 ???????????????????? (????????????????????)
+        RefillDuckZoneIfNeeded();
     }
 
 
     // ========================
     // GivePeaceAChance Logic
     // ========================
-    // ⛔️ (ลบ CmdDeactivateGivePeaceAChance, RpcDisableGivePeaceAChance)
-    // ⛔️ (ลบ isGivePeaceActive)
+    // ?? (?? CmdDeactivateGivePeaceAChance, RpcDisableGivePeaceAChance)
+    // ?? (?? isGivePeaceActive)
 
-    // (TryGivePeaceAChance เรียก CmdSetSkillMode(SkillMode.GivePeaceAChance))
-    // (CmdSetSkillMode จะเรียก CmdActivateGivePeaceAChance)
+    // (TryGivePeaceAChance ????? CmdSetSkillMode(SkillMode.GivePeaceAChance))
+    // (CmdSetSkillMode ??????? CmdActivateGivePeaceAChance)
     [Command(requiresAuthority = false)]
     private void CmdActivateGivePeaceAChance()
     {
         RemoveAllTargets();
-        // (CmdSetSkillMode จะปิดโหมดเอง)
+        // (CmdSetSkillMode ????????????)
     }
 
     // ========================
     // Resurrection  Logic (Refactored)
     // ========================
-    // ⛔️ (ลบ CmdDeactivateResurrectionMode, RpcDisableResurrectionMode)
-    // ⛔️ (ลบ isResurrectionModeActive)
+    // ?? (?? CmdDeactivateResurrectionMode, RpcDisableResurrectionMode)
+    // ?? (?? isResurrectionModeActive)
 
-    // (TryUseResurrection เรียก CmdSetSkillMode(SkillMode.Resurrection))
-    // (CmdSetSkillMode จะเรียก CmdActivateResurrectionMode)
+    // (TryUseResurrection ????? CmdSetSkillMode(SkillMode.Resurrection))
+    // (CmdSetSkillMode ??????? CmdActivateResurrectionMode)
     [Command]
     private void CmdActivateResurrectionMode()
     {
         const int maxPerColor = 5;
 
-        // 1. (FIX) เรียก GetTotalDuckCounts (ตัวที่เราเพิ่งแก้)
+        // 1. (FIX) ????? GetTotalDuckCounts (?????????????????)
         var totalCounts = GetTotalDuckCounts();
         var lowColors = new List<string>();
 
-        // 2. (FIX) วนลูปจาก Key ที่ได้มา (ไม่ใช่จากฟังก์ชันที่ไม่มี)
+        // 2. (FIX) ???????? Key ???????? (?????????????????????????)
         foreach (string color in totalCounts.Keys)
         {
-            // (กันไม่ให้คืนชีพ Marsh)
+            // (??????????????? Marsh)
             if (color == "Marsh") continue;
 
             int currentCount = totalCounts.GetValueOrDefault(color, 0);
@@ -2631,7 +2714,7 @@ public partial class PlayerManager : NetworkBehaviour
             int idx = Random.Range(0, lowColors.Count);
             string color = lowColors[idx];
 
-            // 3. (อันนี้ถูกแล้ว)
+            // 3. (?????????????)
             CardPoolManager.AddToPool(color);
         }
 
@@ -2640,18 +2723,18 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private Dictionary<string, int> GetTotalDuckCounts()
     {
-        // 1. (FIX) ใช้ชื่อฟังก์ชันที่ถูกต้อง (GetAllPoolCounts)
+        // 1. (FIX) ????????????????????????? (GetAllPoolCounts)
         Dictionary<string, int> counts = CardPoolManager.GetAllPoolCounts();
 
-        // 2. วนหาเป็ดใน DuckZone
+        // 2. ?????????? DuckZone
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
             DuckCard card = netId.GetComponent<DuckCard>();
 
-            // (FIX) ใช้ .zone (ตัวเล็ก) และใช้ Helper 'ExtractDuckKeyFromCard' (ที่คุณมีอยู่แล้ว)
+            // (FIX) ??? .zone (???????) ?????? Helper 'ExtractDuckKeyFromCard' (????????????????)
             if (card != null && card.zone == ZoneKind.DuckZone)
             {
-                string key = ExtractDuckKeyFromCard(card.gameObject); // (ใช้ฟังก์ชันที่คุณมี)
+                string key = ExtractDuckKeyFromCard(card.gameObject); // (???????????????????)
                 if (string.IsNullOrEmpty(key)) continue;
 
                 if (!counts.ContainsKey(key))
@@ -2669,59 +2752,57 @@ public partial class PlayerManager : NetworkBehaviour
     // ========================
     // ShowCard Logic
     // ========================
-    // FIX 1: ClientRpc ต้องรับ NetworkIdentity
+    // FIX 1: ClientRpc ??????? NetworkIdentity
     [ClientRpc]
     void RpcShowCard(NetworkIdentity cardIdentity, string type)
     {
-        if (cardIdentity == null)
+        // กันเคส RPC มาช้า/การ์ดถูกลบไปแล้ว
+        if (!NetworkClient.active) return;
+        if (cardIdentity == null || cardIdentity.gameObject == null)
         {
-            Debug.LogError("[RpcShowCard] cardIdentity is null!");
+            Debug.LogWarning("[RpcShowCard] การ์ดว่างหรือถูกทำลายแล้ว ข้ามการแสดงผล");
             return;
         }
 
-        Debug.Log($"[RpcShowCard] called for {cardIdentity.netId} type={type} isOwned={cardIdentity.isOwned}");
-        GameObject card = cardIdentity.gameObject;
-
-        if (type == "Dealt")
+        try
         {
-            // ⛔️ [FIX] ลบ (หรือ Comment out) บรรทัด SetParent นี้ทิ้ง ⛔️
-            // if (cardIdentity.isOwned && PlayerArea != null)
-            //     card.transform.SetParent(PlayerArea.transform, false); 
+            Debug.Log($"[RpcShowCard] แสดงการ์ด netId={cardIdentity.netId} type={type} isOwned={cardIdentity.isOwned}");
+            GameObject card = cardIdentity.gameObject;
 
-            // ✅ เหลือไว้แค่โค้ด "Flip" การ์ดของศัตรู ✅
-            // (แก้จาก 'if (!cardIdentity.isOwned...)' เป็น 'if' เฉยๆ)
-            if (!cardIdentity.isOwned && EnemyArea != null)
+            if (type == "Dealt")
             {
-                // card.transform.SetParent(EnemyArea.transform, false); // (อันนี้ Comment out ถูกแล้ว)
-                card.GetComponent<CardFlipper>()?.Flip();
+                // ฝั่งศัตรูพลิกหลังทันที (ปล่อยให้ DuckCard จัด layout เอง)
+                if (!cardIdentity.isOwned && EnemyArea != null)
+                {
+                    card.GetComponent<CardFlipper>()?.Flip();
+                }
+            }
+            else if (type == "Played")
+            {
+                card.SetActive(true);
+                Canvas.ForceUpdateCanvases();
+
+                var dropZone = FindObjectOfType<DropZone>();
+                if (dropZone != null)
+                    dropZone.PlaceCard(card);
+
+                if (!cardIdentity.isOwned)
+                    card.GetComponent<CardFlipper>()?.Flip();
+
+                if (isLocalPlayer && cardIdentity.isOwned)
+                {
+                    HandleCardActivation(card);
+                }
             }
         }
-        else if (type == "Played")
+        catch (System.Exception ex)
         {
-            // (ส่วนนี้ Comment out ถูกต้องแล้ว)
-            // if (DropZone != null)
-            // { ... }
-
-            // (โค้ดที่เหลือถูกต้อง)
-            card.SetActive(true);
-            Canvas.ForceUpdateCanvases();
-
-            var dropZone = FindObjectOfType<DropZone>();
-            if (dropZone != null)
-                dropZone.PlaceCard(card);
-
-            if (!cardIdentity.isOwned)
-                card.GetComponent<CardFlipper>()?.Flip();
-
-            if (isLocalPlayer && cardIdentity.isOwned)
-            {
-                HandleCardActivation(card);
-            }
+            Debug.LogError($"[RpcShowCard] ขัดข้อง: {ex}");
         }
     }
 
 
-    // (ฟังก์ชันนี้ทำงานบน Client ของคนที่เล่นการ์ด)
+    // (?????????????????? Client ?????????????????)
     private void HandleCardActivation(GameObject card)
     {
         SkillMode selectedSkill = SkillMode.None;
@@ -2761,14 +2842,14 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (selectedSkill != SkillMode.None)
         {
-            // ส่ง Command เปลี่ยน State ไปที่ Server
+            // ??? Command ??????? State ????? Server
             CmdSetSkillMode(selectedSkill);
         }
     }
 
 
     // ========================
-    // ตัวอย่าง Targeting
+    // ???????? Targeting
     // ========================
     [Command]
     public void CmdTargetSelfCard()
@@ -2779,17 +2860,27 @@ public partial class PlayerManager : NetworkBehaviour
     [Command(requiresAuthority = false)]
     public void CmdTargetOtherCard(GameObject target)
     {
-        var opponentIdentity = target.GetComponent<NetworkIdentity>();
-        if (opponentIdentity != null)
+        if (target == null)
         {
-            TargetOtherCard(opponentIdentity.connectionToClient);
-        }
-
-        if (!target)
-        {
-            Debug.LogError("[CmdTargetOtherCard] target GameObject is null!");
+            Debug.LogError("[CmdTargetOtherCard] target GameObject เป็น null ข้ามคำสั่ง");
             return;
         }
+
+        var opponentIdentity = target.GetComponent<NetworkIdentity>();
+        if (opponentIdentity == null)
+        {
+            Debug.LogError("[CmdTargetOtherCard] target ไม่มี NetworkIdentity ข้ามคำสั่ง");
+            return;
+        }
+
+        var conn = opponentIdentity.connectionToClient;
+        if (conn == null)
+        {
+            Debug.LogWarning("[CmdTargetOtherCard] connectionToClient เป็น null ข้ามคำสั่ง");
+            return;
+        }
+
+        TargetOtherCard(conn);
     }
 
     [TargetRpc]
@@ -2813,12 +2904,23 @@ public partial class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcIncrementClick(GameObject card)
     {
-        var increment = card.GetComponent<IncrementClick>();
-        if (increment != null)
+        if (!NetworkClient.active) return;
+        if (card == null) return;
+
+        try
         {
-            increment.NumberOfClicks++;
-            Debug.Log("การ์ดนี้ถูกคลิกแล้ว " + increment.NumberOfClicks + " times!");
+            var increment = card.GetComponent<IncrementClick>();
+            if (increment != null)
+            {
+                increment.NumberOfClicks++;
+                Debug.Log($"[RpcIncrementClick] นับคลิก = {increment.NumberOfClicks}");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[RpcIncrementClick] ขัดข้อง: {ex}");
         }
     }
 }
+
 

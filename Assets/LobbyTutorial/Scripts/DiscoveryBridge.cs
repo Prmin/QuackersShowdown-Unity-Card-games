@@ -56,7 +56,7 @@ public class DiscoveryBridge : MonoBehaviour
     {
         yield return new WaitForSeconds(1f);
         if (seen.Count == 0)
-            Debug.LogWarning("[DiscoveryBridge] No hosts found yet. Is the host advertising?");
+            Debug.LogWarning("true");
     }
 
     public void StopClientScan()

@@ -53,6 +53,10 @@ public class DragDrop : NetworkBehaviour
     public void StartDrag()
     {
         if (!isDraggable) return;
+        // ถ้ามีสกิลกำลังทำงานอยู่ ไม่ให้ลากใบใหม่จนกว่าจะจบ
+        var pm = PlayerManager.localInstance;
+        if (pm != null && pm.activeSkillMode != SkillMode.None)
+            return;
         isDragging = true;
         startParent = transform.parent;
 
@@ -62,6 +66,10 @@ public class DragDrop : NetworkBehaviour
     public void EndDrag()
     {
         if (!isDraggable) return;
+        // ถ้ามีสกิลกำลังทำงานอยู่ ไม่ให้ลากใบใหม่จนกว่าจะจบ
+        var pm = PlayerManager.localInstance;
+        if (pm != null && pm.activeSkillMode != SkillMode.None)
+            return;
         isDragging = false;
         var rt = transform as RectTransform;
 

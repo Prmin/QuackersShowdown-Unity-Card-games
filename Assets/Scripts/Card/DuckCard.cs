@@ -125,6 +125,18 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         rect.anchoredPosition = Vector2.zero;
         rect.anchoredPosition3D = new Vector3(rect.anchoredPosition3D.x, rect.anchoredPosition3D.y, 0f);
 
+        // Keep drop cards at intended width (DropZone GridLayoutGroup was squeezing to 100)
+        if (zone == ZoneKind.DropZone)
+        {
+            const float dropWidth = 120f;
+            rect.sizeDelta = new Vector2(dropWidth, rect.sizeDelta.y);
+            if (rect.TryGetComponent<LayoutElement>(out var le))
+            {
+                le.preferredWidth = dropWidth;
+                if (le.preferredHeight < 0f) le.preferredHeight = rect.sizeDelta.y;
+            }
+        }
+
         if (!parentHasLayout && (zone == ZoneKind.DuckZone || zone == ZoneKind.DropZone || zone == ZoneKind.TargetZone))
         {
             rect.anchoredPosition3D = new Vector3(ColNet * ManualSpacingX, 0f, 0f);
