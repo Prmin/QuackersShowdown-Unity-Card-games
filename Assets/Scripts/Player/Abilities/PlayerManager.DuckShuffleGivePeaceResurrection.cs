@@ -69,30 +69,21 @@ public partial class PlayerManager
         RemoveAllTargets();
     }
 
-    [Command]
-    private void CmdActivateResurrectionMode()
+
+    // ===== Resurrection =====
+    [Server]
+    private void Server_ActivateResurrectionMode()
     {
         const int maxPerColor = 5;
 
         string myColor = ColorIndexToDuckKey(duckColorIndex);
-        if (string.IsNullOrEmpty(myColor) || myColor == "Marsh")
-        {
-            string m = $"[Resurrection] no effect (invalid myColor) duckColorIndex={duckColorIndex}";
-            Debug.Log(m);
-            TargetResurrectionLog(connectionToClient, m);
-            return;
-        }
 
-        // pool count ก่อน
-        int poolBefore = 0;
-        var poolCounts = CardPoolManager.GetAllPoolCounts();
-        if (poolCounts != null && poolCounts.TryGetValue(myColor, out int pb))
-            poolBefore = pb;
+        // pool ก่อน
+        int poolBefore = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
 
-        // zone count ก่อน (นับเฉพาะ DuckZone แถว 0 ที่เป็นสีของเรา)
+        // zone ก่อน (นับเฉพาะแถว 0 + สีตัวเอง)
         int zoneBefore = 0;
-        var ducks = FindDucksInRow(0);
-        foreach (var d in ducks)
+        foreach (var d in FindDucksInRow(0))
         {
             string key = ExtractDuckKeyFromCard(d.gameObject);
             if (key == myColor) zoneBefore++;
@@ -100,37 +91,31 @@ public partial class PlayerManager
 
         int totalBefore = poolBefore + zoneBefore;
 
-        // ถ้าครบแล้ว ไม่ทำอะไร
         if (totalBefore >= maxPerColor)
         {
-            string m =
-                $"[Resurrection] no effect color={myColor} (already {totalBefore}/{maxPerColor}) " +
-                $"| pool {poolBefore}->{poolBefore} | zone {zoneBefore}->{zoneBefore}";
-            Debug.Log(m);
-            TargetResurrectionLog(connectionToClient, m);
+            Debug.Log(
+                $"[Resurrection] no effect color={myColor} " +
+                $"| total {totalBefore}->{totalBefore} (max {maxPerColor}) " +
+                $"| pool {poolBefore}->{poolBefore} | zone {zoneBefore}->{zoneBefore} " +
+                $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
+            );
             return;
         }
 
-        // คืนชีพ 1 ใบ (เข้า pool)
         CardPoolManager.AddToPool(myColor);
 
-        // pool count หลัง
-        int poolAfter = poolBefore;
-        poolCounts = CardPoolManager.GetAllPoolCounts();
-        if (poolCounts != null && poolCounts.TryGetValue(myColor, out int pa))
-            poolAfter = pa;
-
-        int zoneAfter = zoneBefore; // zone ไม่เปลี่ยนจากการ add เข้า pool
+        int poolAfter = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
+        int zoneAfter = zoneBefore;
         int totalAfter = poolAfter + zoneAfter;
 
-        string msg =
+        Debug.Log(
             $"[Resurrection] revived color={myColor} " +
             $"| total {totalBefore}->{totalAfter} (max {maxPerColor}) " +
-            $"| pool {poolBefore}->{poolAfter} | zone {zoneBefore}->{zoneAfter}";
-
-        Debug.Log(msg);
-        TargetResurrectionLog(connectionToClient, msg);
+            $"| pool {poolBefore}->{poolAfter} | zone {zoneBefore}->{zoneAfter} " +
+            $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
+        );
     }
+
 
 
     [TargetRpc]
