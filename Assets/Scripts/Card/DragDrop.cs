@@ -76,6 +76,7 @@ public class DragDrop : NetworkBehaviour
         if (isOverDropZone && dropZone != null)
         {
             transform.SetParent(dropZone.transform, false);
+            GetComponent<CardZoom>()?.OnHoverExit();
             isDraggable = false;
 
             if (rt != null)
