@@ -64,7 +64,7 @@ namespace Mirror
 
             // add batch
             batches.Enqueue(writer);
-            //Debug.Log($"Adding Batch {BitConverter.ToString(batch.Array, batch.Offset, batch.Count)} => batches={batches.Count} reader={reader}");
+            //;
             return true;
         }
 
@@ -127,3 +127,4 @@ namespace Mirror
         }
     }
 }
+

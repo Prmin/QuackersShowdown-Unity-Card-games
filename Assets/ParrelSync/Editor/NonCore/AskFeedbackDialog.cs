@@ -1,4 +1,4 @@
-﻿namespace ParrelSync.NonCore
+namespace ParrelSync.NonCore
 {
     using UnityEditor;
     using UnityEngine;
@@ -42,24 +42,24 @@
             {
                 // First parameter.
                 case 0:
-                    Debug.Log("AskFeedbackDialog: Star on GitHub selected");
+                    ;
                     EditorPrefs.SetBool(StopShowingKey, true);
                     EditorPrefs.DeleteKey(InitializeOnLoadCountKey);
                     Application.OpenURL(ExternalLinks.GitHubHome);
                     break;
                 // Second parameter.
                 case 1:
-                    Debug.Log("AskFeedbackDialog: Close and never show again.");
+                    ;
                     EditorPrefs.SetBool(StopShowingKey, true);
                     EditorPrefs.DeleteKey(InitializeOnLoadCountKey);
                     break;
                 // Third parameter.
                 case 2:
-                    Debug.Log("AskFeedbackDialog: Remind me next time");
+                    ;
                     EditorPrefs.SetInt(InitializeOnLoadCountKey, 0);
                     break;
                 default:
-                    //Debug.Log("Close windows.");
+                    //;
                     break;
             }
         }
@@ -72,7 +72,7 @@
         //{
         //    EditorPrefs.DeleteKey(InitializeOnLoadCountKey);
         //    EditorPrefs.DeleteKey(StopShowingKey);
-        //    Debug.Log("AskFeedbackDialog keys deleted");
+        //    ;
         //}
     }
 }

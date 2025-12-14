@@ -119,7 +119,7 @@ namespace Mirror
             {
                 // log when work begins = thread starts.
                 // very important for debugging threads.
-                Debug.Log($"{identifier}: started.");
+                ;
 
                 // show this thread in Unity profiler
                 Profiler.BeginThreadProfiling("Mirror Worker Threads", $"{identifier}");
@@ -138,7 +138,7 @@ namespace Mirror
             // Thread.Interrupt() will gracefully raise a InterruptedException.
             catch (ThreadInterruptedException)
             {
-                Debug.Log($"{identifier}: interrupted. That's okay.");
+                ;
             }
             // Unity domain reload will cause a ThreadAbortException.
             // for example, when saving a changed script while in play mode.
@@ -162,8 +162,9 @@ namespace Mirror
                 // log when work ends = thread terminates.
                 // very important for debugging threads.
                 // 'finally' to log no matter what (even if exceptions)
-                Debug.Log($"{identifier}: ended.");
+                ;
             }
         }
     }
 }
+

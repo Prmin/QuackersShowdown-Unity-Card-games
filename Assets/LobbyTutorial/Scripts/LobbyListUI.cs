@@ -73,6 +73,7 @@ public class LobbyListUI : MonoBehaviour
         ClearList();
         // เริ่มสแกน LAN ใหม่
         DiscoveryBridge.I?.StartClientScan();
-        Debug.Log("[LobbyListUI] Refresh requested → scanning LAN.");
+        ;
     }
 }
+

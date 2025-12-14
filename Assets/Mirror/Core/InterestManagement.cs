@@ -84,7 +84,7 @@ namespace Mirror
                     {
                         // new observer
                         conn.AddToObserving(identity);
-                        // Debug.Log($"New Observer for {gameObject} {conn}");
+                        // ;
                         changed = true;
                     }
                 }
@@ -97,7 +97,7 @@ namespace Mirror
                 {
                     // removed observer
                     conn.RemoveFromObserving(identity, false);
-                    // Debug.Log($"Removed Observer for {gameObject} {conn}");
+                    // ;
                     changed = true;
                 }
             }
@@ -144,3 +144,4 @@ namespace Mirror
         }
     }
 }
+

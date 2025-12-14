@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 namespace ParrelSync
 {
@@ -23,7 +23,7 @@ namespace ParrelSync
                     );
                     foreach (var path in paths)
                     {
-                        Debug.Log("Attempting to save " + path + " are blocked.");
+                        ;
                     }
                 }
                 return new string[0] { };

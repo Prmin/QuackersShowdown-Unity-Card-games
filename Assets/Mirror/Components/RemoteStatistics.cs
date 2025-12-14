@@ -117,7 +117,7 @@ namespace Mirror
             if (File.Exists(path))
             {
                 // don't spam the server logs for every player's loaded file
-                // Debug.Log($"RemoteStatistics: loading password file: {path}");
+                // ;
                 try
                 {
                     serverPassword = File.ReadAllText(path);
@@ -174,7 +174,7 @@ namespace Mirror
                 serverPassword.Equals(v))
             {
                 serverAuthenticated = true;
-                Debug.Log($"RemoteStatistics: connectionId {connectionToClient.connectionId} authenticated with player {name}");
+                ;
             }
         }
 
@@ -439,3 +439,4 @@ namespace Mirror
         }
     }
 }
+

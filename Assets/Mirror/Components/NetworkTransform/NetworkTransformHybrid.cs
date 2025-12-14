@@ -311,7 +311,7 @@ namespace Mirror
             // don't apply for local player with authority
             if (IsClientWithAuthority) return;
 
-            // Debug.Log($"[{name}] Client: received delta for baseline #{baselineTick}");
+            // ;
 
             // on the client, we receive rpcs for all entities.
             // not all of them have a connectionToServer.
@@ -575,7 +575,7 @@ namespace Mirror
             // or non-knematic Rigidbodies when teleporting.
             Physics.SyncTransforms();
 
-            // Debug.Log($"[{name}] ResetState to baselineTick=0");
+            // ;
         }
 
         protected virtual void OnDisable() => ResetState();
@@ -715,3 +715,4 @@ namespace Mirror
 #endif
     }
 }
+

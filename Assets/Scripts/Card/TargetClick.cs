@@ -33,7 +33,7 @@ public class TargetClick : NetworkBehaviour
         // 3) ดูว่า Object นี้เป็นของใคร
         //    - isOwned=true แปลว่า Local Player เป็นเจ้าของ (owner)
         //    - ถ้า false แสดงว่าเป็นของผู้เล่นอื่น หรือไม่มีการ Assign Authority ให้
-        Debug.Log($"[TargetClick] OnTargetClick => isOwned={isOwned}, gameObject={gameObject.name}");
+        ;
 
         // 4) เรียก Command ฝั่ง Server 
         //    *หมายเหตุ* ต้องแน่ใจว่าใน PlayerManager คุณเขียน:
@@ -49,3 +49,4 @@ public class TargetClick : NetworkBehaviour
         }
     }
 }
+

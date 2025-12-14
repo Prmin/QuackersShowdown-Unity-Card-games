@@ -74,7 +74,7 @@ namespace Mirror.Authenticators
         /// <param name="msg">The message payload</param>
         public void OnAuthRequestMessage(NetworkConnectionToClient conn, AuthRequestMessage msg)
         {
-            //Debug.Log($"Authentication Request: {msg.authUsername} {msg.authPassword}");
+            //;
 
             if (connectionsPendingDisconnect.Contains(conn)) return;
 
@@ -173,7 +173,7 @@ namespace Mirror.Authenticators
         {
             if (msg.code == 100)
             {
-                //Debug.Log($"Authentication Response: {msg.message}");
+                //;
 
                 // Authentication has been accepted
                 ClientAccept();
@@ -190,3 +190,4 @@ namespace Mirror.Authenticators
         #endregion
     }
 }
+

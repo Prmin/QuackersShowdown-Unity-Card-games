@@ -94,7 +94,7 @@ namespace Mirror
         // see comments at the top of this file
         public static void OnTimeSnapshot(TimeSnapshot snap)
         {
-            // Debug.Log($"NetworkClient: OnTimeSnapshot @ {snap.remoteTime:F3}");
+            // ;
 
             // (optional) dynamic adjustment
             if (snapshotSettings.dynamicAdjustment)
@@ -124,7 +124,7 @@ namespace Mirror
                 snapshotSettings.catchupPositiveThreshold,
                 ref deliveryTimeEma);
 
-            // Debug.Log($"inserted TimeSnapshot remote={snap.remoteTime:F2} local={snap.localTime:F2} total={snapshots.Count}");
+            // ;
         }
 
         // call this from early update, so the timeline is safe to use in update
@@ -144,8 +144,9 @@ namespace Mirror
                 // TimeSnapshot doesn't interpolate anything.
                 // this is merely to keep removing older snapshots.
                 SnapshotInterpolation.StepInterpolation(snapshots, localTimeline, out _, out _, out double t);
-                // Debug.Log($"NetworkClient SnapshotInterpolation @ {localTimeline:F2} t={t:F2}");
+                // ;
             }
         }
     }
 }
+

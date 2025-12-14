@@ -255,7 +255,7 @@ namespace Mirror
             switch (Output)
             {
                 case OutputType.UnityLog:
-                    Debug.Log(printBuilder.ToString());
+                    ;
                     break;
                 case OutputType.StdOut:
                     Console.Write(printBuilder);
@@ -313,3 +313,4 @@ namespace Mirror
         }
     }
 }
+

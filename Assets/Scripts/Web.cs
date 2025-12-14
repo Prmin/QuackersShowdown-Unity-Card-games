@@ -22,7 +22,7 @@ public class Web : MonoBehaviour
         if (www.result == UnityWebRequest.Result.Success)
         {
             // แสดงผลลัพธ์จากเซิร์ฟเวอร์ (ในกรณีนี้คือ JSON)
-            Debug.Log("Response: " + www.downloadHandler.text);
+            ;
 
             // สามารถนำ JSON ที่ได้รับมาตรวจสอบได้
             // เช่น {"success": false, "message": "Invalid password"}
@@ -36,3 +36,4 @@ public class Web : MonoBehaviour
 
     }
 }
+

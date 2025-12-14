@@ -1,4 +1,4 @@
-﻿/* 
+/* 
     ------------------- Code Monkey -------------------
 
     Thank you for downloading this package
@@ -34,7 +34,7 @@ public class HighscoreTable : MonoBehaviour {
 
         if (highscores == null) {
             // There's no stored table, initialize
-            Debug.Log("Initializing table with default values...");
+            ;
             AddHighscoreEntry(1000000, "CMK");
             AddHighscoreEntry(897621, "JOE");
             AddHighscoreEntry(872931, "DAV");
@@ -174,3 +174,4 @@ public class HighscoreTable : MonoBehaviour {
     }
 
 }
+

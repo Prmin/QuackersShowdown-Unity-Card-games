@@ -120,7 +120,7 @@ namespace Mirror
 
         void SceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer)
         {
-            //Debug.Log($"NetworkRoom SceneLoadedForPlayer scene: {SceneManager.GetActiveScene().path} {conn}");
+            //;
 
             if (Utils.IsSceneActive(RoomScene))
             {
@@ -206,7 +206,7 @@ namespace Mirror
             // cannot join game in progress
             if (!Utils.IsSceneActive(RoomScene))
             {
-                Debug.Log($"Not in Room scene...disconnecting {conn}");
+                ;
                 conn.Disconnect();
                 return;
             }
@@ -267,7 +267,7 @@ namespace Mirror
         /// <param name="conn">Connection from client.</param>
         public override void OnServerReady(NetworkConnectionToClient conn)
         {
-            //Debug.Log($"NetworkRoomManager OnServerReady {conn}");
+            //;
             base.OnServerReady(conn);
 
             if (conn != null && conn.identity != null)
@@ -294,7 +294,7 @@ namespace Mirror
             {
                 allPlayersReady = false;
 
-                //Debug.Log("NetworkRoomManager.OnServerAddPlayer playerPrefab: {roomPlayerPrefab.name}");
+                //;
 
                 GameObject newRoomGameObject = OnRoomServerCreateRoomPlayer(conn);
                 if (newRoomGameObject == null)
@@ -305,7 +305,7 @@ namespace Mirror
             else
             {
                 // Late joiners not supported...should've been kicked by OnServerDisconnect
-                Debug.Log($"Not in Room scene...disconnecting {conn}");
+                ;
                 conn.Disconnect();
             }
         }
@@ -681,3 +681,4 @@ namespace Mirror
         #endregion
     }
 }
+

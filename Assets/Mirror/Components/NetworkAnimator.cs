@@ -552,7 +552,7 @@ namespace Mirror
             if (!clientAuthority)
                 return;
 
-            //Debug.Log($"OnAnimationMessage for netId {netId}");
+            //;
 
             // handle and broadcast
             using (NetworkReaderPooled networkReader = NetworkReaderPool.Get(parameters))
@@ -660,3 +660,4 @@ namespace Mirror
         #endregion
     }
 }
+

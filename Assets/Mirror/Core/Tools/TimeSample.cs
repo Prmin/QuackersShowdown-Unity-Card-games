@@ -44,7 +44,7 @@ namespace Mirror
             // remember when Begin was called.
             // keep StopWatch running so we can average over the given interval.
             beginTime = watch.Elapsed.TotalSeconds;
-            // Debug.Log($"Begin @ {beginTime:F4}");
+            // ;
         }
 
         // end is called after the code to be sampled
@@ -59,3 +59,4 @@ namespace Mirror
         }
     }
 }
+

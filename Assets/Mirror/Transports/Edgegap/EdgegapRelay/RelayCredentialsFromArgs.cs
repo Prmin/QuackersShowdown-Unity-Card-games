@@ -14,7 +14,7 @@ namespace Edgegap
             // parse session_id via regex
             String sessionId = EdgegapKcpTransport.ReParse(cmd, "session_id=(\\d+)", "111111");
             String userID = EdgegapKcpTransport.ReParse(cmd, "user_id=(\\d+)", "222222");
-            Debug.Log($"Parsed sessionId: {sessionId} user_id: {userID}");
+            ;
 
             // configure transport
             EdgegapKcpTransport transport = GetComponent<EdgegapKcpTransport>();
@@ -23,3 +23,4 @@ namespace Edgegap
         }
     }
 }
+

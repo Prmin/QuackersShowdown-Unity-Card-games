@@ -108,7 +108,7 @@ namespace Edgegap
                                 state = (ConnectionState)reader.ReadByte();
 
                                 // log state changes for debugging.
-                                if (state != last) Debug.Log($"EdgegapServer: state updated to: {state}");
+                                if (state != last) ;
 
                                 // return true indicates Mirror to keep checking
                                 // for further messages.
@@ -125,7 +125,7 @@ namespace Edgegap
 
                                 connectionId = reader.ReadInt();
                                 segment = reader.ReadBytesSegment(reader.Remaining);
-                                // Debug.Log($"EdgegapServer: receiving from connId={connectionId}: {segment.ToHexString()}");
+                                // ;
                                 return true;
                             }
                             // wrong message type. return false, don't throw.
@@ -145,7 +145,7 @@ namespace Edgegap
         {
             using (NetworkWriterPooled writer = NetworkWriterPool.Get())
             {
-                // Debug.Log($"EdgegapServer: sending to connId={connectionId}: {data.ToHexString()}");
+                // ;
                 writer.WriteUInt(userId);
                 writer.WriteUInt(sessionId);
                 writer.WriteByte((byte)MessageType.Data);
@@ -201,3 +201,4 @@ namespace Edgegap
         }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEditor;
@@ -36,7 +36,7 @@ namespace ParrelSync
 
                 EditorPrefs.SetBool(key, value);
                 valueCache = value;
-                Debug.Log("Editor preference updated. key: " + key + ", value: " + value);
+                ;
             }
         }
 
@@ -207,9 +207,10 @@ namespace ParrelSync
                 AssetModPref.ClearValue();
                 AlsoCheckUnityLockFileStaPref.ClearValue();
                 OptionalSymbolicLinkFolders.ClearStoredValue();
-                Debug.Log("Editor preferences cleared");
+                ;
             }
             GUILayout.EndVertical();
         }
     }
 }
+

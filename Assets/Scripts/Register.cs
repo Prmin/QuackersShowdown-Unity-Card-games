@@ -58,7 +58,7 @@ public class Register : MonoBehaviour
         else
         {
             // แสดงผลลัพธ์ที่ได้รับจากเซิร์ฟเวอร์
-            Debug.Log(www.downloadHandler.text);
+            ;
 
             // แปลงผลลัพธ์ที่ได้จาก JSON (เช่น การตอบกลับ success, message)
             RegistrationResponse response = JsonUtility.FromJson<RegistrationResponse>(www.downloadHandler.text);
@@ -67,13 +67,13 @@ public class Register : MonoBehaviour
             if (response.success)
             {
                 // การลงทะเบียนสำเร็จ
-                Debug.Log("Registration successful!");
+                ;
                 SceneManager.LoadScene("Login_Scene");
             }
             else
             {
                 // การลงทะเบียนล้มเหลว แสดงข้อความที่ได้รับจากเซิร์ฟเวอร์
-                Debug.Log("Registration failed: " + response.message);
+                ;
             }
         }
     }
@@ -86,3 +86,4 @@ public class RegistrationResponse
     public bool success;
     public string message;
 }
+

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -135,10 +135,11 @@ namespace Mirror.Discovery
 
         public void OnDiscoveredServer(ServerResponse info)
         {
-            Debug.Log($"Discovered Server: {info.serverId} | {info.EndPoint} | {info.uri}");
+            ;
 
             // Note that you can check the versioning to decide if you can connect to the server or not using this method
             discoveredServers[info.serverId] = info;
         }
     }
 }
+

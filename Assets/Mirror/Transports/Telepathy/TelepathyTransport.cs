@@ -72,7 +72,7 @@ namespace Mirror
             // allocate enabled check only once
             enabledCheck = () => enabled;
 
-            Debug.Log("TelepathyTransport initialized!");
+            ;
         }
 
         // C#'s built in TCP sockets run everywhere except on WebGL
@@ -224,7 +224,7 @@ namespace Mirror
         // common
         public override void Shutdown()
         {
-            Debug.Log("TelepathyTransport Shutdown()");
+            ;
             client?.Disconnect();
             client = null;
             server?.Stop();
@@ -249,3 +249,4 @@ namespace Mirror
         public override string ToString() => $"Telepathy [{port}]";
     }
 }
+

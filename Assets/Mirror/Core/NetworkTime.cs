@@ -174,9 +174,9 @@ namespace Mirror
             // <0 means: server is ... seconds behind client's prediction.
             //           in other words, client is predicting too far ahead (not good)
             double adjustedError = localTime - message.predictedTimeAdjusted;
-            // Debug.Log($"[Server] unadjustedError:{(unadjustedError*1000):F1}ms adjustedError:{(adjustedError*1000):F1}ms");
+            // ;
 
-            // Debug.Log($"OnServerPing conn:{conn}");
+            // ;
             NetworkPongMessage pongMessage = new NetworkPongMessage
             (
                 message.localTime,
@@ -202,7 +202,7 @@ namespace Mirror
             // store adjusted prediction error for debug / GUI purposes
             _predictionErrorUnadjusted.Add(message.predictionErrorUnadjusted);
             predictionErrorAdjusted = message.predictionErrorAdjusted;
-            // Debug.Log($"[Client] predictionError avg={(_predictionErrorUnadjusted.Value*1000):F1} ms");
+            // ;
         }
 
         // server rtt calculation //////////////////////////////////////////////
@@ -211,7 +211,7 @@ namespace Mirror
         // reply with a pong containing the time from the server
         internal static void OnClientPing(NetworkPingMessage message)
         {
-            // Debug.Log($"OnClientPing conn:{conn}");
+            // ;
             NetworkPongMessage pongMessage = new NetworkPongMessage
             (
                 message.localTime,
@@ -241,3 +241,4 @@ namespace Mirror
         }
     }
 }
+

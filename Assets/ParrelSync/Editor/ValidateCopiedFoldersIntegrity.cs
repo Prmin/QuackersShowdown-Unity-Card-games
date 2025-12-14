@@ -37,7 +37,7 @@ namespace ParrelSync
 
             if (targetFolderHash != originalFolderHash)
             {
-                Debug.Log("ParrelSync: Detected changes in '" + folderName + "' directory. Updating cloned project...");
+                ;
                 FileUtil.ReplaceDirectory(originalFolderPath, targetFolderPath);
             }
         }

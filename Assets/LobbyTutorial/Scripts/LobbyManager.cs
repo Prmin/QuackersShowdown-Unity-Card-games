@@ -60,7 +60,7 @@ public class LobbyManager : MonoBehaviour
             int port = Mathf.Clamp(basePort + (pid % 16), 1024, 65535); // กระจาย 16 ช่อง
             PlayerPrefs.SetInt("HostPort", port);
             PlayerPrefs.Save();
-            Debug.Log($"[KCP] Auto HostPort={port} for this process (pid={pid})");
+            ;
         }
     }
 
@@ -139,7 +139,7 @@ public class LobbyManager : MonoBehaviour
                 NetworkManager.singleton.StartHost();
                 started = true;
                 PlayerPrefs.SetInt("HostPort", candidate);
-                Debug.Log($"[KCP] Host started on port {candidate}");
+                ;
                 break;
             }
             catch (System.Exception ex)
@@ -300,3 +300,4 @@ public class LobbyManager : MonoBehaviour
         DiscoveryBridge.I?.StartClientScan();
     }
 }
+

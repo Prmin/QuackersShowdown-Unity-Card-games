@@ -80,7 +80,7 @@ namespace Mirror
 
             // add the tolerance
             double safezone = multiples + dynamicAdjustmentTolerance;
-            // UnityEngine.Debug.Log($"sendInterval={sendInterval:F3} jitter std={jitterStandardDeviation:F3} => that is ~{multiples:F1} x sendInterval + {dynamicAdjustmentTolerance} => dynamic bufferTimeMultiplier={safezone}");
+            // UnityEngine.;
             return safezone;
         }
 
@@ -254,7 +254,7 @@ namespace Mirror
                 localTimescale = Timescale(drift, catchupSpeed, slowdownSpeed, absoluteNegativeThreshold, absolutePositiveThreshold);
 
                 // debug logging
-                // UnityEngine.Debug.Log($"sendInterval={sendInterval:F3} bufferTime={bufferTime:F3} drift={drift:F3} driftEma={driftEma.Value:F3} timescale={localTimescale:F3} deliveryIntervalEma={deliveryTimeEma.Value:F3}");
+                // UnityEngine.;
             }
         }
 
@@ -388,3 +388,4 @@ namespace Mirror
         }
     }
 }
+

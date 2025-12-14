@@ -29,7 +29,7 @@ public class CreateRoom : MonoBehaviour
         if (passwordToggle.isOn)
         {
             generatedPassword = GenerateRandomPassword();
-            Debug.Log("Room password: " + generatedPassword);
+            ;
         }
         else
         {
@@ -72,9 +72,10 @@ public class CreateRoom : MonoBehaviour
             }
             else
             {
-                Debug.Log("Room created successfully!");
-                Debug.Log($"Server Response: {www.downloadHandler.text}"); // แสดงผลตอบกลับจากเซิร์ฟเวอร์
+                ;
+                ; // แสดงผลตอบกลับจากเซิร์ฟเวอร์
             }
         }
     }
 }
+

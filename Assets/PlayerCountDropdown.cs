@@ -16,6 +16,6 @@ public class PlayerCountDropdown : MonoBehaviour
     void OnDropdownValueChanged(TMP_Dropdown dropdown)
     {
         int selectedValue = dropdown.value + 3; 
-        Debug.Log("Selected player count: " + selectedValue);
+        ;
     }
 }

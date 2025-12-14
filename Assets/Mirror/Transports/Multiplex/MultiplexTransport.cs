@@ -403,7 +403,7 @@ namespace Mirror
                     }
                     else
                     {
-                        Debug.Log($"[Multiplexer]: Server listening on port {portTransport.Port} with {transport}");
+                        ;
                     }
                 }
             }
@@ -456,3 +456,4 @@ namespace Mirror
         }
     }
 }
+

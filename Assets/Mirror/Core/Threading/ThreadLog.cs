@@ -60,7 +60,7 @@ namespace Mirror
             NetworkLoop.OnLateUpdate += OnLateUpdate;
 
             // log for debugging
-            Debug.Log("ThreadLog initialized.");
+            ;
         }
 #endif
 
@@ -91,7 +91,7 @@ namespace Mirror
                     // some projects may see unexpected messages that were previously hidden,
                     // since Unity wouldn't log them without ThreadLog.cs.
                     case LogType.Log:
-                        Debug.Log($"[Thread{entry.threadId}] {entry.message}\n{entry.stackTrace}");
+                        ;
                         break;
                     case LogType.Warning:
                         Debug.LogWarning($"[Thread{entry.threadId}] {entry.message}\n{entry.stackTrace}");
@@ -110,3 +110,4 @@ namespace Mirror
         }
     }
 }
+

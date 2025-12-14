@@ -194,7 +194,7 @@ namespace Mirror
             thread.Tick    = ThreadTick;
             thread.Cleanup = ThreadedShutdown;
             thread.Start();
-            Debug.Log($"ThreadedTransport: started worker thread!");
+            ;
         }
 
         protected virtual void OnDestroy()
@@ -278,7 +278,7 @@ namespace Mirror
                         // start the sleep timer if not started yet
                         if (sleepTimer == null)
                         {
-                            Debug.Log($"ThreadedTransport: sleep detected, sleeping in {sleepTimeoutInSeconds:F0}s!");
+                            ;
                             sleepTimer = Stopwatch.StartNew();
                         }
                         break;
@@ -288,7 +288,7 @@ namespace Mirror
                         // stop the sleep timer (if any)
                         if (sleepTimer != null)
                         {
-                            Debug.Log($"ThreadedTransport: Woke up, interrupting sleep timer!");
+                            ;
                             sleepTimer = null;
                         }
                         break;
@@ -313,7 +313,7 @@ namespace Mirror
             if (sleepTimer != null &&
                 sleepTimer.Elapsed.TotalSeconds >= sleepTimeoutInSeconds)
             {
-                Debug.Log("ThreadedTransport: entering sleep mode and stopping/disconnecting.");
+                ;
                 ThreadedServerStop();
                 ThreadedClientDisconnect();
                 sleepTimer = null;
@@ -707,7 +707,7 @@ namespace Mirror
         // otherwise putting down the device would slowly drain the battery after a day or more.
         void OnApplicationPause(bool pauseStatus)
         {
-            Debug.Log($"{GetType()}: OnApplicationPause={pauseStatus}");
+            ;
 
             // is sleep detection feature enabled?
             if (!sleepDetection) return;
@@ -754,3 +754,4 @@ namespace Mirror
         }
     }
 }
+

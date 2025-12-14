@@ -139,7 +139,7 @@ public class LobbyUI : MonoBehaviour
                 if (manager.CanStartGameNow(out var reason))
                     manager.StartGameIfReady();
                 else
-                    Debug.Log($"[Lobby] เริ่มเกมไม่ได้: {reason}");
+                    ;
             }
         }
         else
@@ -210,3 +210,4 @@ public class LobbyUI : MonoBehaviour
         }
     }
 }
+

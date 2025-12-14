@@ -32,7 +32,7 @@ namespace Mirror
                     hash *= prime;
                 }
 
-                //UnityEngine.Debug.Log($"Created stable hash {(ushort)hash} for {text}");
+                //UnityEngine.;
                 return (int)hash;
             }
         }
@@ -143,3 +143,4 @@ namespace Mirror
         }
     }
 }
+

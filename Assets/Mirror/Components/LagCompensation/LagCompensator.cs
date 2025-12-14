@@ -106,7 +106,7 @@ namespace Mirror
                 sample = Capture3D.Interpolate(resultBefore, resultAfter, t);
                 return true;
             }
-            else Debug.Log($"CmdClicked: history doesn't contain {estimatedTime:F3}");
+            else ;
 
             sample = default;
             return false;
@@ -195,3 +195,4 @@ namespace Mirror
         }
     }
 }
+

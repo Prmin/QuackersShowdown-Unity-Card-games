@@ -51,7 +51,7 @@ public class #SCRIPTNAME# : NetworkBehaviour
     /// <remarks>Handlers can be assigned from, and exist, in any script</remarks>
     public void OnStartServerHandler(NetworkIdentity identity)
     {
-        Debug.Log($"#SCRIPTNAME#.OnStartServerAction invoked for {identity}");
+        ;
     }
 
     #endregion
@@ -134,3 +134,4 @@ public class #SCRIPTNAME# : NetworkBehaviour
 
     #endregion
 }
+

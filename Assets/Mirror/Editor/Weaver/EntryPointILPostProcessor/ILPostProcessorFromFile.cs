@@ -25,7 +25,7 @@ namespace Mirror.Weaver
             ILPostProcessorHook ilpp = new ILPostProcessorHook();
             if (ilpp.WillProcess(assembly))
             {
-                //Debug.Log($"Will Process: {assembly.Name}");
+                //;
 
                 // process it like Unity would
                 ILPostProcessResult result = ilpp.Process(assembly);
@@ -51,3 +51,4 @@ namespace Mirror.Weaver
     }
 }
 #endif
+

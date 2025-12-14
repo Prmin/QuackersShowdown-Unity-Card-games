@@ -183,7 +183,7 @@ namespace Mirror
             // skip if host mode or already separated
             if (isServer || physicsCopy != null) return;
 
-            // Debug.Log($"Separating Physics for {name}"); // logging this allocates too much
+            // ; // logging this allocates too much
 
             // create an empty GameObject with the same name + _Physical
             // it's important to copy world position/rotation/scale, not local!
@@ -309,7 +309,7 @@ namespace Mirror
             {
                 tf.position = physicsCopyRigidbody.position;
                 tf.rotation = physicsCopyRigidbody.rotation;
-                Debug.Log($"[PredictedRigidbody] Teleported because distance to physics copy = {distance:F2} > threshold {threshold:F2}");
+                ;
                 return;
             }
 
@@ -338,7 +338,7 @@ namespace Mirror
             if (sqrDistance > smoothFollowThresholdSqr)
             {
                 tf.SetPositionAndRotation(physicsPosition, physicsRotation); // faster than .position and .rotation manually
-                Debug.Log($"[PredictedRigidbody] Teleported because distance to physics copy = {distance:F2} > threshold {smoothFollowThreshold:F2}");
+                ;
                 return;
             }
 
@@ -544,7 +544,7 @@ namespace Mirror
                 if ((lastRecorded.position - position).sqrMagnitude < positionCorrectionThresholdSqr &&
                     Quaternion.Angle(lastRecorded.rotation, rotation) < rotationCorrectionThreshold)
                 {
-                    // Debug.Log($"FixedUpdate for {name}: taking optimized early return instead of recording state.");
+                    // ;
                     return;
                 }
             }
@@ -653,7 +653,7 @@ namespace Mirror
                 predictedRigidbody.angularVelocity.magnitude <= snapThreshold)
 #endif
             {
-                // Debug.Log($"Prediction: snapped {name} into place because velocity {predictedRigidbody.velocity.magnitude:F3} <= {snapThreshold:F3}");
+                // ;
 
                 // apply server state immediately.
                 // important to apply velocity as well, instead of Vector3.zero.
@@ -777,7 +777,7 @@ namespace Mirror
                 positionToStateDistanceSqr < positionCorrectionThresholdSqr &&                               // fast comparison
                 Quaternion.Angle(state.rotation, physicsRotation) < rotationCorrectionThreshold)
             {
-                // Debug.Log($"OnReceivedState for {name}: taking optimized early return!");
+                // ;
                 return;
             }
 
@@ -831,7 +831,7 @@ namespace Mirror
                 {
                     // this can happen a lot when latency is ~0. logging all the time allocates too much and is too slow.
                     // double ahead = state.timestamp - newest.timestamp;
-                    // Debug.Log($"Hard correction because the client is ahead of the server by {(ahead*1000):F1}ms. History of size={stateHistory.Count} @ t={timestamp:F3} oldest={oldest.timestamp:F3} newest={newest.timestamp:F3}. This can happen when latency is near zero, and is fine unless it shows jitter.");
+                    // ;
                     ApplyState(state.timestamp, state.position, state.rotation, state.velocity, state.angularVelocity);
                 }
                 return;
@@ -855,14 +855,14 @@ namespace Mirror
             // float positionToInterpolatedDistance = Vector3.Distance(state.position, interpolated.position); // slow comparison
             float positionToInterpolatedDistanceSqr = Vector3.SqrMagnitude(state.position - interpolated.position); // fast comparison
             float rotationToInterpolatedDistance = Quaternion.Angle(state.rotation, interpolated.rotation);
-            // Debug.Log($"Sampled history of size={stateHistory.Count} @ {timestamp:F3}: client={interpolated.position} server={state.position} difference={difference:F3} / {correctionThreshold:F3}");
+            // ;
 
             // too far off? then correct it
             if (positionToInterpolatedDistanceSqr >= positionCorrectionThresholdSqr || // fast comparison
                 //positionToInterpolatedDistance >= positionCorrectionThreshold ||     // slow comparison
                 rotationToInterpolatedDistance >= rotationCorrectionThreshold)
             {
-                // Debug.Log($"CORRECTION NEEDED FOR {name} @ {timestamp:F3}: client={interpolated.position} server={state.position} difference={difference:F3}");
+                // ;
 
                 // show the received correction position + velocity for debugging.
                 // helps to compare with the interpolated/applied correction locally.
@@ -876,7 +876,7 @@ namespace Mirror
                 // always do this here, not when iterating above, in case we aren't iterating.
                 // for example, on same machine with near zero latency.
                 // int correctedAmount = stateHistory.Count - afterIndex;
-                // Debug.Log($"Correcting {name}: {correctedAmount} / {stateHistory.Count} states to final position from: {rb.position} to: {last.position}");
+                // ;
                 //Debug.DrawLine(physicsCopyRigidbody.position, recomputed.position, Color.green, lineTime);
                 ApplyState(recomputed.timestamp, recomputed.position, recomputed.rotation, recomputed.velocity, recomputed.angularVelocity);
 
@@ -1019,3 +1019,4 @@ namespace Mirror
         }
     }
 }
+

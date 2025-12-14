@@ -10,12 +10,12 @@ namespace Mirror
         void OnInMessage(NetworkDiagnostics.MessageInfo msgInfo)
         {
             if (logInMessages)
-                Debug.Log(msgInfo);
+                ;
         }
         void OnOutMessage(NetworkDiagnostics.MessageInfo msgInfo)
         {
             if (logOutMessages)
-                Debug.Log(msgInfo);
+                ;
         }
         void OnEnable()
         {
@@ -29,3 +29,4 @@ namespace Mirror
         }
     }
 }
+

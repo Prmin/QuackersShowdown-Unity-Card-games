@@ -7,7 +7,7 @@ public class TekeAimCard : NetworkBehaviour
 {
     public void OnTekeAimCardClicked()
     {
-        Debug.Log($"[TekeAimCard] {gameObject.name} was clicked!");
+        ;
 
         // 1) หา PlayerManager ของเรา
         if (NetworkClient.connection == null || NetworkClient.connection.identity == null)
@@ -23,7 +23,7 @@ public class TekeAimCard : NetworkBehaviour
         }
 
         // 2) (FIX) เรียกใช้ระบบ SkillMode ใหม่
-        Debug.Log("[TekeAimCard] Calling CmdSetSkillMode(SkillMode.TakeAim) on the server...");
+        ;
         localPlayerManager.CmdSetSkillMode(SkillMode.TakeAim);
     }
 }

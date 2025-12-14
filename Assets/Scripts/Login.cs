@@ -52,19 +52,19 @@ public class Login : MonoBehaviour
         }
         else
         {
-            Debug.Log(www.downloadHandler.text);
+            ;
 
             LoginResponse response = JsonUtility.FromJson<LoginResponse>(www.downloadHandler.text);
 
             if (response.success)
             {
-                Debug.Log("Login successful!");
+                ;
                 // ถ้าเข้าสู่ระบบสำเร็จ ไปที่หน้า MainMenu
                 SceneManager.LoadScene("MainMenu");
             }
             else
             {
-                Debug.Log("Login failed: " + response.message);
+                ;
             }
         }
     }
@@ -77,3 +77,4 @@ public class LoginResponse
     public bool success;
     public string message;
 }
+

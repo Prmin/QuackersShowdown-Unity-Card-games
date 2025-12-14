@@ -26,7 +26,7 @@ public class TargetFollow : NetworkBehaviour
     {
         // รีเซ็ต
         targetTransform = null;
-        // Debug.Log($"[TargetFollow] OnTargetNetIdChanged => {oldValue} => {newValue}");
+        // ;
     }
 
     void Update()
@@ -65,6 +65,7 @@ public class TargetFollow : NetworkBehaviour
         }
 
         targetTransform = targetIdentity.transform;
-        Debug.Log($"[TargetFollow] Found target {targetIdentity.gameObject.name}");
+        ;
     }
 }
+

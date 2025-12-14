@@ -159,7 +159,7 @@ namespace Mirror
                 // for duplicated prefabs, it will set from N to M.
                 // either way, it's always set to a valid GUID.
                 _assetId = value;
-                // Debug.Log($"Setting AssetId on NetworkIdentity '{name}', new assetId '{value:X4}'");
+                // ;
             }
         }
 
@@ -403,7 +403,7 @@ namespace Mirror
                 // uint before = _assetId;
                 Guid guid = new Guid(AssetDatabase.AssetPathToGUID(path));
                 assetId = AssetGuidToUint(guid);
-                // if (_assetId != before) Debug.Log($"Assigned assetId={assetId} to {name}");
+                // if (_assetId != before) ;
             }
         }
 
@@ -495,7 +495,7 @@ namespace Mirror
                 if (!duplicate)
                 {
                     sceneId = randomId;
-                    //Debug.Log($"{name} in scene {gameObject.scene.name} sceneId assigned to:{sceneId:X}");
+                    //;
                 }
             }
 
@@ -536,7 +536,7 @@ namespace Mirror
             sceneId = (sceneId & 0xFFFFFFFF) | shiftedHash;
 
             // log it. this is incredibly useful to debug sceneId issues.
-            //Debug.Log($"{name} in scene {gameObject.scene.name} scene index hash {pathHash:X} copied into sceneId {sceneId:X}");
+            //;
         }
 
         void SetupIDs()
@@ -570,7 +570,7 @@ namespace Mirror
                 {
                     // force 0 for prefabs
                     sceneId = 0;
-                    //Debug.Log($"{name} scene:{gameObject.scene.name} sceneid reset to 0 because CurrentPrefabStage={PrefabStageUtility.GetCurrentPrefabStage()} PrefabStage={PrefabStageUtility.GetPrefabStage(gameObject)}");
+                    //;
 
                     // get path from PrefabStage for this prefab
 #if UNITY_2020_1_OR_NEWER
@@ -606,7 +606,7 @@ namespace Mirror
                     _assetId = 0;
                 }
                 // don't log. would show a lot when pressing play in uMMORPG/uSurvival/etc.
-                //else Debug.Log($"Avoided clearing assetId at runtime for {name} after (probably) clicking any of the NetworkIdentity properties.");
+                //else ;
             }
         }
 #endif
@@ -743,7 +743,7 @@ namespace Mirror
 
             clientStarted = true;
 
-            // Debug.Log($"OnStartClient {gameObject} netId:{netId}");
+            // ;
             foreach (NetworkBehaviour comp in NetworkBehaviours)
             {
                 // an exception in OnStartClient should be caught, so that one
@@ -1157,7 +1157,7 @@ namespace Mirror
 
                 // set tick
                 lastSerialization.tick = tick;
-                //Debug.Log($"{name} (netId={netId}) serialized for tick={tickTimeStamp}");
+                //;
             }
 
             // return it
@@ -1173,7 +1173,7 @@ namespace Mirror
                 return;
             }
 
-            // Debug.Log($"Added observer: {conn.address} added for {gameObject}");
+            // ;
 
             // if we previously had no observers, then clear all dirty bits once.
             // a monster's health may have changed while it had no observers.
@@ -1409,3 +1409,4 @@ namespace Mirror
         }
     }
 }
+

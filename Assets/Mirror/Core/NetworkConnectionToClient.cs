@@ -89,7 +89,7 @@ namespace Mirror
                     deliveryTimeEma.StandardDeviation,
                     NetworkClient.snapshotSettings.dynamicAdjustmentTolerance
                 );
-                // Debug.Log($"[Server]: {name} delivery std={serverDeliveryTimeEma.StandardDeviation} bufferTimeMult := {bufferTimeMultiplier} ");
+                // ;
             }
 
             // insert into the server buffer & initialize / adjust / catchup
@@ -122,7 +122,7 @@ namespace Mirror
                 // TimeSnapshot doesn't interpolate anything.
                 // this is merely to keep removing older snapshots.
                 SnapshotInterpolation.StepInterpolation(snapshots, remoteTimeline, out _, out _, out _);
-                // Debug.Log($"NetworkClient SnapshotInterpolation @ {localTimeline:F2} t={t:F2}");
+                // ;
             }
         }
 
@@ -228,3 +228,4 @@ namespace Mirror
         }
     }
 }
+

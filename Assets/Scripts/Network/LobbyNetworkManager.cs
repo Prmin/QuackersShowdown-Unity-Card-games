@@ -18,7 +18,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         if (discovery)
         {
             discovery.AdvertiseServer();
-            Debug.Log("[Discovery] Host started → AdvertiseServer()");
+            ;
         }
         else
         {
@@ -69,7 +69,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         if (!string.IsNullOrEmpty(GameplayScene) && activePath == GameplayScene)
         {
             HideAllMenuUI();
-            Debug.Log("[UI] Entered Gameplay → hide all lobby/menu UI");
+            ;
         }
     }
 
@@ -78,7 +78,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         if (discovery)
         {
             discovery.StopDiscovery();
-            Debug.Log("[Discovery] Host stopped → StopDiscovery()");
+            ;
         }
         base.OnStopHost();
     }
@@ -140,7 +140,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         }
         else
         {
-            Debug.Log($"เริ่มเกมไม่ได้: {reason}");
+            ;
         }
     }
 
@@ -178,7 +178,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         // กลับหน้า LobbyList แล้วเริ่มสแกนใหม่
         UIFlow.I?.ShowLobbyList();
         DiscoveryBridge.I?.StartClientScan();
-        Debug.Log("[Lobby] Client stopped → back to LobbyList.");
+        // ;
     }
 
     public override void OnClientDisconnect()
@@ -187,7 +187,8 @@ public class LobbyNetworkManager : NetworkRoomManager
         // โดนเตะ/โฮสต์ปิด → เด้งกลับ LobbyList แล้วสแกนใหม่
         UIFlow.I?.ShowLobbyList();
         DiscoveryBridge.I?.StartClientScan();
-        Debug.Log("[Lobby] Disconnected by server/host → back to LobbyList.");
+        // ;
     }
 
 }
+

@@ -34,26 +34,26 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     public override void OnStartClient()
     {
         base.OnStartClient();
-        Debug.Log($"[DuckCard] Spawned name={name} netId={netId} owner={ownerNetId} zone={zone} index={zoneIndex}");
+        ;
         TryApplyLayout("OnStartClient");
     }
 
     // SyncVar hooks -------------------------------------------------------
     private void OnOwnerChanged(uint oldValue, uint newValue)
     {
-        Debug.Log($"[DuckCard] Owner changed {oldValue}->{newValue} for {name}");
+        ;
         HandleStateChanged("OwnerChanged");
     }
 
     private void OnZoneChanged(ZoneKind oldZone, ZoneKind newZone)
     {
-        Debug.Log($"[DuckCard] Zone changed {oldZone}->{newZone} for {name}");
+        ;
         HandleStateChanged("ZoneChanged");
     }
 
     private void OnZoneIndexChanged(int oldIndex, int newIndex)
     {
-        Debug.Log($"[DuckCard] ZoneIndex changed {oldIndex}->{newIndex} for {name}");
+        ;
         HandleStateChanged("ZoneIndexChanged");
     }
 
@@ -153,7 +153,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
 
     private void LogLayout(string reason, Transform parent, RectTransform rect)
     {
-        Debug.Log($"[DuckCard] Layout {reason} | name={name} netId={netId} owner={ownerNetId} zone={zone} index={zoneIndex} parent={(parent != null ? parent.name : "NULL")} anchored={rect.anchoredPosition} sibling={transform.GetSiblingIndex()}");
+        ;
     }
 
     private Transform ResolveZoneParent()
@@ -261,3 +261,4 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         localPM.HandleDuckCardClick(this);
     }
 }
+

@@ -116,7 +116,7 @@ namespace Mirror
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal virtual void Send(ArraySegment<byte> segment, int channelId = Channels.Reliable)
         {
-            //Debug.Log($"ConnectionSend {this} bytes:{BitConverter.ToString(segment.Array, segment.Offset, segment.Count)}");
+            //;
 
             // add to batch no matter what.
             // batching will try to fit as many as possible into MTU.
@@ -160,7 +160,7 @@ namespace Mirror
 
                         // send to transport
                         SendToTransport(segment, kvp.Key);
-                        //UnityEngine.Debug.Log($"sending batch of {writer.Position} bytes for channel={kvp.Key} connId={connectionId}");
+                        //UnityEngine.;
 
                         // reset writer for each new batch
                         writer.Position = 0;
@@ -205,3 +205,4 @@ namespace Mirror
         }
     }
 }
+

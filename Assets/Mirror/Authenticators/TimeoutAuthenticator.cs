@@ -57,7 +57,7 @@ namespace Mirror.Authenticators
 
         IEnumerator BeginAuthentication(NetworkConnection conn)
         {
-            //Debug.Log($"Authentication countdown started {conn} {timeout}");
+            //;
             yield return new WaitForSecondsRealtime(timeout);
 
             if (!conn.isAuthenticated)
@@ -68,3 +68,4 @@ namespace Mirror.Authenticators
         }
     }
 }
+

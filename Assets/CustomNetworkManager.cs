@@ -17,7 +17,7 @@ public class CustomNetworkManager : NetworkManager
         {
             GameObject duckCard = Instantiate(duckCardPrefab);
             NetworkServer.Spawn(duckCard);
-            Debug.Log($"DuckCard spawned with NetId: {duckCard.GetComponent<NetworkIdentity>().netId}");
+            ;
         }
         else
         {

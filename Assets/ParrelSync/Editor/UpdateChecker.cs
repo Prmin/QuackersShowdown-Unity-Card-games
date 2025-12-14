@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEditor;
 using UnityEngine;
 namespace ParrelSync.Update
@@ -21,10 +21,10 @@ namespace ParrelSync.Update
                     //string localVersionText = AssetDatabase.LoadAssetAtPath<TextAsset>(LocalVersionFilePath).text;
 
                     string localVersionText = LocalVersion;
-                    Debug.Log("Local version text : " + LocalVersion);
+                    ;
 
                     string latesteVersionText = client.DownloadString(ExternalLinks.RemoteVersionURL);
-                    Debug.Log("latest version text got: " + latesteVersionText);
+                    ;
                     string messageBody = "Current Version: " + localVersionText +"\n"
                                          +"Latest Version: " + latesteVersionText + "\n";
                     var latestVersion = new Version(latesteVersionText);
@@ -32,7 +32,7 @@ namespace ParrelSync.Update
 
                     if (latestVersion > localVersion)
                     {
-                        Debug.Log("There's a newer version");
+                        ;
                         messageBody += "There's a newer version available";
                         if(EditorUtility.DisplayDialog("Check for update.", messageBody, "Get latest release", "Close"))
                         {
@@ -41,7 +41,7 @@ namespace ParrelSync.Update
                     }
                     else
                     {
-                        Debug.Log("Current version is up-to-date.");
+                        ;
                         messageBody += "Current version is up-to-date.";
                         EditorUtility.DisplayDialog("Check for update.", messageBody,"OK");
                     }
@@ -58,3 +58,4 @@ namespace ParrelSync.Update
         }
     }
 }
+

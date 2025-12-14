@@ -69,7 +69,7 @@ namespace Edgegap
             if (statisticsLog)
                 InvokeRepeating(nameof(OnLogStatistics), 1, 1);
 
-            Debug.Log("EdgegapTransport initialized!");
+            ;
         }
 
         protected override void OnValidate()
@@ -160,3 +160,4 @@ namespace Edgegap
 #pragma warning restore CS0109
 }
 //#endif MIRROR <- commented out because MIRROR isn't defined on first import yet
+

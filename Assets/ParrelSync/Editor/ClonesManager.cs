@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using UnityEditor;
@@ -98,15 +98,15 @@ namespace ParrelSync
 
             Project cloneProject = new Project(cloneProjectPath);
 
-            Debug.Log("Start cloning project, original project: " + sourceProject + ", clone project: " + cloneProject);
+            ;
 
             ClonesManager.CreateProjectFolder(cloneProject);
 
             //Copy Folders           
-            Debug.Log("Library copy: " + cloneProject.libraryPath);
+            ;
             ClonesManager.CopyDirectoryWithProgressBar(sourceProject.libraryPath, cloneProject.libraryPath,
                 "Cloning Project Library '" + sourceProject.name + "'. ");
-            Debug.Log("Packages copy: " + cloneProject.packagesPath);
+            ;
             ClonesManager.CopyDirectoryWithProgressBar(sourceProject.packagesPath, cloneProject.packagesPath,
               "Cloning Project Packages '" + sourceProject.name + "'. ");
 
@@ -183,7 +183,7 @@ namespace ParrelSync
 
             string fileName = GetApplicationPath();
             string args = "-projectPath \"" + projectPath + "\"";
-            Debug.Log("Opening project \"" + fileName + " " + args + "\"");
+            ;
             ClonesManager.StartHiddenConsoleProcess(fileName, args);
         }
 
@@ -252,7 +252,7 @@ namespace ParrelSync
             switch (Application.platform)
             {
                 case (RuntimePlatform.WindowsEditor):
-                    Debug.Log("Attempting to delete folder \"" + cloneProjectPath + "\"");
+                    ;
 
                     //The argument file will be deleted first at the beginning of the project deletion process 
                     //to prevent any further reading and writing to it(There's a File.Exist() check at the (file)editor windows.)
@@ -265,7 +265,7 @@ namespace ParrelSync
 
                     break;
                 case (RuntimePlatform.OSXEditor):
-                    Debug.Log("Attempting to delete folder \"" + cloneProjectPath + "\"");
+                    ;
 
                     //The argument file will be deleted first at the beginning of the project deletion process 
                     //to prevent any further reading and writing to it(There's a File.Exist() check at the (file)editor windows.)
@@ -277,7 +277,7 @@ namespace ParrelSync
 
                     break;
                 case (RuntimePlatform.LinuxEditor):
-                    Debug.Log("Attempting to delete folder \"" + cloneProjectPath + "\"");
+                    ;
                     identifierFile = Path.Combine(cloneProjectPath, ClonesManager.ArgumentFileName);
                     File.Delete(identifierFile);
 
@@ -301,7 +301,7 @@ namespace ParrelSync
             Project cloneProject = new Project(cloneProjectPath);
 
             FileUtil.ReplaceDirectory(sourceProject.packagesPath, cloneProject.packagesPath);
-            Debug.Log("Package Folder Synced (" + sourceProject.packagesPath + " => " + cloneProject.packagesPath + ")");
+            ;
         }
 
         #endregion
@@ -315,7 +315,7 @@ namespace ParrelSync
         public static void CreateProjectFolder(Project project)
         {
             string path = project.projectPath;
-            Debug.Log("Creating new empty folder at: " + path);
+            ;
             Directory.CreateDirectory(path);
         }
 
@@ -333,7 +333,7 @@ namespace ParrelSync
                 return;
             }
 
-            Debug.Log("Library copy: " + destinationProject.libraryPath);
+            ;
             ClonesManager.CopyDirectoryWithProgressBar(sourceProject.libraryPath, destinationProject.libraryPath,
                 "Cloning project '" + sourceProject.name + "'. ");
         }
@@ -353,7 +353,7 @@ namespace ParrelSync
             destinationPath = destinationPath.Replace(" ", "\\ ");
             var command = string.Format("ln -s {0} {1}", sourcePath, destinationPath);
 
-            Debug.Log("Mac hard link " + command);
+            ;
 
             ClonesManager.ExecuteBashCommand(command);
         }
@@ -369,7 +369,7 @@ namespace ParrelSync
             destinationPath = destinationPath.Replace(" ", "\\ ");
             var command = string.Format("ln -s {0} {1}", sourcePath, destinationPath);           
 
-            Debug.Log("Linux Symlink " + command);
+            ;
 
             ClonesManager.ExecuteBashCommand(command);
         }
@@ -382,7 +382,7 @@ namespace ParrelSync
         private static void CreateLinkWin(string sourcePath, string destinationPath)
         {
             string cmd = "/C mklink /J " + string.Format("\"{0}\" \"{1}\"", destinationPath, sourcePath);
-            Debug.Log("Windows junction: " + cmd);
+            ;
             ClonesManager.StartHiddenConsoleProcess("cmd.exe", cmd);
         }
 
@@ -706,3 +706,4 @@ namespace ParrelSync
         #endregion
     }
 }
+

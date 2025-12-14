@@ -88,7 +88,7 @@ namespace Mirror
             if (networkMatchId == Guid.Empty)
                 return;
 
-            // Debug.Log($"MatchInterestManagement.OnSpawned({identity.name}) currentMatch: {currentMatch}");
+            // ;
             if (!matchObjects.TryGetValue(networkMatchId, out HashSet<NetworkMatch> objects))
             {
                 objects = new HashSet<NetworkMatch>();
@@ -162,3 +162,4 @@ namespace Mirror
         }
     }
 }
+

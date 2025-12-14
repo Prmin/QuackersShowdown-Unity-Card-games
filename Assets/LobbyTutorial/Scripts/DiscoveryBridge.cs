@@ -47,7 +47,7 @@ public class DiscoveryBridge : MonoBehaviour
 
         discovery.StopDiscovery();
         discovery.StartDiscovery();
-        // Debug.Log("[DiscoveryBridge] StartDiscovery()");
+        // ;
 
         StartCoroutine(ScanTimeout());
     }
@@ -56,7 +56,7 @@ public class DiscoveryBridge : MonoBehaviour
     {
         yield return new WaitForSeconds(1f);
         if (seen.Count == 0)
-            Debug.LogWarning("true");
+            Debug.LogWarning("[DiscoveryBridge] No servers found in scan.");
     }
 
     public void StopClientScan()
@@ -66,12 +66,12 @@ public class DiscoveryBridge : MonoBehaviour
         // 🛡️ ถ้าเป็นโฮสต์ (server active) ห้ามหยุด discovery เพราะจะไปดับโหมด advertise
         if (NetworkServer.active)
         {
-            Debug.Log("[DiscoveryBridge] Host active → keep advertising (skip StopDiscovery).");
+            ;
             return;
         }
 
         discovery.StopDiscovery();
-        Debug.Log("[DiscoveryBridge] StopDiscovery()");
+        ;
     }
 
     public void AdvertiseIfHost()
@@ -79,7 +79,7 @@ public class DiscoveryBridge : MonoBehaviour
         if (discovery && NetworkServer.active)
         {
             discovery.AdvertiseServer();
-            Debug.Log("[DiscoveryBridge] AdvertiseServer() (manual call)");
+            ;
         }
     }
 
@@ -100,3 +100,4 @@ public class DiscoveryBridge : MonoBehaviour
     }
 
 }
+

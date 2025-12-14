@@ -33,7 +33,7 @@ namespace Mirror
             // the closer we get to simulating host as remote, the better!
             // both directions do this, so [Command] and [Rpc] behave the same way.
 
-            //Debug.Log($"Enqueue {BitConverter.ToString(segment.Array, segment.Offset, segment.Count)}");
+            //;
             NetworkWriterPooled writer = NetworkWriterPool.Get();
             writer.WriteBytes(segment.Array, segment.Offset, segment.Count);
             connectionToClient.queue.Enqueue(writer);
@@ -115,3 +115,4 @@ namespace Mirror
         internal override bool IsAlive(float timeout) => true;
     }
 }
+

@@ -681,7 +681,7 @@ namespace Mirror
                 }
             }
 
-            //Debug.Log($"SetSyncVar GameObject {GetType().Name} bit:{dirtyBit} netfieldId:{netIdField} -> {newNetId}");
+            //;
             SetSyncVarDirtyBit(dirtyBit);
             // assign new one on the server, and in case we ever need it on client too
             gameObjectField = newGameObject;
@@ -987,7 +987,7 @@ namespace Mirror
                 }
             }
 
-            //Debug.Log($"SetSyncVarNetworkIdentity NetworkIdentity {GetType().Name} bit:{dirtyBit} netIdField:{netIdField} -> {newNetId}");
+            //;
             SetSyncVarDirtyBit(dirtyBit);
             netIdField = newNetId;
             // assign new one on the server, and in case we ever need it on client too
@@ -1056,7 +1056,7 @@ namespace Mirror
             // assign new one on the server, and in case we ever need it on client too
             behaviourField = newBehaviour;
 
-            // Debug.Log($"SetSyncVarNetworkBehaviour NetworkIdentity {GetType().Name} bit [{dirtyBit}] netIdField:{oldField}->{syncField}");
+            // ;
         }
 
         // helper function for [SyncVar] NetworkBehaviours.
@@ -1103,7 +1103,7 @@ namespace Mirror
         // dirtyBit is a mask like 00010
         protected void SetSyncVar<T>(T value, ref T fieldValue, ulong dirtyBit)
         {
-            //Debug.Log($"SetSyncVar {GetType().Name} bit:{dirtyBit} fieldValue:{value}");
+            //;
             SetSyncVarDirtyBit(dirtyBit);
             fieldValue = value;
         }
@@ -1276,7 +1276,7 @@ namespace Mirror
             writer.WriteByte(safety);
             writer.Position = endPosition;
 
-            //Debug.Log($"OnSerializeSafely written for object {name} component:{GetType()} sceneId:{sceneId:X} header:{headerPosition} content:{contentPosition} end:{endPosition} contentSize:{endPosition - contentPosition}");
+            //;
         }
 
         // correct the read size with the 1 byte length hash (by mischa).
@@ -1310,7 +1310,7 @@ namespace Mirror
             // way to mess up another component's deserialization
             try
             {
-                //Debug.Log($"OnDeserializeSafely: {name} component:{GetType()} sceneId:{sceneId:X} length:{contentSize}");
+                //;
                 OnDeserialize(reader, initialState);
             }
             catch (Exception e)
@@ -1384,3 +1384,4 @@ namespace Mirror
         public virtual bool Weaved() => false;
     }
 }
+

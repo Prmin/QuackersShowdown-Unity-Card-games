@@ -57,7 +57,7 @@ namespace Mirror.Authenticators
 
         void OnAuthRequestMessage(NetworkConnectionToClient conn, AuthRequestMessage msg)
         {
-            Debug.Log($"connection {conn.connectionId} authenticated with id {msg.clientDeviceID}");
+            ;
 
             // Store the device id for later reference, e.g. when spawning the player
             conn.authenticationData = msg.clientDeviceID;
@@ -120,10 +120,11 @@ namespace Mirror.Authenticators
         /// <param name="msg">The message payload</param>
         public void OnAuthResponseMessage(AuthResponseMessage msg)
         {
-            Debug.Log("Authentication Success");
+            ;
             ClientAccept();
         }
 
         #endregion
     }
 }
+

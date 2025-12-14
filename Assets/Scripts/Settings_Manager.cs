@@ -71,8 +71,8 @@ public class Settings_Manager : MonoBehaviour
         sfxVolume = PlayerPrefs.GetFloat("SFXVolume", 1.0f);
         backgroundChoice = PlayerPrefs.GetInt("BackgroundChoice", 0);
 
-        Debug.Log("Number of background sprites: " + backgroundSprites.Count);
-        Debug.Log("Current background choice: " + backgroundChoice);
+        ;
+        ;
     }
 
     public void ApplySettings()
@@ -85,7 +85,7 @@ public class Settings_Manager : MonoBehaviour
             musicSource.enabled = true; 
             musicSource.volume = musicVolume;
             musicSource.Play();
-            Debug.Log("Playing music...");
+            ;
         }
         ApplyBackground(backgroundImage);
     }
@@ -113,6 +113,7 @@ public class Settings_Manager : MonoBehaviour
             return;
         }
         image.sprite = backgroundSprites[backgroundChoice];
-        Debug.Log($"Background applied: {backgroundSprites[backgroundChoice].name}");
+        ;
     }
 }
+

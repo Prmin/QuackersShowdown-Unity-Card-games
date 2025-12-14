@@ -157,12 +157,12 @@ namespace Mirror
                         Console.WriteLine($"Server listening on port {portTransport.Port}");
                         Console.ResetColor();
 #else
-                        Debug.Log($"Server listening on port {portTransport.Port}");
+                        ;
 #endif
                     }
                 }
                 else
-                    Debug.Log("Server started listening");
+                    ;
             }
 
             active = true;
@@ -184,7 +184,7 @@ namespace Mirror
                 throw new Exception("NetworkServer won't start because Weaving failed or didn't run.");
             }
 
-            // Debug.Log($"NetworkServer Created version {Version.Current}");
+            // ;
 
             //Make sure connections are cleared in case any old connections references exist from previous sessions
             connections.Clear();
@@ -328,7 +328,7 @@ namespace Mirror
         // default ready handler.
         static void OnClientReadyMessage(NetworkConnectionToClient conn, ReadyMessage msg)
         {
-            // Debug.Log($"Default handler for ready message from {conn}");
+            // ;
             SetClientReady(conn);
         }
 
@@ -390,7 +390,7 @@ namespace Mirror
                 return;
             }
 
-            // Debug.Log($"OnCommandMessage for netId:{msg.netId} conn:{conn}");
+            // ;
 
             using (NetworkReaderPooled networkReader = NetworkReaderPool.Get(msg.payload))
                 identity.HandleRemoteCall(msg.componentIndex, msg.functionHash, RemoteCallType.Command, networkReader, conn);
@@ -528,7 +528,7 @@ namespace Mirror
                 return;
             }
 
-            // Debug.Log($"Server.SendToAll {typeof(T)}");
+            // ;
             using (NetworkWriterPooled writer = NetworkWriterPool.Get())
             {
                 // pack message only once
@@ -583,7 +583,7 @@ namespace Mirror
         static void SendToObservers<T>(NetworkIdentity identity, T message, int channelId = Channels.Reliable)
             where T : struct, NetworkMessage
         {
-            // Debug.Log($"Server.SendToObservers {typeof(T)}");
+            // ;
             if (identity == null || identity.observers.Count == 0)
                 return;
 
@@ -619,7 +619,7 @@ namespace Mirror
         public static void SendToReadyObservers<T>(NetworkIdentity identity, T message, bool includeOwner = true, int channelId = Channels.Reliable)
             where T : struct, NetworkMessage
         {
-            // Debug.Log($"Server.SendToReady {typeof(T)}");
+            // ;
             if (identity == null || identity.observers.Count == 0)
                 return;
 
@@ -689,7 +689,7 @@ namespace Mirror
             // only accept connections while listening
             if (!listen)
             {
-                Debug.Log($"Server not listening, rejecting connectionId={connectionId} with address={address}");
+                ;
                 return false;
             }
 
@@ -725,7 +725,7 @@ namespace Mirror
 
         internal static void OnConnected(NetworkConnectionToClient conn)
         {
-            // Debug.Log($"Server accepted client:{conn}");
+            // ;
 
             // add connection and invoke connected event
             AddConnection(conn);
@@ -878,12 +878,12 @@ namespace Mirror
         //            => which we do by removing the connection!
         internal static void OnTransportDisconnected(int connectionId)
         {
-            // Debug.Log($"Server disconnect client:{connectionId}");
+            // ;
             if (connections.TryGetValue(connectionId, out NetworkConnectionToClient conn))
             {
                 conn.Cleanup();
                 RemoveConnection(connectionId);
-                // Debug.Log($"Server lost client:{connectionId}");
+                // ;
 
                 // NetworkManager hooks into OnDisconnectedEvent to make
                 // DestroyPlayerForConnection(conn) optional, e.g. for PvP MMOs
@@ -1105,7 +1105,7 @@ namespace Mirror
             // cannot have a player object in "Add" version
             if (conn.identity != null)
             {
-                Debug.Log("AddPlayer: player object already exists");
+                ;
                 return false;
             }
 
@@ -1126,7 +1126,7 @@ namespace Mirror
             // set ready if not set yet
             SetClientReady(conn);
 
-            // Debug.Log($"Adding new playerGameObject object netId: {identity.netId} asset ID: {identity.assetId}");
+            // ;
 
             Respawn(identity);
             return true;
@@ -1176,7 +1176,7 @@ namespace Mirror
             }
 
             //NOTE: there can be an existing player
-            //Debug.Log("NetworkServer ReplacePlayer");
+            //;
 
             NetworkIdentity previousPlayer = conn.identity;
 
@@ -1199,7 +1199,7 @@ namespace Mirror
             // IMPORTANT: do this in AddPlayerForConnection & ReplacePlayerForConnection!
             SpawnObserversForConnection(conn);
 
-            //Debug.Log($"Replacing playerGameObject object netId:{player.GetComponent<NetworkIdentity>().netId} asset ID {player.GetComponent<NetworkIdentity>().assetId}");
+            //;
 
             Respawn(identity);
 
@@ -1270,7 +1270,7 @@ namespace Mirror
         // is probably fine, so this call wont be needed.
         public static void SetClientReady(NetworkConnectionToClient conn)
         {
-            // Debug.Log($"SetClientReadyInternal for conn:{conn}");
+            // ;
 
             // set ready
             conn.isReady = true;
@@ -1282,7 +1282,7 @@ namespace Mirror
 
         static void SpawnObserversForConnection(NetworkConnectionToClient conn)
         {
-            //Debug.Log($"Spawning {spawned.Count} objects for conn {conn}");
+            //;
 
             if (!conn.isReady)
             {
@@ -1301,7 +1301,7 @@ namespace Mirror
                 // try with far away ones in ummorpg!
                 if (identity.gameObject.activeSelf) //TODO this is different
                 {
-                    //Debug.Log($"Sending spawn message for current server objects name:{identity.name} netId:{identity.netId} sceneId:{identity.sceneId:X}");
+                    //;
 
                     // we need to support three cases:
                     // - legacy system (identity has .visibility)
@@ -1391,7 +1391,7 @@ namespace Mirror
         {
             if (identity.serverOnly) return;
 
-            //Debug.Log($"Server SendSpawnMessage: name:{identity.name} sceneId:{identity.sceneId:X} netid:{identity.netId}");
+            //;
 
             // one writer for owner, one for observers
             using (NetworkWriterPooled ownerWriter = NetworkWriterPool.Get(), observersWriter = NetworkWriterPool.Get())
@@ -1448,7 +1448,7 @@ namespace Mirror
             // May be excluded from the client by interest management
             if (!conn.observing.Contains(identity)) return;
 
-            //Debug.Log($"Server SendChangeOwnerMessage: name={identity.name} netid={identity.netId}");
+            //;
 
             conn.Send(new ChangeOwnerMessage
             {
@@ -1498,7 +1498,7 @@ namespace Mirror
                 // https://github.com/MirrorNetworking/Mirror/issues/3330
                 if (Utils.IsSceneObject(identity) && identity.netId == 0)
                 {
-                    // Debug.Log($"SpawnObjects sceneId:{identity.sceneId:X} name:{identity.gameObject.name}");
+                    // ;
                     identity.gameObject.SetActive(true);
                 }
             }
@@ -1641,7 +1641,7 @@ namespace Mirror
                 identity.OnStartServer();
             }
 
-            // Debug.Log($"SpawnObject instance ID {identity.netId} asset ID {identity.assetId}");
+            // ;
 
             if (aoi)
             {
@@ -1667,7 +1667,7 @@ namespace Mirror
         // fixes: https://github.com/MirrorNetworking/Mirror/issues/3832
         static void UnSpawnInternal(GameObject obj, bool resetState)
         {
-            // Debug.Log($"DestroyObject instance:{identity.netId}");
+            // ;
 
             // NetworkServer.Unspawn should only be called on server or host.
             // on client, show a warning to explain what it does.
@@ -1679,7 +1679,7 @@ namespace Mirror
 
             if (obj == null)
             {
-                Debug.Log("NetworkServer.Unspawn(): object is null");
+                ;
                 return;
             }
 
@@ -1775,7 +1775,7 @@ namespace Mirror
 
             if (obj == null)
             {
-                Debug.Log("NetworkServer.Destroy(): object is null");
+                ;
                 return;
             }
 
@@ -2109,3 +2109,4 @@ namespace Mirror
         }
     }
 }
+

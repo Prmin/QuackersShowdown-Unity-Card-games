@@ -163,7 +163,7 @@ namespace Mirror
                 // work at runtime, it's obvious why it happens and how to fix it.
                 if (!sourceCollider.sharedMesh.isReadable)
                 {
-                    Debug.Log($"[Prediction]: MeshCollider on {sourceCollider.name} isn't readable, which may indicate that the Mesh only exists on the GPU. If {sourceCollider.name} is missing collisions, then please select the model in the Project Area, and enable Mesh->Read/Write so it's also available on the CPU!");
+                    ;
                     // don't early return. keep trying, it may work.
                 }
 
@@ -428,3 +428,4 @@ namespace Mirror
         }
     }
 }
+

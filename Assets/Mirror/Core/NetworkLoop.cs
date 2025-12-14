@@ -95,9 +95,9 @@ namespace Mirror
             if (playerLoop.type == playerLoopSystemType)
             {
                 // debugging
-                //Debug.Log($"Found playerLoop of type {playerLoop.type} with {playerLoop.subSystemList.Length} Functions:");
+                //;
                 //foreach (PlayerLoopSystem sys in playerLoop.subSystemList)
-                //    Debug.Log($"  ->{sys.type}");
+                //    ;
 
                 // make sure the function wasn't added yet.
                 // with domain reload disabled, it would otherwise be added twice:
@@ -137,9 +137,9 @@ namespace Mirror
                 }
 
                 // debugging
-                //Debug.Log($"New playerLoop of type {playerLoop.type} with {playerLoop.subSystemList.Length} Functions:");
+                //;
                 //foreach (PlayerLoopSystem sys in playerLoop.subSystemList)
-                //    Debug.Log($"  ->{sys.type}");
+                //    ;
 
                 return true;
             }
@@ -160,7 +160,7 @@ namespace Mirror
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void RuntimeInitializeOnLoad()
         {
-            //Debug.Log("Mirror: adding Network[Early/Late]Update to Unity...");
+            //;
 
             // get loop
             // 2019 has GetCURRENTPlayerLoop which is safe to use without
@@ -188,7 +188,7 @@ namespace Mirror
             if (!Application.isPlaying) return;
 
             NetworkTime.EarlyUpdate();
-            //Debug.Log($"NetworkEarlyUpdate {Time.time}");
+            //;
             NetworkServer.NetworkEarlyUpdate();
             NetworkClient.NetworkEarlyUpdate();
             // invoke event after mirror has done it's early updating.
@@ -201,7 +201,7 @@ namespace Mirror
             // however, we only want to call NetworkServer/Client in play mode.
             if (!Application.isPlaying) return;
 
-            //Debug.Log($"NetworkLateUpdate {Time.time}");
+            //;
             // invoke event before mirror does its final late updating.
             OnLateUpdate?.Invoke();
             NetworkServer.NetworkLateUpdate();
@@ -209,3 +209,4 @@ namespace Mirror
         }
     }
 }
+

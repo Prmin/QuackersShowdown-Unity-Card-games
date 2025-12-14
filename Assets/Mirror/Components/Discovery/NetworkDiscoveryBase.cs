@@ -101,19 +101,19 @@ namespace Mirror.Discovery
         // Ensure the ports are cleared no matter when Game/Unity UI exits
         void OnApplicationQuit()
         {
-            //Debug.Log("NetworkDiscoveryBase OnApplicationQuit");
+            //;
             Shutdown();
         }
 
         void OnDisable()
         {
-            //Debug.Log("NetworkDiscoveryBase OnDisable");
+            //;
             Shutdown();
         }
 
         void OnDestroy()
         {
-            //Debug.Log("NetworkDiscoveryBase OnDestroy");
+            //;
             Shutdown();
         }
 
@@ -170,7 +170,7 @@ namespace Mirror.Discovery
                 MulticastLoopback = false
             };
 
-            //Debug.Log($"Discovery: Advertising Server {Dns.GetHostName()}");
+            //;
 
             // listen for client pings
             _ = ServerListenAsync();
@@ -341,7 +341,7 @@ namespace Mirror.Discovery
         /// </summary>
         public void StopDiscovery()
         {
-            //Debug.Log("NetworkDiscoveryBase StopDiscovery");
+            //;
             Shutdown();
         }
 
@@ -420,7 +420,7 @@ namespace Mirror.Discovery
 
                     ArraySegment<byte> data = writer.ToArraySegment();
 
-                    //Debug.Log($"Discovery: Sending BroadcastDiscoveryRequest {request}");
+                    //;
                     clientUdpClient.SendAsync(data.Array, data.Count, endPoint);
                 }
                 catch (Exception)
@@ -471,3 +471,4 @@ namespace Mirror.Discovery
         #endregion
     }
 }
+

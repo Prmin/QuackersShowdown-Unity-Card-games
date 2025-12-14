@@ -60,7 +60,7 @@ public class DragDrop : NetworkBehaviour
         isDragging = true;
         startParent = transform.parent;
 
-        Debug.Log("Start Dragging: " + gameObject.name);
+        ;
     }
 
     public void EndDrag()
@@ -140,3 +140,4 @@ public class DragDrop : NetworkBehaviour
         }
     }
 }
+

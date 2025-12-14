@@ -74,7 +74,7 @@ namespace Edgegap
                                 connectionState = (ConnectionState)reader.ReadByte();
 
                                 // log state changes for debugging.
-                                if (connectionState != last) Debug.Log($"EdgegapClient: state updated to: {connectionState}");
+                                if (connectionState != last) ;
 
                                 // return true indicates Mirror to keep checking
                                 // for further messages.
@@ -139,3 +139,4 @@ namespace Edgegap
         }
     }
 }
+

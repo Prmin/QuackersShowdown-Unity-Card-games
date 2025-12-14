@@ -67,7 +67,7 @@ public class #SCRIPTNAME# : NetworkManager
     /// <remarks>Handlers can be assigned from, and exist, in any script</remarks>
     public void OnStartedActionHandler()
     {
-        Debug.Log("#SCRIPTNAME#.OnStartAction invoked");
+        ;
     }
 
     #region Unity Callbacks
@@ -363,3 +363,4 @@ public class #SCRIPTNAME# : NetworkManager
 
     #endregion
 }
+
