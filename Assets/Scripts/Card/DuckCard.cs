@@ -34,26 +34,41 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     public override void OnStartClient()
     {
         base.OnStartClient();
-        ;
+
         TryApplyLayout("OnStartClient");
     }
 
     // SyncVar hooks -------------------------------------------------------
     private void OnOwnerChanged(uint oldValue, uint newValue)
     {
-        ;
+
         HandleStateChanged("OwnerChanged");
     }
 
     private void OnZoneChanged(ZoneKind oldZone, ZoneKind newZone)
     {
-        ;
+
         HandleStateChanged("ZoneChanged");
+
+        //  กัน CardZoom ทำงานใน DropZone + เคลียร์ซูมค้าง
+        var zoom = GetComponent<CardZoom>();
+        if (zoom != null)
+        {
+            if (newZone == ZoneKind.DropZone)
+            {
+                zoom.OnHoverExit();   // เคลียร์การ์ดซูมที่ค้างอยู่ (ถ้ามี)
+                zoom.enabled = false; // ปิดไม่ให้ hover แล้วซูมอีก
+            }
+            else
+            {
+                zoom.enabled = true;  // โซนอื่นเปิดได้ตามปกติ
+            }
+        }
     }
 
     private void OnZoneIndexChanged(int oldIndex, int newIndex)
     {
-        ;
+
         HandleStateChanged("ZoneIndexChanged");
     }
 

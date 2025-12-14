@@ -236,6 +236,11 @@ public partial class PlayerManager : NetworkBehaviour
     public void HandleDuckCardClick(DuckCard clickedCard)
     {
         if (!isLocalPlayer) return;
+
+        // กันคลิกการ์ดที่ไม่ใช่เป็ดใน DuckZone (เช่น การ์ดใน DropZone/มือ)
+        if (clickedCard == null || clickedCard.zone != ZoneKind.DuckZone)
+            return;
+
         switch (activeSkillMode)
         {
             case SkillMode.None:
@@ -245,7 +250,7 @@ public partial class PlayerManager : NetworkBehaviour
                 break;
             case SkillMode.TakeAim:
                 CmdSpawnTarget(clickedCard.netIdentity);
-                CmdSetSkillMode(SkillMode.None); 
+                CmdSetSkillMode(SkillMode.None);
                 break;
             case SkillMode.DoubleBarrel:
                 CmdDoubleBarrelClick(clickedCard.netIdentity);

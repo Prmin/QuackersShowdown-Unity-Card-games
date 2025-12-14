@@ -23,6 +23,17 @@ public class CardZoom : NetworkBehaviour
     // ฟังก์ชันเมื่อเม้าส์ชี้ไปที่การ์ด
     public void OnHoverEnter()
     {
+
+        // กันเคสถูก UnityEvent เรียกทั้งๆที่ component ถูกปิด
+        if (!isActiveAndEnabled) return;
+
+        // ✅ กันซูมถ้าการ์ดอยู่ใน DropZone (เช็คจาก parent จริง)
+        if (GetComponentInParent<DropZone>() != null) return;
+
+        // (เสริม) ถ้าอยากเช็คด้วย zone ด้วยก็ได้ แต่ zone อาจมาไม่ทัน
+        var dc = GetComponent<DuckCard>();
+        if (dc != null && dc.zone == ZoneKind.DropZone) return;
+
         // เช็คว่า client นี้เป็นเจ้าของออบเจกต์หรือไม่ ถ้าไม่ใช่ ก็ return ออกไป
         NetworkIdentity networkIdentity = GetComponent<NetworkIdentity>();
         if (!networkIdentity.isOwned) return;
@@ -61,4 +72,15 @@ public class CardZoom : NetworkBehaviour
 
 
     }
+
+    private void OnDisable()
+    {
+        OnHoverExit();
+    }
+
+    private void OnDestroy()
+    {
+        OnHoverExit();
+    }
+
 }
