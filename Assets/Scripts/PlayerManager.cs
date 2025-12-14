@@ -200,7 +200,7 @@ public partial class PlayerManager : NetworkBehaviour
     public void CmdSetSkillMode(SkillMode newMode)
     {
 
-        Debug.Log($"[CmdSetSkillMode] from connId={connectionToClient?.connectionId} pmNetId={netId} mode={newMode}");
+        // Debug.Log($"[CmdSetSkillMode] from connId={connectionToClient?.connectionId} pmNetId={netId} mode={newMode}");
 
         activeSkillMode = newMode;
 
@@ -236,76 +236,60 @@ public partial class PlayerManager : NetworkBehaviour
     public void HandleDuckCardClick(DuckCard clickedCard)
     {
         if (!isLocalPlayer) return;
-        // ??????????????????!
         switch (activeSkillMode)
         {
             case SkillMode.None:
-                // ?????????????
                 break;
-            // --- ?? 3.2 (?????????????????) ---
             case SkillMode.Shoot:
                 CmdShootCard(clickedCard.netIdentity);
-                // (CmdShootCard ????????????)
                 break;
             case SkillMode.TakeAim:
                 CmdSpawnTarget(clickedCard.netIdentity);
-                CmdSetSkillMode(SkillMode.None); // TakeAim ???????????????? HandleClick ??????????????????
+                CmdSetSkillMode(SkillMode.None); 
                 break;
             case SkillMode.DoubleBarrel:
                 CmdDoubleBarrelClick(clickedCard.netIdentity);
-                // (CmdDoubleBarrelClick ????????????????????)
                 break;
             case SkillMode.QuickShot:
                 CmdQuickShotCard(clickedCard.netIdentity);
-                // (CmdQuickShotCard ????????????)
                 break;
             case SkillMode.Misfire:
                 CmdMisfireClick(clickedCard.netIdentity);
-                // (CmdMisfireClick ????????????)
                 break;
             case SkillMode.TwoBirds:
                 CmdTwoBirdsClick(clickedCard.netIdentity);
-                // (CmdTwoBirdsClick ????????????????????)
                 break;
             case SkillMode.BumpLeft:
                 CmdBumpLeftClick(clickedCard.netIdentity);
-                // (CmdBumpLeftClick ????????????)
                 break;
             case SkillMode.BumpRight:
                 CmdBumpRightClick(clickedCard.netIdentity);
-                // (CmdBumpRightClick ????????????)
                 break;
             case SkillMode.MoveAhead:
                 CmdMoveAheadClick(clickedCard.netIdentity);
-                // (CmdMoveAheadClick ????????????)
                 break;
             case SkillMode.HangBack:
                 CmdHangBackClick(clickedCard.netIdentity);
-                // (CmdHangBackClick ????????????)
                 break;
             case SkillMode.FastForward:
                 CmdFastForwardClick(clickedCard.netIdentity);
-                // (CmdFastForwardClick ????????????)
                 break;
             case SkillMode.DisorderlyConduckt:
                 CmdDisorderlyClick(clickedCard.netIdentity);
-                // (DisorderlyConduckt ????? state 2-click ??? ?????????????)
                 break;
-            // --- (??????????????????????????) ---
             case SkillMode.LineForward:
             case SkillMode.DuckShuffle:
             case SkillMode.GivePeaceAChance:
             case SkillMode.Resurrection:
-                // ???????????????? ????????????????????? CmdSetSkillMode
-                // ???????????????????????
+
                 break;
             default:
                 Debug.LogWarning($"Unhandled SkillMode in HandleDuckCardClick: {activeSkillMode}");
                 break;
         }
     }
-    //////////////////////////////////////////  Barrier ////////////////////////////////////////////////////////////////////
-    // ????????: ???? barrier ????? ??? local player ????????????????????
+
+
     [Client]
     private static void OnBarrierGo_Client()
     {

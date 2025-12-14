@@ -91,29 +91,29 @@ public partial class PlayerManager
 
         int totalBefore = poolBefore + zoneBefore;
 
-        if (totalBefore >= maxPerColor)
-        {
-            Debug.Log(
-                $"[Resurrection] no effect color={myColor} " +
-                $"| total {totalBefore}->{totalBefore} (max {maxPerColor}) " +
-                $"| pool {poolBefore}->{poolBefore} | zone {zoneBefore}->{zoneBefore} " +
-                $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
-            );
-            return;
-        }
+        // if (totalBefore >= maxPerColor)
+        // {
+        //     Debug.Log(
+        //         $"[Resurrection] no effect color={myColor} " +
+        //         $"| total {totalBefore}->{totalBefore} (max {maxPerColor}) " +
+        //         $"| pool {poolBefore}->{poolBefore} | zone {zoneBefore}->{zoneBefore} " +
+        //         $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
+        //     );
+        //     return;
+        // }
 
         CardPoolManager.AddToPool(myColor);
 
-        int poolAfter = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
-        int zoneAfter = zoneBefore;
-        int totalAfter = poolAfter + zoneAfter;
+        // int poolAfter = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
+        // int zoneAfter = zoneBefore;
+        // int totalAfter = poolAfter + zoneAfter;
 
-        Debug.Log(
-            $"[Resurrection] revived color={myColor} " +
-            $"| total {totalBefore}->{totalAfter} (max {maxPerColor}) " +
-            $"| pool {poolBefore}->{poolAfter} | zone {zoneBefore}->{zoneAfter} " +
-            $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
-        );
+        // Debug.Log(
+        //     $"[Resurrection] revived color={myColor} " +
+        //     $"| total {totalBefore}->{totalAfter} (max {maxPerColor}) " +
+        //     $"| pool {poolBefore}->{poolAfter} | zone {zoneBefore}->{zoneAfter} " +
+        //     $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
+        // );
     }
 
 

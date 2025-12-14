@@ -9,7 +9,7 @@ public partial class PlayerManager
     [Command(requiresAuthority = false)]
     public void CmdActivateLineForward()
     {
-        Debug.Log("[LineForward] Activate (CmdActivateLineForward)");
+        // Debug.Log("[LineForward] Activate (CmdActivateLineForward)");
 
         // ✅ เก็บ “ตำแหน่งเป้า (slot/col)” ไว้ก่อน แล้วค่อยลบเป้าทิ้ง
         // เป้าจะไม่วิ่งตามการ์ดตอนคอลัมน์เปลี่ยน
