@@ -32,14 +32,16 @@ public enum SkillMode
 }
 public partial class PlayerManager : NetworkBehaviour
 {
-    // ?????? State ????
+    // ===== Turn Bridge (server only) =====
+    private uint _turnLastPlayedActionCardNetId = 0;
+    private string _turnLastPlayedActionCardKey = "";
+
+
     [SyncVar(hook = nameof(OnSkillModeChanged))]
     public SkillMode activeSkillMode = SkillMode.None;
     // --- PATCH: Barrier Hooks ---
     private static bool s_barrierHooksBoundServer = false;
     private static bool s_barrierHooksBoundClient = false;
-    // ??? barrier ??????????????????/???????? (???????? true)
-    // ?????????????????????? ??????????? false
     public static bool DeferInitialDealToBarrier = true;
     // ???????????????????? ????? BarrierGoServer ???????????????
     private static bool s_matchStarted = false;
@@ -200,7 +202,16 @@ public partial class PlayerManager : NetworkBehaviour
     public void CmdSetSkillMode(SkillMode newMode)
     {
 
-        // Debug.Log($"[CmdSetSkillMode] from connId={connectionToClient?.connectionId} pmNetId={netId} mode={newMode}");
+        if (TurnManager.Instance == null) return;
+
+        // ต้องเป็นเทิร์นตัวเอง (Phase Play/Resolve ก็ได้ แต่แนะนำให้บังคับ Resolve)
+        if (TurnManager.Instance.CurrentPlayerNetId != netId) return;
+
+        // เราเพิ่งเล่นการ์ดแล้ว ถึงจะตั้งโหมดได้
+        if (_turnLastPlayedActionCardNetId == 0) return;
+
+        // บังคับให้ตั้งโหมดใน ResolveAbility เท่านั้น (กันแอบกดก่อนเล่นการ์ด)
+        if (TurnManager.Instance.Phase != TurnPhase.ResolveAbility) return;
 
         activeSkillMode = newMode;
 
@@ -229,6 +240,13 @@ public partial class PlayerManager : NetworkBehaviour
         if (modeShouldClose)
         {
             activeSkillMode = SkillMode.None;
+
+            // instant skill จบแล้ว → ให้ TurnManager ไปเทิร์นถัดไป
+            TurnManager.Instance.ServerNotifyAbilityResolved(netId);
+
+            // เคลียร์ last card (กันกดซ้ำ)
+            _turnLastPlayedActionCardNetId = 0;
+            _turnLastPlayedActionCardKey = "";
         }
     }
 
@@ -855,27 +873,33 @@ public partial class PlayerManager : NetworkBehaviour
             for (int i = 0; i < 3; i++)
                 host.Server_DrawActionCardFor(conn, pm.netId);
         }
-        ;
+
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.ServerBeginMatch();
+        else
+            Debug.LogError("[BarrierGoServer] TurnManager not found in scene!");
+
     }
+
     [Server]
     private void InitializeActionCardPool()
     {
         actionCardPool.Clear();
-        // actionCardPool.Add("Shoot", 10);
+        actionCardPool.Add("Shoot", 10);
         actionCardPool.Add("QuickShot", 10);
-        // actionCardPool.Add("TekeAim", 10);
-        // actionCardPool.Add("DoubleBarrel", 10);
-        // actionCardPool.Add("Misfire", 10);
-        // actionCardPool.Add("TwoBirds", 10);
-        // actionCardPool.Add("BumpLeft", 10);
-        // actionCardPool.Add("BumpRight", 10);
-        // actionCardPool.Add("LineForward", 10);
-        // actionCardPool.Add("MoveAhead", 10);
-        // actionCardPool.Add("HangBack", 10);
-        // actionCardPool.Add("FastForward", 10);
-        // actionCardPool.Add("DisorderlyConduckt", 10);
-        // actionCardPool.Add("DuckShuffle", 10);
-        // actionCardPool.Add("GivePeaceAChance", 10);
+        actionCardPool.Add("TekeAim", 10);
+        actionCardPool.Add("DoubleBarrel", 10);
+        actionCardPool.Add("Misfire", 10);
+        actionCardPool.Add("TwoBirds", 10);
+        actionCardPool.Add("BumpLeft", 10);
+        actionCardPool.Add("BumpRight", 10);
+        actionCardPool.Add("LineForward", 10);
+        actionCardPool.Add("MoveAhead", 10);
+        actionCardPool.Add("HangBack", 10);
+        actionCardPool.Add("FastForward", 10);
+        actionCardPool.Add("DisorderlyConduckt", 10);
+        actionCardPool.Add("DuckShuffle", 10);
+        actionCardPool.Add("GivePeaceAChance", 10);
         actionCardPool.Add("Resurrection", 10);
     }
     private int GetDuckCardCountInDuckZone()
@@ -1224,18 +1248,6 @@ public partial class PlayerManager : NetworkBehaviour
         // Spawn ????????????????????????
         SpawnAndAddCardToDuckZone(drawnCard);
     }
-    // private IEnumerator AutoDrawCards()
-    // {
-    //     yield return new WaitForSeconds(3f); // ?? 3 ??????????????????
-    //     while (true)
-    //     {
-    //         if (PlayerArea != null && PlayerArea.transform.childCount < 3)
-    //         {
-    //             CmdDrawActionCard();
-    //         }
-    //         yield return new WaitForSeconds(1f);
-    //     }
-    // }
     // ===== Helper: ?????????????????? (????????????????????) =====
     [Server]
     private int Server_CountCardsInZone(ZoneKind z, NetworkConnectionToClient owner)
@@ -1269,35 +1281,53 @@ public partial class PlayerManager : NetworkBehaviour
     [Command]
     void CmdPlayCard(GameObject card)
     {
-        if (card == null)
-        {
-            ;
-            return;
-        }
-        if (card.scene.isLoaded)
-        {
-            var duck = card.GetComponent<DuckCard>();
-            if (duck != null)
-            {
-                Transform dropZoneT = GetSceneDropZone();
-                int newCol = dropZoneT != null ? dropZoneT.childCount : 0;
-                duck.ServerAssignToZone(ZoneKind.DropZone, 0, newCol);
-                // (Log Logic ??????...)
-                ;
-                // ...
-            }
-            RpcShowCard(card.GetComponent<NetworkIdentity>(), "Played");
-            // ---------------------------------------------------------
-            // ??  ???????????????????????
-            // ---------------------------------------------------------
-            // (?????) ????????? 1 ???? ??? SyncVar (zone) ???????????????????? ???????????????
-            StartCoroutine(DrawNextCardCoroutine(connectionToClient));
-        }
-        else
+        if (card == null) return;
+
+        // ✅ Turn validation
+        if (TurnManager.Instance == null) return;
+        if (!TurnManager.Instance.ServerCanAct(netId, TurnPhase.PlayActionCard)) return;
+
+        if (!card.scene.isLoaded)
         {
             Debug.LogError("Card has been destroyed or not found in the scene.");
+            return;
         }
+
+        var duck = card.GetComponent<DuckCard>();
+        if (duck == null) return;
+
+        // ✅ Owner/Zone validation (กันลาก/ส่งการ์ดคนอื่นมาเล่น)
+        if (duck.ownerNetId != netId)
+        {
+            Debug.LogWarning($"[CmdPlayCard] REJECT: player {netId} tried to play чуж card owner={duck.ownerNetId}");
+            return;
+        }
+
+        if (duck.zone != ZoneKind.PlayerArea)
+        {
+            Debug.LogWarning($"[CmdPlayCard] REJECT: card not in hand zone={duck.zone}");
+            return;
+        }
+
+        // ย้ายไป DropZone
+        Transform dropZoneT = GetSceneDropZone();
+        int newCol = dropZoneT != null ? dropZoneT.childCount : 0;
+        duck.ServerAssignToZone(ZoneKind.DropZone, 0, newCol);
+
+        // ✅ บันทึกการ์ดที่เล่นล่าสุด (ให้ CmdSetSkillMode ใช้)
+        _turnLastPlayedActionCardNetId = duck.netId;
+        _turnLastPlayedActionCardKey = NormalizeCardKey(card);
+
+        // ✅ แจ้ง TurnManager: เล่นการ์ดแล้ว + ต้องเลือกกี่ครั้ง
+        SkillMode skill = SkillFromCardKey(_turnLastPlayedActionCardKey);
+        int requiredPicks = RequiredPicksForSkill(skill);
+        TurnManager.Instance.ServerNotifyActionCardPlayed(netId, _turnLastPlayedActionCardNetId, requiredPicks, _turnLastPlayedActionCardKey);
+
+        // เดิมของนาย
+        RpcShowCard(card.GetComponent<NetworkIdentity>(), "Played");
+        StartCoroutine(DrawNextCardCoroutine(connectionToClient));
     }
+
     // ========================================================
     // Helpers ?????? LineForward/DuckShuffle
     // ========================================================
@@ -1513,5 +1543,60 @@ public partial class PlayerManager : NetworkBehaviour
             Debug.LogError($"[RpcIncrementClick] ขัดข้อง: {ex}");
         }
     }
+
+
+    private static string NormalizeCardKey(GameObject card)
+    {
+        if (card == null) return "";
+        return card.name.Replace("(Clone)", "").Trim();
+    }
+
+    private static SkillMode SkillFromCardKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return SkillMode.None;
+
+        if (key.Contains("Shoot")) return SkillMode.Shoot;
+        if (key.Contains("TekeAim")) return SkillMode.TakeAim;
+        if (key.Contains("DoubleBarrel")) return SkillMode.DoubleBarrel;
+        if (key.Contains("QuickShot")) return SkillMode.QuickShot;
+        if (key.Contains("Misfire")) return SkillMode.Misfire;
+        if (key.Contains("TwoBirds")) return SkillMode.TwoBirds;
+        if (key.Contains("BumpLeft")) return SkillMode.BumpLeft;
+        if (key.Contains("BumpRight")) return SkillMode.BumpRight;
+        if (key.Contains("LineForward")) return SkillMode.LineForward;
+        if (key.Contains("MoveAhead")) return SkillMode.MoveAhead;
+        if (key.Contains("HangBack")) return SkillMode.HangBack;
+        if (key.Contains("FastForward")) return SkillMode.FastForward;
+        if (key.Contains("DisorderlyConduckt")) return SkillMode.DisorderlyConduckt;
+        if (key.Contains("DuckShuffle")) return SkillMode.DuckShuffle;
+        if (key.Contains("GivePeaceAChance")) return SkillMode.GivePeaceAChance;
+        if (key.Contains("Resurrection")) return SkillMode.Resurrection;
+
+        return SkillMode.None;
+    }
+
+    private static int RequiredPicksForSkill(SkillMode mode)
+    {
+        switch (mode)
+        {
+            case SkillMode.DoubleBarrel:
+            case SkillMode.TwoBirds:
+            case SkillMode.DisorderlyConduckt:
+                return 2;
+
+            case SkillMode.LineForward:
+            case SkillMode.DuckShuffle:
+            case SkillMode.GivePeaceAChance:
+            case SkillMode.Resurrection:
+                return 0;
+
+            case SkillMode.None:
+                return 0;
+
+            default:
+                return 1;
+        }
+    }
+
 }
 

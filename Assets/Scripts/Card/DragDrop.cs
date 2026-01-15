@@ -4,6 +4,9 @@ using Mirror;
 
 public class DragDrop : NetworkBehaviour
 {
+
+    private DuckCard _duck;
+
     private LocalHandCard _localHandCard;  // รันบน hand ท้องถิ่นหรือไม่
     public bool IsLocalHandCard => _localHandCard != null;
 
@@ -16,6 +19,12 @@ public class DragDrop : NetworkBehaviour
     private GameObject dropZone;
     private bool isOverDropZone;
 
+
+    void Awake()
+    {
+        _duck = GetComponent<DuckCard>();
+    }
+
     void Start()
     {
         canvasObject = GameObject.Find("Main Canvas");
@@ -26,6 +35,34 @@ public class DragDrop : NetworkBehaviour
             isDraggable = false;
         }
     }
+
+    private bool CanDragNow()
+    {
+        if (!isDraggable) return false;
+
+        var pm = PlayerManager.localInstance;
+        var tm = TurnManager.Instance;
+        if (pm == null || tm == null) return false;
+
+        // ต้องเป็นเทิร์นของเรา + Phase A เท่านั้น
+        if (tm.CurrentPlayerNetId != pm.netId) return false;
+        if (tm.Phase != TurnPhase.PlayActionCard) return false;
+
+        // ถ้าสกิลค้างอยู่ ไม่ให้ลากใบใหม่
+        if (pm.activeSkillMode != SkillMode.None) return false;
+
+        // local hand card = ของเราชัวร์ แต่ก็ต้องผ่านกติกาเทิร์นข้างบน
+        if (IsLocalHandCard) return true;
+
+        // network card: ต้องเป็นการ์ดในมือของเราเท่านั้น
+        if (_duck == null) return false;
+        if (_duck.zone != ZoneKind.PlayerArea) return false;
+        if (_duck.ownerNetId != pm.netId) return false;
+
+        return true;
+    }
+
+
 
     public void SetLocalHandMode(LocalHandCard localHandCard)
     {
@@ -53,6 +90,8 @@ public class DragDrop : NetworkBehaviour
     public void StartDrag()
     {
         if (!isDraggable) return;
+        if (!CanDragNow()) return;
+
         // ถ้ามีสกิลกำลังทำงานอยู่ ไม่ให้ลากใบใหม่จนกว่าจะจบ
         var pm = PlayerManager.localInstance;
         if (pm != null && pm.activeSkillMode != SkillMode.None)
@@ -70,7 +109,19 @@ public class DragDrop : NetworkBehaviour
         var pm = PlayerManager.localInstance;
         if (pm != null && pm.activeSkillMode != SkillMode.None)
             return;
-        isDragging = false;
+        if (!CanDragNow())
+        {
+            isDragging = false;
+
+            var rt0 = transform as RectTransform;
+            var parent = startParent != null ? startParent : transform.parent;
+
+            transform.SetParent(parent, false);
+            if (rt0 != null) rt0.anchoredPosition = Vector2.zero;
+
+            ForceParentLayout(parent);
+            return;
+        }
         var rt = transform as RectTransform;
 
         if (isOverDropZone && dropZone != null)
@@ -122,13 +173,27 @@ public class DragDrop : NetworkBehaviour
 
     void Update()
     {
-        if (isDragging)
+        if (isDragging) return;
+
+        if (!CanDragNow())
         {
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            mousePos.z = 0f; // keep UI on-plane
-            transform.position = mousePos;
-            transform.SetParent(canvasObject.transform, true);
+            isDragging = false;
+
+            var rt0 = transform as RectTransform;
+            var parent = startParent != null ? startParent : transform.parent;
+
+            transform.SetParent(parent, false);
+            if (rt0 != null) rt0.anchoredPosition = Vector2.zero;
+
+            ForceParentLayout(parent);
+            return;
         }
+
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePos.z = 0f; // keep UI on-plane
+        transform.position = mousePos;
+        transform.SetParent(canvasObject.transform, true);
+
     }
 
     private void ForceParentLayout(Transform parent)
