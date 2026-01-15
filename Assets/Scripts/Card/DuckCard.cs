@@ -112,7 +112,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
                 yield break;
         }
 
-        Debug.LogError($"[DuckCard] {name} (netId={netId}) could not layout for zone={zone} owner={ownerNetId}");
+        // Debug.LogError($"[DuckCard] {name} (netId={netId}) could not layout for zone={zone} owner={ownerNetId}");
     }
 
     private bool ApplyLayout(string reason)
@@ -123,7 +123,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         var parent = ResolveZoneParent();
         if (parent == null)
         {
-            Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
+            // Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
             return false;
         }
 

@@ -774,7 +774,6 @@ public partial class PlayerManager : NetworkBehaviour
             default: break;
         }
         if (col < 0 && parent != null) col = parent.childCount;
-        // ??????????????????/??????? (DuckCard ????? parent ???? server+client ???? SyncVar hook)
         dc.ServerAssignToZone(zone, row, col);
     }
     // ========================
@@ -783,21 +782,26 @@ public partial class PlayerManager : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
-        // 1) ??? Barrier ???????????????
         TryBindBarrierServer();
-        // 2) ??????????? + ???? Action ???????? (??????????????? Barrier)
         EnsureSeatIndexAssigned();
         InitializeActionCardPool();
-        // 3) ???? Prefab ??? Action Card ??????????????????????
         actionCardPrefabMap = new Dictionary<string, GameObject>();
         if (resurrectionPrefab != null) actionCardPrefabMap["Resurrection"] = resurrectionPrefab;
         if (duckAndCoverPrefab != null) actionCardPrefabMap["DuckAndCover"] = duckAndCoverPrefab;
         foreach (var prefab in actionCardPrefabList)
             if (prefab != null && !actionCardPrefabMap.ContainsKey(prefab.name))
                 actionCardPrefabMap[prefab.name] = prefab;
-        // ? ??????????????????/???????? DuckZone ??????
         CmdSyncDuckCards();
+
+        ServerTurn_RegisterMe();
     }
+    public override void OnStopServer()
+    {
+        ServerTurn_UnregisterMe();
+
+        base.OnStopServer();
+    }
+
     [Server]
     private static HashSet<string> Server_GetSelectedDuckKeysFromRoom()
     {
@@ -855,27 +859,60 @@ public partial class PlayerManager : NetworkBehaviour
             for (int i = 0; i < 3; i++)
                 host.Server_DrawActionCardFor(conn, pm.netId);
         }
-        ;
+        // 5) Start TurnManager หลัง setup ทุกอย่างเสร็จ
+        var tm = TurnManager.Instance;
+        if (tm == null)
+        {
+            Debug.LogWarning("[BarrierGoServer] TurnManager.Instance is null -> cannot start turns");
+            return;
+        }
+
+        // ถ้าอยากให้ turn order ตรงกับ s_turnOrder (ที่คำนวณจาก starter seat)
+        tm.TurnOrder.Clear();
+
+        var bySeat = players
+            .Where(p => p != null)
+            .GroupBy(p => p.seatIndex)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        if (s_turnOrder != null && s_turnOrder.Count > 0)
+        {
+            foreach (var seat in s_turnOrder)
+            {
+                if (bySeat.TryGetValue(seat, out var pm))
+                    tm.TurnOrder.Add(pm.netId);
+            }
+        }
+        else
+        {
+            // fallback: เรียงตาม seatIndex
+            foreach (var pm in players.OrderBy(p => p.seatIndex))
+                tm.TurnOrder.Add(pm.netId);
+        }
+
+        tm.ServerBeginMatch();
+        Debug.Log("[BarrierGoServer] TurnManager started!");
+
     }
     [Server]
     private void InitializeActionCardPool()
     {
         actionCardPool.Clear();
-        // actionCardPool.Add("Shoot", 10);
+        actionCardPool.Add("Shoot", 10);
         actionCardPool.Add("QuickShot", 10);
-        // actionCardPool.Add("TekeAim", 10);
-        // actionCardPool.Add("DoubleBarrel", 10);
-        // actionCardPool.Add("Misfire", 10);
-        // actionCardPool.Add("TwoBirds", 10);
-        // actionCardPool.Add("BumpLeft", 10);
-        // actionCardPool.Add("BumpRight", 10);
-        // actionCardPool.Add("LineForward", 10);
-        // actionCardPool.Add("MoveAhead", 10);
-        // actionCardPool.Add("HangBack", 10);
-        // actionCardPool.Add("FastForward", 10);
-        // actionCardPool.Add("DisorderlyConduckt", 10);
-        // actionCardPool.Add("DuckShuffle", 10);
-        // actionCardPool.Add("GivePeaceAChance", 10);
+        actionCardPool.Add("TekeAim", 10);
+        actionCardPool.Add("DoubleBarrel", 10);
+        actionCardPool.Add("Misfire", 10);
+        actionCardPool.Add("TwoBirds", 10);
+        actionCardPool.Add("BumpLeft", 10);
+        actionCardPool.Add("BumpRight", 10);
+        actionCardPool.Add("LineForward", 10);
+        actionCardPool.Add("MoveAhead", 10);
+        actionCardPool.Add("HangBack", 10);
+        actionCardPool.Add("FastForward", 10);
+        actionCardPool.Add("DisorderlyConduckt", 10);
+        actionCardPool.Add("DuckShuffle", 10);
+        actionCardPool.Add("GivePeaceAChance", 10);
         actionCardPool.Add("Resurrection", 10);
     }
     private int GetDuckCardCountInDuckZone()
@@ -1271,26 +1308,36 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (card == null)
         {
-            ;
             return;
         }
+
+        if (TurnManager.Instance == null) return;
+        if (!TurnManager.Instance.ServerCanAct(netId, TurnPhase.PlayActionCard)) return;
+
+        var duck = card.GetComponent<DuckCard>();
+        if (duck == null) return;
+
+        if (duck.ownerNetId != netId)
+        {
+            Debug.LogWarning($"[CmdPlayCard] REJECT: player {netId} tried to play чуж card owner={duck.ownerNetId}");
+            return;
+        }
+
+        if (duck.zone != ZoneKind.PlayerArea)
+        {
+            Debug.LogWarning($"[CmdPlayCard] REJECT: player {netId} tried to play card not in hand zone={duck.zone}");
+            return;
+        }
+
         if (card.scene.isLoaded)
         {
-            var duck = card.GetComponent<DuckCard>();
             if (duck != null)
             {
                 Transform dropZoneT = GetSceneDropZone();
                 int newCol = dropZoneT != null ? dropZoneT.childCount : 0;
                 duck.ServerAssignToZone(ZoneKind.DropZone, 0, newCol);
-                // (Log Logic ??????...)
-                ;
-                // ...
             }
             RpcShowCard(card.GetComponent<NetworkIdentity>(), "Played");
-            // ---------------------------------------------------------
-            // ??  ???????????????????????
-            // ---------------------------------------------------------
-            // (?????) ????????? 1 ???? ??? SyncVar (zone) ???????????????????? ???????????????
             StartCoroutine(DrawNextCardCoroutine(connectionToClient));
         }
         else
@@ -1299,7 +1346,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
     }
     // ========================================================
-    // Helpers ?????? LineForward/DuckShuffle
+    // Helpers  LineForward/DuckShuffle
     // ========================================================
     private IEnumerator DelayedLog()
     {
@@ -1348,7 +1395,6 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private DuckCard FindDuckAt(int row, int col)
     {
-        // (???? FindDuckAt ??????????...)
         foreach (NetworkIdentity netId in NetworkServer.spawned.Values)
         {
             DuckCard card = netId.GetComponent<DuckCard>();

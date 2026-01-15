@@ -36,6 +36,8 @@ public partial class PlayerManager
 
         activeSkillMode = SkillMode.None;
         StartCoroutine(RefillNextFrame());
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 
     private List<NetworkIdentity> GetAdjacentDuckCards(int row, int col)
@@ -118,6 +120,9 @@ public partial class PlayerManager
             activeSkillMode = SkillMode.None;
             twoBirdsClickCount = 0;
             firstTwoBirdsCard = null;
+
+            TurnManager.Instance?.ServerNotifyTargetPicked(netId);
+            TurnManager.Instance?.ServerNotifyTargetPicked(netId);
         }
     }
 

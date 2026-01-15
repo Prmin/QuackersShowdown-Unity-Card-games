@@ -18,6 +18,8 @@ public partial class PlayerManager
 
         MoveTargetFromTo(clickedCard, leftDuck.GetComponent<NetworkIdentity>());
         activeSkillMode = SkillMode.None;
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 
     // ===== BumpRight =====
@@ -36,5 +38,7 @@ public partial class PlayerManager
 
         MoveTargetFromTo(clickedCard, rightDuck.GetComponent<NetworkIdentity>());
         activeSkillMode = SkillMode.None;
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 }

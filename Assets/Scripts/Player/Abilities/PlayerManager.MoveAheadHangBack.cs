@@ -30,6 +30,8 @@ public partial class PlayerManager
         Server_PushDuckZoneOrder(curRow);
 
         activeSkillMode = SkillMode.None;
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 
     // ===== HangBack =====
@@ -60,5 +62,7 @@ public partial class PlayerManager
         Server_PushDuckZoneOrder(curRow);
 
         activeSkillMode = SkillMode.None;
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 }

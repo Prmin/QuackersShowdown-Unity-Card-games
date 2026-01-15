@@ -128,6 +128,8 @@ public partial class PlayerManager
             if (newDuckAtCol != null)
                 CmdSpawnTargetForDuck(newDuckAtCol.netId);
         }
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 
 

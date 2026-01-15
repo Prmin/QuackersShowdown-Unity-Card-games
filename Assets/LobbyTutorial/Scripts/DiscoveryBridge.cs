@@ -55,8 +55,6 @@ public class DiscoveryBridge : MonoBehaviour
     IEnumerator ScanTimeout()
     {
         yield return new WaitForSeconds(1f);
-        if (seen.Count == 0)
-            Debug.LogWarning("[DiscoveryBridge] No servers found in scan.");
     }
 
     public void StopClientScan()

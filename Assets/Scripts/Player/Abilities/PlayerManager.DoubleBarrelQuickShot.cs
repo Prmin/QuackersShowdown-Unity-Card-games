@@ -38,6 +38,9 @@ public partial class PlayerManager
             activeSkillMode = SkillMode.None;
             doubleBarrelClickCount = 0;
             firstClickedCard = null;
+
+            TurnManager.Instance?.ServerNotifyTargetPicked(netId);
+            TurnManager.Instance?.ServerNotifyTargetPicked(netId);
         }
     }
 
@@ -93,5 +96,7 @@ public partial class PlayerManager
 
         activeSkillMode = SkillMode.None;
         StartCoroutine(RefillNextFrame());
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 }

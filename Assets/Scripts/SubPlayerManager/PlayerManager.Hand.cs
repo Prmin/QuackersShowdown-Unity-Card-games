@@ -43,18 +43,40 @@ public partial class PlayerManager : NetworkBehaviour
     [Command]
     public void CmdPlayActionCard(string cardKey)
     {
+        // (1) GUARD: กันเล่นนอกเทิร์น / นอก Phase A
+        if (TurnManager.Instance == null)
+        {
+            Debug.LogWarning("[CmdPlayActionCard] TurnManager not found");
+            return;
+        }
+
+        if (!TurnManager.Instance.ServerCanAct(netId, TurnPhase.PlayActionCard))
+        {
+            Debug.LogWarning($"[CmdPlayActionCard] Not your turn / wrong phase. player={netId} phase={TurnManager.Instance.Phase} current={TurnManager.Instance.CurrentPlayerNetId}");
+            return;
+        }
+
+        // (2) validate: ต้องมีการ์ดอยู่จริงในมือ server
         if (!_serverActionHand.Contains(cardKey))
         {
             Debug.LogWarning($"[CmdPlayActionCard] {name} tried to play card '{cardKey}' but it is not in server hand");
             return;
         }
 
-        // เอาออกจากมือใน server state
+        // (3) เอาออกจากมือใน server state
         Server_RemoveActionCardFromHand(cardKey);
 
-        // ให้ระบบเดิมจัดการเอฟเฟ็กต์การ์ด
+        // (4) ให้ระบบเดิมจัดการ “เริ่มสกิล/ตั้ง activeSkillMode/activate”
         Server_ResolveActionCard(this, cardKey);
+
+        // (5) NOTIFY: บอก TurnManager ว่าเล่นแล้ว และต้องเลือกกี่ครั้ง
+        int requiredPicks = Server_GetRequiredTargetPicks(cardKey);
+
+        // หมายเหตุ: ตอนนี้การ์ดในมือคุณเป็น string ไม่ใช่ DuckCard netId
+        // เลยส่ง actionCardNetId = 0 ไปก่อน (หรือคุณจะขยาย TurnManager ให้ sync cardKey ก็ได้)
+        TurnManager.Instance.ServerNotifyActionCardPlayed(netId, 0, requiredPicks);
     }
+
 
     // TODO: ผูกระบบเอฟเฟ็กต์ของนายเอง
     [Server]
@@ -87,4 +109,41 @@ public partial class PlayerManager : NetworkBehaviour
             ActionHandUI.Instance.UpdateHandCountUI(this, newValue);
         }
     }
+
+    [Server]
+    int Server_GetRequiredTargetPicks(string cardKey)
+    {
+        // instant = 0
+        // ต้องเลือก 1 ครั้ง = 1
+        // ต้องเลือก 2 ครั้ง = 2
+
+        switch (cardKey)
+        {
+            case "Resurrection":
+            case "DuckShuffle":
+            case "GivePeaceAChance":
+            case "LineForward":
+                return 0;
+
+            case "Shoot":
+            case "TakeAim":
+            case "QuickShot":
+            case "Misfire":
+            case "BumpLeft":
+            case "BumpRight":
+            case "MoveAhead":
+            case "HangBack":
+            case "FastForward":
+                return 1;
+
+            case "DoubleBarrel":
+            case "TwoBirds":
+            case "DisorderlyConduckt":
+                return 2;
+
+            default:
+                return 0; // ไม่รู้ → ถือว่า instant ไปก่อน กันเกมค้าง
+        }
+    }
+
 }

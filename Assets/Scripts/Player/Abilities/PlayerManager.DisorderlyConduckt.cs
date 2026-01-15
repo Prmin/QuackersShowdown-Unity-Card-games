@@ -48,7 +48,10 @@ public partial class PlayerManager
         Server_PushDuckZoneOrder(firstSelectedDuck.RowNet);
 
         firstSelectedDuck = null;
-        activeSkillMode = SkillMode.None; // ถ้าต้องการปิดโหมดทันทีให้ uncomment
+        activeSkillMode = SkillMode.None;
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 
     [Command(requiresAuthority = false)]

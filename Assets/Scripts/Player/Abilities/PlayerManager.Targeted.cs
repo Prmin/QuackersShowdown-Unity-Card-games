@@ -72,6 +72,8 @@ public partial class PlayerManager
 
         activeSkillMode = SkillMode.None;
         StartCoroutine(RefillNextFrame());
+
+        TurnManager.Instance?.ServerNotifyTargetPicked(netId);
     }
 
     [Server]
