@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: -1984101244939124786}
   - component: {fileID: -587962535400228168}
   - component: {fileID: -6624219924896131588}
+  - component: {fileID: 995737827044409056}
   m_Layer: 0
   m_Name: PlayerManager
   m_TagString: Untagged
@@ -102,6 +103,8 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  isMyTurn: 0
+  activeSkillMode: 0
   Shoot: {fileID: 6939795744060361821, guid: 615781b8bbb1ca24f8bb000a69f4236b, type: 3}
   TekeAim: {fileID: 4912664318366299341, guid: 48b61857d16b5af449dec83c523f8e3b, type: 3}
   DoubleBarrel: {fileID: 4912664318366299341, guid: 76c048bf7ef04f14da7e57dcd0730648, type: 3}
@@ -158,8 +161,6 @@ MonoBehaviour:
   enemiesAreaRootName: EnemiesArea
   enemySlotPrefix: EnemyArea
   seatIndex: -1
-  cardPoolLineForward: {fileID: 0}
-  isLineForwardActive: 0
   targetPrefab: {fileID: 6939795744060361821, guid: a5e7347f0bee2d24ca35d69c30e0a1e1, type: 3}
   playerID: 0
   actionCardPrefabList:
@@ -179,6 +180,7 @@ MonoBehaviour:
   - {fileID: 4912664318366299341, guid: 61dd3289bc3b7ef45b5f0f3db78e7dfe, type: 3}
   - {fileID: 4912664318366299341, guid: 5b10a1a9c7cfba443826028d19fc7bc4, type: 3}
   - {fileID: 4912664318366299341, guid: 16b2ab167195cff40b770f6581d64b62, type: 3}
+  duckColorIndex: 0
 --- !u!114 &-587962535400228168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -209,3 +211,21 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+--- !u!114 &995737827044409056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7005805799716854279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ee68902fe0ee8644a6ed9992a723e24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  duckDeck: []
+  myDuckZones: []
+  handActionCards: []

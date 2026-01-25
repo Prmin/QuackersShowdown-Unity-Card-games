@@ -32,14 +32,16 @@ public enum SkillMode
 }
 public partial class PlayerManager : NetworkBehaviour
 {
-    // ?????? State ????
+
+    [Header("Turn System")]
+    [SyncVar] public bool isMyTurn = false;
+
     [SyncVar(hook = nameof(OnSkillModeChanged))]
     public SkillMode activeSkillMode = SkillMode.None;
     // --- PATCH: Barrier Hooks ---
     private static bool s_barrierHooksBoundServer = false;
     private static bool s_barrierHooksBoundClient = false;
-    // ??? barrier ??????????????????/???????? (???????? true)
-    // ?????????????????????? ??????????? false
+
     public static bool DeferInitialDealToBarrier = true;
     // ???????????????????? ????? BarrierGoServer ???????????????
     private static bool s_matchStarted = false;
@@ -783,21 +785,54 @@ public partial class PlayerManager : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
-        // 1) ??? Barrier ???????????????
         TryBindBarrierServer();
-        // 2) ??????????? + ???? Action ???????? (??????????????? Barrier)
         EnsureSeatIndexAssigned();
         InitializeActionCardPool();
-        // 3) ???? Prefab ??? Action Card ??????????????????????
+        if (GameManager.instance) GameManager.instance.RegisterPlayer(this);
         actionCardPrefabMap = new Dictionary<string, GameObject>();
         if (resurrectionPrefab != null) actionCardPrefabMap["Resurrection"] = resurrectionPrefab;
         if (duckAndCoverPrefab != null) actionCardPrefabMap["DuckAndCover"] = duckAndCoverPrefab;
         foreach (var prefab in actionCardPrefabList)
             if (prefab != null && !actionCardPrefabMap.ContainsKey(prefab.name))
                 actionCardPrefabMap[prefab.name] = prefab;
-        // ? ??????????????????/???????? DuckZone ??????
         CmdSyncDuckCards();
     }
+
+    public override void OnStopServer()
+    {
+        base.OnStopServer();
+        if (GameManager.instance) GameManager.instance.UnregisterPlayer(this);
+    }
+    ////////////////////// trun //////////////////////
+    // --- ส่วนรับคำสั่งจากปุ่ม UI ---
+    [Command]
+    public void CmdEndTurn()
+    {
+        if (!isMyTurn) return; // ไม่ใช่ตาตัวเองห้ามกด
+        GameManager.instance.NextTurn();
+    }
+
+    // --- ส่วนแจ้งเตือนกลับมาที่ Client ---
+    [ClientRpc]
+    public void RpcOnTurnChanged(bool turn)
+    {
+        if (isLocalPlayer)
+        {
+            // TODO: ใส่ Logic เปิด/ปิด แสงรอบการ์ด หรือ Text แจ้งเตือนตรงนี้
+            Debug.Log(turn ? ">> YOUR TURN <<" : "Enemy Turn");
+        }
+    }
+
+    [ClientRpc]
+    public void RpcNotifyPenalty(string message)
+    {
+        if (isLocalPlayer)
+        {
+            Debug.LogError(message); // แจ้งเตือนผู้เล่นว่าโดนลงโทษ
+        }
+    }
+    /////////////////////////
+    
     [Server]
     private static HashSet<string> Server_GetSelectedDuckKeysFromRoom()
     {

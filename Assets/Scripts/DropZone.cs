@@ -4,7 +4,7 @@ using Mirror;
 
 public class DropZone : MonoBehaviour, IDropHandler
 {
-    private GameObject currentCard;
+    public GameObject currentCard;
 
     // ถ้าอยากให้ DropZone ทำลายการ์ดเก่าก่อนใส่การ์ดใหม่
     // ตามเดิมในฟังก์ชัน PlaceCard
