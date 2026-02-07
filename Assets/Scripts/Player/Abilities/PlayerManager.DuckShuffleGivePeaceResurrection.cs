@@ -74,7 +74,7 @@ public partial class PlayerManager
     [Server]
     private void Server_ActivateResurrectionMode()
     {
-        const int maxPerColor = 5;
+        // const int maxPerColor = 5;
 
         string myColor = ColorIndexToDuckKey(duckColorIndex);
 

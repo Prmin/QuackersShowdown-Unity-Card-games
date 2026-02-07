@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,7 +8,7 @@ using System.Linq;
 using System;
 using Random = UnityEngine.Random;
 // =================================================================
-// ????? SkillMode Enum 
+//  SkillMode Enum 
 // =================================================================
 public enum SkillMode
 {
@@ -30,9 +30,14 @@ public enum SkillMode
     GivePeaceAChance,
     Resurrection
 }
+
+public enum DuckColor { Yellow, Blue, Red, Green, Pink, Black }
+
+
 public partial class PlayerManager : NetworkBehaviour
 {
-    // ?????? State ????
+    [SyncVar] public DuckColor duckColor;
+
     [SyncVar(hook = nameof(OnSkillModeChanged))]
     public SkillMode activeSkillMode = SkillMode.None;
     // --- PATCH: Barrier Hooks ---
@@ -107,11 +112,14 @@ public partial class PlayerManager : NetworkBehaviour
     [SerializeField] private string enemiesAreaRootName = "EnemiesArea";   // ???? parent
     [SerializeField] private string enemySlotPrefix = "EnemyArea";      // EnemyArea1..5
     // ????????????????? (?????????????????????????????????????)
-    [SyncVar] public int seatIndex = -1;
+    [SyncVar(hook = nameof(OnSeatIndexChanged))] public int seatIndex = -1;
     // ????????????? (???? client ?????????)
     private static Transform[] s_enemySlots = null;
     // map: netId ??? PlayerManager (?????) -> slot index [0..4]
     private static readonly Dictionary<uint, int> s_remoteSlotIndex = new Dictionary<uint, int>();
+    private static bool s_pendingTurnOrderLayoutRefresh;
+    private static string s_pendingTurnOrderLayoutReason;
+    private Coroutine _turnOrderLayoutCoroutine;
     //////////////////////////////////////////////////////////////////////
     public static PlayerManager localInstance;
     public static uint LocalPlayerNetId
@@ -127,6 +135,20 @@ public partial class PlayerManager : NetworkBehaviour
             var connIdentity = NetworkClient.connection?.identity;
             return connIdentity != null ? connIdentity.netId : 0;
         }
+    }
+
+    public static void RequestTurnOrderLayoutRefresh(string reason = null)
+    {
+        if (!NetworkClient.active) return;
+
+        if (localInstance != null)
+        {
+            localInstance.ScheduleTurnOrderLayoutRecompute(reason);
+            return;
+        }
+
+        s_pendingTurnOrderLayoutRefresh = true;
+        s_pendingTurnOrderLayoutReason = reason;
     }
     private DuckCard firstSelectedDuck = null; // ??????????????????????
     private NetworkIdentity firstTwoBirdsCard = null;
@@ -172,21 +194,19 @@ public partial class PlayerManager : NetworkBehaviour
         }
     }
     // ///////////////////////////////////////////  Turn  ////////////////////////////////////////////////////////////////////
-    // === Turn state (????????? + ??????????????) ===
-    // Mirror ???? SyncVar ??? static ? ???? static ?????????
-    private static int s_currentTurnSeat = -1;
-    // ???????? SyncVar (instance) ???????????? client ?????
-    [SyncVar(hook = nameof(OnTurnSeatChanged))]
-    private int _currentTurnSeatNet = -1;
-    // Hook: ?????????? client ???????? _currentTurnSeatNet ???????
-    private void OnTurnSeatChanged(int oldValue, int newValue)
+    [SyncVar(hook = nameof(OnDuckColorIndexChanged))] public int duckColorIndex = 0; // 0..N-1
+
+    private void OnSeatIndexChanged(int oldValue, int newValue)
     {
-        s_currentTurnSeat = newValue;
+        if (!NetworkClient.active) return;
+        RequestTurnOrderLayoutRefresh($"SeatIndexChanged:{oldValue}->{newValue}");
     }
-    // ????????????? (????????????)
-    private static readonly List<int> s_turnOrder = new List<int>();
-    // ????????????? (SyncVar ?????????????????)
-    [SyncVar] public int duckColorIndex = 0; // 0..N-1
+
+    private void OnDuckColorIndexChanged(int oldValue, int newValue)
+    {
+        if (!NetworkClient.active) return;
+        RequestTurnOrderLayoutRefresh($"DuckColorChanged:{oldValue}->{newValue}");
+    }
     // ========================
     //  Core State Logic 
     // ========================
@@ -237,7 +257,7 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        // กันคลิกการ์ดที่ไม่ใช่เป็ดใน DuckZone (เช่น การ์ดใน DropZone/มือ)
+        // à¸à¸±à¸™à¸„à¸¥à¸´à¸à¸à¸²à¸£à¹Œà¸”à¸—à¸µà¹ˆà¹„à¸¡à¹ˆà¹ƒà¸Šà¹ˆà¹€à¸›à¹‡à¸”à¹ƒà¸™ DuckZone (à¹€à¸Šà¹ˆà¸™ à¸à¸²à¸£à¹Œà¸”à¹ƒà¸™ DropZone/à¸¡à¸·à¸­)
         if (clickedCard == null || clickedCard.zone != ZoneKind.DuckZone)
             return;
 
@@ -361,26 +381,46 @@ public partial class PlayerManager : NetworkBehaviour
             Debug.LogError("[PlayerManager.OnStartClient] ? PlayerArea not found for local player");
         ;
         CacheEnemySlotsFromScene();
-        RecomputeLocalLayoutBySeat();
+        RequestTurnOrderLayoutRefresh("PlayerManager.OnStartClient");
     }
     public override void OnStopClient()
     {
         base.OnStopClient();
-        // ?????????????? ? ????????????????????
-        RecomputeLocalLayoutBySeat();
+        if (_turnOrderLayoutCoroutine != null)
+        {
+            StopCoroutine(_turnOrderLayoutCoroutine);
+            _turnOrderLayoutCoroutine = null;
+        }
+
+        if (isLocalPlayer && localInstance == this)
+            localInstance = null;
     }
     public override void OnStartLocalPlayer()
     {
         base.OnStartLocalPlayer();
         localInstance = this;
+
+        if (s_pendingTurnOrderLayoutRefresh)
+        {
+            ScheduleTurnOrderLayoutRecompute(s_pendingTurnOrderLayoutReason, 0.05f);
+            s_pendingTurnOrderLayoutRefresh = false;
+            s_pendingTurnOrderLayoutReason = null;
+        }
+        else
+        {
+            ScheduleTurnOrderLayoutRecompute("PlayerManager.OnStartLocalPlayer", 0.05f);
+        }
     }
     private void OnDestroy()
     {
         var networkIdentity = GetComponent<NetworkIdentity>();
-        if (networkIdentity.isOwned)
+        if (networkIdentity != null && networkIdentity.isOwned)
         {
             StopAllCoroutines();
         }
+
+        if (localInstance == this)
+            localInstance = null;
     }
     // Helper ??/????????????????
     // ??/??? EnemyArea1..5 ??? Scene
@@ -412,10 +452,7 @@ public partial class PlayerManager : NetworkBehaviour
             s_enemySlots = null;
             return;
         }
-        else
-        {
-            ;
-        }
+
         if (s_enemySlots == null || s_enemySlots.Length != 5)
             s_enemySlots = new Transform[5];
         for (int i = 0; i < s_enemySlots.Length; i++)
@@ -430,8 +467,7 @@ public partial class PlayerManager : NetworkBehaviour
             s_enemySlots[i] = child;
             if (child == null)
                 Debug.LogWarning($"[CacheEnemySlots] Slot '{childName}' not found!");
-            else
-                ;
+
         }
     }
     private Transform FindChildRecursive(Transform parent, string childName)
@@ -464,62 +500,200 @@ public partial class PlayerManager : NetworkBehaviour
             return s_enemySlots[idx];
         return null;
     }
-    // ????? slot ??? PlayerManager (???????????) ???????? seatIndex ???????? (?????? local)
+    [Client]
+    public void RecomputeLocalLayoutByTurnOrder()
+    {
+        if (!NetworkClient.active || !isLocalPlayer) return;
+        ScheduleTurnOrderLayoutRecompute("PlayerManager.RecomputeLocalLayoutByTurnOrder");
+    }
+
+    // Backward-compatible entrypoint for old callers.
     [Client]
     private void RecomputeLocalLayoutBySeat()
     {
-        // ?? local seat
-        var owned = FindObjectsOfType<PlayerManager>()
-            .FirstOrDefault(p =>
-            {
-                var ni = p.GetComponent<NetworkIdentity>();
-                return ni != null && ni.isOwned;
-            });
-        if (owned == null)
+        RecomputeLocalLayoutByTurnOrder();
+    }
+
+    [Client]
+    private void ScheduleTurnOrderLayoutRecompute(string reason = null, float delaySeconds = 0f)
+    {
+        if (!NetworkClient.active || !isLocalPlayer) return;
+
+        if (_turnOrderLayoutCoroutine != null)
         {
-            // ????? local ?????? ???????????
-            StartCoroutine(_RecomputeNextFrame());
-            return;
+            StopCoroutine(_turnOrderLayoutCoroutine);
+            _turnOrderLayoutCoroutine = null;
         }
-        int localSeat = Mathf.Clamp(owned.seatIndex, 0, 5);
-        // ?????????? (2..6)
-        var all = FindObjectsOfType<PlayerManager>().ToList();
-        int total = Mathf.Clamp(all.Count, 2, 6);
-        // ???????????????????
-        s_remoteSlotIndex.Clear();
-        foreach (var pm in all)
+
+        _turnOrderLayoutCoroutine = StartCoroutine(CoRecomputeTurnOrderLayout(reason, delaySeconds));
+    }
+
+    [Client]
+    private IEnumerator CoRecomputeTurnOrderLayout(string reason, float delaySeconds)
+    {
+        if (delaySeconds > 0f)
+            yield return new WaitForSeconds(delaySeconds);
+
+        const int maxAttempts = 40;
+        string waitReason = null;
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
-            var ni = pm.GetComponent<NetworkIdentity>();
-            if (ni != null && ni.isOwned)
+            if (TryApplyLocalLayoutByTurnOrder(out waitReason))
             {
-                // ?????? ? PlayerArea ???? (rel=0)
-                pm.PlayerArea = GameObject.Find("PlayerArea");
+                _turnOrderLayoutCoroutine = null;
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.05f);
+        }
+
+        _turnOrderLayoutCoroutine = null;
+        Debug.LogWarning($"[PlayerManager] RecomputeLocalLayoutByTurnOrder timeout reason={reason ?? "-"} wait={waitReason ?? "-"}");
+    }
+
+    [Client]
+    private bool TryApplyLocalLayoutByTurnOrder(out string waitReason)
+    {
+        waitReason = null;
+
+        if (!NetworkClient.active)
+        {
+            waitReason = "NetworkClient inactive";
+            return false;
+        }
+
+        if (!isLocalPlayer)
+        {
+            waitReason = "not local player";
+            return false;
+        }
+
+        TurnManager tm = TurnManager.Instance;
+        if (tm == null)
+        {
+            waitReason = "TurnManager missing";
+            return false;
+        }
+
+        if (s_enemySlots == null || s_enemySlots.Any(t => t == null))
+            CacheEnemySlotsFromScene();
+        if (s_enemySlots == null || s_enemySlots.Any(t => t == null))
+        {
+            waitReason = "enemy slots missing";
+            return false;
+        }
+
+        List<PlayerManager> players = FindObjectsOfType<PlayerManager>()
+            .Where(pm => pm != null && pm.isActiveAndEnabled && pm.SeatIndex >= 0)
+            .OrderBy(pm => pm.netId)
+            .ToList();
+
+        if (players.Count < 2)
+        {
+            waitReason = "players < 2";
+            return false;
+        }
+
+        if (players.Any(pm => pm.duckColorIndex < 0 || pm.duckColorIndex > 5))
+        {
+            waitReason = "duckColorIndex not ready";
+            return false;
+        }
+
+        if (tm.TurnOrder.Count != players.Count)
+        {
+            waitReason = $"TurnOrder({tm.TurnOrder.Count}) != players({players.Count})";
+            return false;
+        }
+
+        List<uint> order = tm.TurnOrder.ToList();
+        uint myNetId = netId;
+        int myIndex = order.IndexOf(myNetId);
+        if (myIndex < 0)
+        {
+            waitReason = "local player not in TurnOrder";
+            return false;
+        }
+
+        var playerByNetId = players.ToDictionary(pm => pm.netId, pm => pm);
+        for (int i = 0; i < order.Count; i++)
+        {
+            if (!playerByNetId.ContainsKey(order[i]))
+            {
+                waitReason = $"TurnOrder has unknown netId={order[i]}";
+                return false;
+            }
+        }
+
+        s_remoteSlotIndex.Clear();
+
+        if (PlayerArea == null)
+            PlayerArea = FindUIObject("PlayerArea");
+
+        foreach (PlayerManager pm in players)
+        {
+            if (pm.netId == myNetId)
+            {
+                pm.PlayerArea = PlayerArea;
                 continue;
             }
-            // ???????? ? ????? rel ????????? EnemyArea1..5
-            int rel = ((pm.seatIndex - localSeat) % 6 + 6) % 6; // safe mod
-            if (rel == 0) rel = 1; // ??????? edge (????????????? seatIndex ????????)
-            var t = GetSlotByRelIndex(rel);
-            if (t != null)
+
+            int otherIndex = order.IndexOf(pm.netId);
+            if (otherIndex < 0) continue;
+
+            int delta = otherIndex - myIndex;
+            if (delta == 0) continue;
+
+            int slot = delta < 0 ? -delta : 6 - delta;
+            slot = Mathf.Clamp(slot, 1, 5);
+
+            Transform slotTransform = GetSlotByRelIndex(slot);
+            if (slotTransform != null)
             {
-                pm.EnemyArea = t.gameObject;
-                // ????????????????????? (????????? anim/???????? UI)
-                s_remoteSlotIndex[pm.netId] = rel - 1; // 0..4
+                pm.EnemyArea = slotTransform.gameObject;
+                s_remoteSlotIndex[pm.netId] = slot - 1; // 0..4
             }
             else
             {
-                // fallback ????
-                pm.EnemyArea = GameObject.Find("EnemyArea");
+                pm.EnemyArea = FindUIObject("EnemyArea");
             }
         }
-        // (??????) ?????????
-        // ;
-        // foreach (var pm in all) ;
+
+        PlayerTurnSeatingBinder.RefreshVisibleSlotsForCount(players.Count);
+        RefreshPlayerAreaCardParentsByMapping();
+        return true;
     }
-    private IEnumerator _RecomputeNextFrame()
+
+    [Client]
+    private void RefreshPlayerAreaCardParentsByMapping()
     {
-        yield return null;
-        RecomputeLocalLayoutBySeat();
+        foreach (DuckCard dc in FindObjectsOfType<DuckCard>())
+        {
+            if (dc == null || dc.zone != ZoneKind.PlayerArea) continue;
+
+            Transform targetParent = null;
+            if (dc.ownerNetId == LocalPlayerNetId)
+            {
+                if (PlayerArea == null)
+                    PlayerArea = FindUIObject("PlayerArea");
+                targetParent = PlayerArea != null ? PlayerArea.transform : null;
+            }
+            else
+            {
+                targetParent = TryGetEnemySlotForNetId(dc.ownerNetId);
+            }
+
+            if (targetParent == null) continue;
+
+            if (dc.transform.parent != targetParent)
+                dc.transform.SetParent(targetParent, false);
+
+            if (targetParent.childCount > 0)
+            {
+                int sibling = Mathf.Clamp(dc.zoneIndex, 0, targetParent.childCount - 1);
+                dc.transform.SetSiblingIndex(sibling);
+            }
+        }
     }
     // ??? Transform ????????????????????????? PlayerManager ?????? (?????????????? null)
     private Transform GetMyEnemySlot()
@@ -592,7 +766,7 @@ public partial class PlayerManager : NetworkBehaviour
         // ???????
         seatIndex = 5;
     }
-    // ??????????? �?????? index ?????????????????�
+    // ??????????? ï¿½?????? index ?????????????????ï¿½
     private static readonly string[] DUCK_KEYS_BY_INDEX =
     {
     "DuckBlue", "DuckOrange", "DuckPink", "DuckGreen", "DuckYellow", "DuckPurple"
@@ -601,6 +775,24 @@ public partial class PlayerManager : NetworkBehaviour
     private static string ColorIndexToDuckKey(int idx)
     {
         return (idx >= 0 && idx < DUCK_KEYS_BY_INDEX.Length) ? DUCK_KEYS_BY_INDEX[idx] : null;
+    }
+
+    // Shared helper for all partial ability files.
+    private static string ExtractDuckKeyFromCard(GameObject go)
+    {
+        if (go == null) return null;
+
+        string name = go.name.Replace("(Clone)", "").Trim();
+        if (name.IndexOf("Marsh", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Marsh";
+
+        foreach (string key in DUCK_KEYS_BY_INDEX)
+        {
+            if (name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                return key;
+        }
+
+        return null;
     }
     [Server]
     private static HashSet<string> Server_GetSelectedDuckKeysFromLobby()
@@ -614,95 +806,13 @@ public partial class PlayerManager : NetworkBehaviour
         }
         return keys;
     }
-    // ??????????? OnBarrierGo_Server() ??????????????????
-    [Server]
-    private void Server_BeginMatch_AfterBarrier()
-    {
-        // 1) ???? DuckZone ?????? 6 ??? pool ??? �???????????????�
-        RefillDuckZoneIfNeeded();
-        // 2) ???????????????????? �??????????�
-        Server_PickStarterFromTopDuckCard_AndBuildOrder();
-        // (???????????????) ???????????????????? ????:
-        // TurnSystem.Server_BeginFirstTurn(s_currentTurnSeat, s_turnOrder);
-    }
-    [Server]
-    private static void Server_PickStarterFromTopDuckCard_AndBuildOrder()
-    {
-        var any = FindObjectsOfType<PlayerManager>().FirstOrDefault();
-        if (any == null || any.DuckZone == null) return;
-        // ? ???????????????????????? Transform ????
-        var zone = any.DuckZone.transform;
-        // ???????????? "?????? Marsh"
-        string topKey = null;
-        DuckCard topDuck = null;
-        for (int i = zone.childCount - 1; i >= 0; i--)
-        {
-            var tr = zone.GetChild(i);
-            if (tr.TryGetComponent(out DuckCard dc))
-            {
-                var k = ExtractDuckKeyFromCard(dc.gameObject);
-                if (!string.IsNullOrEmpty(k) && !string.Equals(k, "Marsh", StringComparison.OrdinalIgnoreCase))
-                {
-                    topDuck = dc;
-                    topKey = k;
-                    break;
-                }
-            }
-        }
-        var players = FindObjectsOfType<PlayerManager>().ToList();
-        int total = Mathf.Clamp(players.Count, 2, 6);
-        // ?????????????? Marsh ???????????????? ? fallback ?????????????????
-        PlayerManager starter = null;
-        if (!string.IsNullOrEmpty(topKey))
-            starter = players.FirstOrDefault(p => ColorIndexToDuckKey(p.duckColorIndex) == topKey);
-        if (starter == null)
-            starter = players.OrderBy(p => p.seatIndex).FirstOrDefault();
-        s_currentTurnSeat = (starter != null) ? starter.seatIndex : 0;
-        if (any != null)
-        {
-            any._currentTurnSeatNet = s_currentTurnSeat; // ??????????????? ? Mirror sync ????? client ? hook ?????? static
-        }
-        // ???????????? (????????????? ?????????? +i ???? -i)
-        s_turnOrder.Clear();
-        for (int i = 0; i < total; i++)
-        {
-            int seat = (s_currentTurnSeat + i) % total;
-            s_turnOrder.Add(seat);
-        }
-        ;
-        // ? ???????????????????????????????????????????????????? 1..6
-        var caller = any; // ???????????? PM ????????????????????
-        if (caller != null)
-            caller.RpcRecomputeLayoutAllClients();  // <<< ???????????
-    }
     [ClientRpc]
     public void RpcRecomputeLayoutAllClients()
     {
         if (!NetworkClient.active) return;
-        try
-        {
-            RecomputeLocalLayoutBySeat();
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[RpcRecomputeLayoutAllClients] ขัดข้อง: {ex}");
-        }
+        RequestTurnOrderLayoutRefresh("PlayerManager.RpcRecomputeLayoutAllClients");
     }
-    // ???????? GameObject ????? ? DuckKey ("DuckBlue"...)
-    private static string ExtractDuckKeyFromCard(GameObject go)
-    {
-        var name = go.name.Replace("(Clone)", "").Trim();
-        // Marsh ???????????????????????
-        if (name.IndexOf("Marsh", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            return "Marsh";
-        foreach (var key in DUCK_KEYS_BY_INDEX)
-        {
-            if (name.IndexOf(key, System.StringComparison.OrdinalIgnoreCase) >= 0)
-                return key;
-        }
-        return null;
-    }
-    // ????? server (???????????? server/host) � cache ???????????????
+    // ????? server (???????????? server/host) ï¿½ cache ???????????????
     private Transform _cachedDuckZone;
     [Server]
     private Transform GetSceneDuckZone()
@@ -739,8 +849,8 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void Server_ResequenceDuckZoneColumns()
     {
-        // อย่าเรียงจาก UI (anchoredPosition) เพราะ GridLayoutGroup / timing / headless server ทำให้เพี้ยนได้
-        // เรียงจาก state ฝั่ง server: ColNet แล้วคอมแพคให้เป็น 0..n-1
+        // à¸­à¸¢à¹ˆà¸²à¹€à¸£à¸µà¸¢à¸‡à¸ˆà¸²à¸ UI (anchoredPosition) à¹€à¸žà¸£à¸²à¸° GridLayoutGroup / timing / headless server à¸—à¸³à¹ƒà¸«à¹‰à¹€à¸žà¸µà¹‰à¸¢à¸™à¹„à¸”à¹‰
+        // à¹€à¸£à¸µà¸¢à¸‡à¸ˆà¸²à¸ state à¸à¸±à¹ˆà¸‡ server: ColNet à¹à¸¥à¹‰à¸§à¸„à¸­à¸¡à¹à¸žà¸„à¹ƒà¸«à¹‰à¹€à¸›à¹‡à¸™ 0..n-1
         List<DuckCard> ducks = FindDucksInRow(0);
         ducks.Sort((a, b) =>
         {
@@ -752,7 +862,7 @@ public partial class PlayerManager : NetworkBehaviour
         for (int i = 0; i < ducks.Count; i++)
             ducks[i].ServerAssignToZone(ZoneKind.DuckZone, 0, i);
 
-        // ดัน order ไปฝั่ง client ให้ GridLayoutGroup จัดตำแหน่งคอลัมน์ถูกทันที
+        // à¸”à¸±à¸™ order à¹„à¸›à¸à¸±à¹ˆà¸‡ client à¹ƒà¸«à¹‰ GridLayoutGroup à¸ˆà¸±à¸”à¸•à¸³à¹à¸«à¸™à¹ˆà¸‡à¸„à¸­à¸¥à¸±à¸¡à¸™à¹Œà¸–à¸¹à¸à¸—à¸±à¸™à¸—à¸µ
         Server_PushDuckZoneOrder(0);
     }
 
@@ -845,8 +955,19 @@ public partial class PlayerManager : NetworkBehaviour
         CardPoolManager.Initialize(selectedPrefabs, initialCount: 5);
         // 2) Ensure the shared DuckZone is filled before we begin
         host.RefillDuckZoneIfNeeded();
-        // 3) Randomize the starting seat / order from the newly built deck
-        Server_PickStarterFromTopDuckCard_AndBuildOrder();
+        // 3) Build/rotate authoritative TurnOrder from DuckZone front card
+        var tm = TurnManager.Instance;
+        if (tm != null)
+        {
+            tm.ServerRebuildTurnOrder("MatchStart");
+            tm.ServerPickStarterFromDuckZoneAndRotate("MatchStart");
+            tm.ServerRequestClientLayoutRefresh("MatchStart");
+        }
+        else
+        {
+            Debug.LogWarning("[PlayerManager] TurnManager.Instance is null on server (BarrierGo).");
+        }
+
         // 4) Deal three action cards to every connected player
         foreach (var pm in players)
         {
@@ -861,21 +982,21 @@ public partial class PlayerManager : NetworkBehaviour
     private void InitializeActionCardPool()
     {
         actionCardPool.Clear();
-        // actionCardPool.Add("Shoot", 10);
+        actionCardPool.Add("Shoot", 10);
         actionCardPool.Add("QuickShot", 10);
-        // actionCardPool.Add("TekeAim", 10);
-        // actionCardPool.Add("DoubleBarrel", 10);
-        // actionCardPool.Add("Misfire", 10);
-        // actionCardPool.Add("TwoBirds", 10);
-        // actionCardPool.Add("BumpLeft", 10);
-        // actionCardPool.Add("BumpRight", 10);
-        // actionCardPool.Add("LineForward", 10);
-        // actionCardPool.Add("MoveAhead", 10);
-        // actionCardPool.Add("HangBack", 10);
-        // actionCardPool.Add("FastForward", 10);
-        // actionCardPool.Add("DisorderlyConduckt", 10);
-        // actionCardPool.Add("DuckShuffle", 10);
-        // actionCardPool.Add("GivePeaceAChance", 10);
+        actionCardPool.Add("TekeAim", 10);
+        actionCardPool.Add("DoubleBarrel", 10);
+        actionCardPool.Add("Misfire", 10);
+        actionCardPool.Add("TwoBirds", 10);
+        actionCardPool.Add("BumpLeft", 10);
+        actionCardPool.Add("BumpRight", 10);
+        actionCardPool.Add("LineForward", 10);
+        actionCardPool.Add("MoveAhead", 10);
+        actionCardPool.Add("HangBack", 10);
+        actionCardPool.Add("FastForward", 10);
+        actionCardPool.Add("DisorderlyConduckt", 10);
+        actionCardPool.Add("DuckShuffle", 10);
+        actionCardPool.Add("GivePeaceAChance", 10);
         actionCardPool.Add("Resurrection", 10);
     }
     private int GetDuckCardCountInDuckZone()
@@ -930,15 +1051,15 @@ public partial class PlayerManager : NetworkBehaviour
     [Command(requiresAuthority = false)]
     public void CmdSyncDuckCards()
     {
-        // อย่าคิด order ฝั่ง client (SyncVar อาจมาถึงไม่ทัน ทำให้ sort เพี้ยนแบบสุ่มๆ)
-        // ให้ server ส่ง "ลำดับ netId ที่ถูกต้อง" มาเลย
+        // à¸­à¸¢à¹ˆà¸²à¸„à¸´à¸” order à¸à¸±à¹ˆà¸‡ client (SyncVar à¸­à¸²à¸ˆà¸¡à¸²à¸–à¸¶à¸‡à¹„à¸¡à¹ˆà¸—à¸±à¸™ à¸—à¸³à¹ƒà¸«à¹‰ sort à¹€à¸žà¸µà¹‰à¸¢à¸™à¹à¸šà¸šà¸ªà¸¸à¹ˆà¸¡à¹†)
+        // à¹ƒà¸«à¹‰ server à¸ªà¹ˆà¸‡ "à¸¥à¸³à¸”à¸±à¸š netId à¸—à¸µà¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡" à¸¡à¸²à¹€à¸¥à¸¢
         Server_PushDuckZoneOrder(0);
     }
 
     [Server]
     private void Server_PushDuckZoneOrder(int row)
     {
-        // ใช้ state ฝั่ง server เป็นตัวจริง: sort ด้วย ColNet
+        // à¹ƒà¸Šà¹‰ state à¸à¸±à¹ˆà¸‡ server à¹€à¸›à¹‡à¸™à¸•à¸±à¸§à¸ˆà¸£à¸´à¸‡: sort à¸”à¹‰à¸§à¸¢ ColNet
         List<DuckCard> ducks = FindDucksInRow(row);
         ducks.Sort((a, b) =>
         {
@@ -959,7 +1080,7 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (!NetworkClient.active) return;
 
-        // DuckZone อาจจะยังไม่ได้ cache ตอน RPC มาเร็ว ๆ
+        // DuckZone à¸­à¸²à¸ˆà¸ˆà¸°à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰ cache à¸•à¸­à¸™ RPC à¸¡à¸²à¹€à¸£à¹‡à¸§ à¹†
         if (DuckZone == null)
         {
             DuckZone = GameObject.Find("DuckZone");
@@ -970,20 +1091,20 @@ public partial class PlayerManager : NetworkBehaviour
         {
             Transform dz = DuckZone.transform;
 
-            // SetSiblingIndex = ตัวที่ GridLayoutGroup ใช้จัดคอลัมน์
+            // SetSiblingIndex = à¸•à¸±à¸§à¸—à¸µà¹ˆ GridLayoutGroup à¹ƒà¸Šà¹‰à¸ˆà¸±à¸”à¸„à¸­à¸¥à¸±à¸¡à¸™à¹Œ
             for (int i = 0; i < orderedDuckNetIds.Length; i++)
             {
                 uint id = orderedDuckNetIds[i];
                 if (!NetworkClient.spawned.TryGetValue(id, out NetworkIdentity ni) || ni == null) continue;
 
-                // กันหลุด parent
+                // à¸à¸±à¸™à¸«à¸¥à¸¸à¸” parent
                 if (ni.transform.parent != dz)
                     ni.transform.SetParent(dz, false);
 
                 ni.transform.SetSiblingIndex(i);
             }
 
-            // บังคับให้ layout อัปเดตทันที (กันเฟรมเดียวที่เห็นเพี้ยน)
+            // à¸šà¸±à¸‡à¸„à¸±à¸šà¹ƒà¸«à¹‰ layout à¸­à¸±à¸›à¹€à¸”à¸•à¸—à¸±à¸™à¸—à¸µ (à¸à¸±à¸™à¹€à¸Ÿà¸£à¸¡à¹€à¸”à¸µà¸¢à¸§à¸—à¸µà¹ˆà¹€à¸«à¹‡à¸™à¹€à¸žà¸µà¹‰à¸¢à¸™)
             var rt = dz as RectTransform;
             if (rt != null)
             {
@@ -993,7 +1114,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[RpcApplyDuckZoneOrder] ขัดข้อง: {ex}");
+            Debug.LogError($"[RpcApplyDuckZoneOrder] à¸‚à¸±à¸”à¸‚à¹‰à¸­à¸‡: {ex}");
         }
     }
 
@@ -1105,8 +1226,8 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void ShiftColumnsDown(int shotRow, int shotCol)
     {
-        // ใช้ GridLayoutGroup อยู่แล้ว — ไม่ต้องไป set anchoredPosition เอง
-        // แค่ขยับ ColNet ของเป็ดที่อยู่ขวากว่า (col > shotCol) แล้วดัน order ไป client
+        // à¹ƒà¸Šà¹‰ GridLayoutGroup à¸­à¸¢à¸¹à¹ˆà¹à¸¥à¹‰à¸§ â€” à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¹„à¸› set anchoredPosition à¹€à¸­à¸‡
+        // à¹à¸„à¹ˆà¸‚à¸¢à¸±à¸š ColNet à¸‚à¸­à¸‡à¹€à¸›à¹‡à¸”à¸—à¸µà¹ˆà¸­à¸¢à¸¹à¹ˆà¸‚à¸§à¸²à¸à¸§à¹ˆà¸² (col > shotCol) à¹à¸¥à¹‰à¸§à¸”à¸±à¸™ order à¹„à¸› client
         List<DuckCard> ducks = FindDucksInRow(shotRow);
         for (int i = 0; i < ducks.Count; i++)
         {
@@ -1149,7 +1270,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[RpcAddCardToDuckZone] ขัดข้อง: {ex}");
+            Debug.LogError($"[RpcAddCardToDuckZone] à¸‚à¸±à¸”à¸‚à¹‰à¸­à¸‡: {ex}");
         }
     }
     private int GetDuckCardCount()
@@ -1259,7 +1380,7 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (actionCardPrefabMap != null && actionCardPrefabMap.TryGetValue(cardName, out var prefab))
             return prefab;
-        Debug.LogWarning($"?? Action card �{cardName}� not found!");
+        Debug.LogWarning($"?? Action card ï¿½{cardName}ï¿½ not found!");
         return null;
     }
     public void PlayCard(GameObject card)
@@ -1311,11 +1432,11 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (duckNi == null) return;
         uint targetId = duckNi.netId;
-        // ลบ TargetFollow ที่ชี้มาที่การ์ดนี้ทุกอัน
+        // à¸¥à¸š TargetFollow à¸—à¸µà¹ˆà¸Šà¸µà¹‰à¸¡à¸²à¸—à¸µà¹ˆà¸à¸²à¸£à¹Œà¸”à¸™à¸µà¹‰à¸—à¸¸à¸à¸­à¸±à¸™
         foreach (var tf in FindObjectsOfType<TargetFollow>())
             if (tf != null && tf.targetNetId == targetId)
                 NetworkServer.Destroy(tf.gameObject);
-        // ลบ TargetMarker ที่ชี้มาที่การ์ดนี้ทุกอัน (ใน TargetZone)
+        // à¸¥à¸š TargetMarker à¸—à¸µà¹ˆà¸Šà¸µà¹‰à¸¡à¸²à¸—à¸µà¹ˆà¸à¸²à¸£à¹Œà¸”à¸™à¸µà¹‰à¸—à¸¸à¸à¸­à¸±à¸™ (à¹ƒà¸™ TargetZone)
         foreach (var mk in FindObjectsOfType<TargetMarker>())
             if (mk != null && mk.FollowDuckNetId == targetId)
                 NetworkServer.Destroy(mk.gameObject);
@@ -1324,7 +1445,7 @@ public partial class PlayerManager : NetworkBehaviour
     private void MoveTargetFromTo(NetworkIdentity fromCard, NetworkIdentity toCard)
     {
         if (fromCard == null || toCard == null) return;
-        // ถ้าปลายทางมี Target อยู่ ลบทิ้งก่อน
+        // à¸–à¹‰à¸²à¸›à¸¥à¸²à¸¢à¸—à¸²à¸‡à¸¡à¸µ Target à¸­à¸¢à¸¹à¹ˆ à¸¥à¸šà¸—à¸´à¹‰à¸‡à¸à¹ˆà¸­à¸™
         RemoveTargetFromCard(toCard);
         foreach (var tf in FindObjectsOfType<TargetFollow>())
         {
@@ -1332,7 +1453,7 @@ public partial class PlayerManager : NetworkBehaviour
             {
                 tf.targetNetId = toCard.netId;
                 tf.ResetTargetTransform();
-                // อัปเดต TargetMarker คู่กัน
+                // à¸­à¸±à¸›à¹€à¸”à¸• TargetMarker à¸„à¸¹à¹ˆà¸à¸±à¸™
                 foreach (var mk in FindObjectsOfType<TargetMarker>())
                 {
                     if (mk != null && mk.FollowDuckNetId == fromCard.netId)
@@ -1366,11 +1487,11 @@ public partial class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcShowCard(NetworkIdentity cardIdentity, string type)
     {
-        // กันเคส RPC มาช้า/การ์ดถูกลบไปแล้ว
+        // à¸à¸±à¸™à¹€à¸„à¸ª RPC à¸¡à¸²à¸Šà¹‰à¸²/à¸à¸²à¸£à¹Œà¸”à¸–à¸¹à¸à¸¥à¸šà¹„à¸›à¹à¸¥à¹‰à¸§
         if (!NetworkClient.active) return;
         if (cardIdentity == null || cardIdentity.gameObject == null)
         {
-            Debug.LogWarning("[RpcShowCard] การ์ดว่างหรือถูกทำลายแล้ว ข้ามการแสดงผล");
+            Debug.LogWarning("[RpcShowCard] à¸à¸²à¸£à¹Œà¸”à¸§à¹ˆà¸²à¸‡à¸«à¸£à¸·à¸­à¸–à¸¹à¸à¸—à¸³à¸¥à¸²à¸¢à¹à¸¥à¹‰à¸§ à¸‚à¹‰à¸²à¸¡à¸à¸²à¸£à¹à¸ªà¸”à¸‡à¸œà¸¥");
             return;
         }
         try
@@ -1379,7 +1500,7 @@ public partial class PlayerManager : NetworkBehaviour
             GameObject card = cardIdentity.gameObject;
             if (type == "Dealt")
             {
-                // ฝั่งศัตรูพลิกหลังทันที (ปล่อยให้ DuckCard จัด layout เอง)
+                // à¸à¸±à¹ˆà¸‡à¸¨à¸±à¸•à¸£à¸¹à¸žà¸¥à¸´à¸à¸«à¸¥à¸±à¸‡à¸—à¸±à¸™à¸—à¸µ (à¸›à¸¥à¹ˆà¸­à¸¢à¹ƒà¸«à¹‰ DuckCard à¸ˆà¸±à¸” layout à¹€à¸­à¸‡)
                 if (!cardIdentity.isOwned && EnemyArea != null)
                 {
                     card.GetComponent<CardFlipper>()?.Flip();
@@ -1402,7 +1523,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[RpcShowCard] ขัดข้อง: {ex}");
+            Debug.LogError($"[RpcShowCard] à¸‚à¸±à¸”à¸‚à¹‰à¸­à¸‡: {ex}");
         }
     }
 
@@ -1462,19 +1583,19 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (target == null)
         {
-            Debug.LogError("[CmdTargetOtherCard] target GameObject เป็น null ข้ามคำสั่ง");
+            Debug.LogError("[CmdTargetOtherCard] target GameObject à¹€à¸›à¹‡à¸™ null à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
             return;
         }
         var opponentIdentity = target.GetComponent<NetworkIdentity>();
         if (opponentIdentity == null)
         {
-            Debug.LogError("[CmdTargetOtherCard] target ไม่มี NetworkIdentity ข้ามคำสั่ง");
+            Debug.LogError("[CmdTargetOtherCard] target à¹„à¸¡à¹ˆà¸¡à¸µ NetworkIdentity à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
             return;
         }
         var conn = opponentIdentity.connectionToClient;
         if (conn == null)
         {
-            Debug.LogWarning("[CmdTargetOtherCard] connectionToClient เป็น null ข้ามคำสั่ง");
+            Debug.LogWarning("[CmdTargetOtherCard] connectionToClient à¹€à¸›à¹‡à¸™ null à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
             return;
         }
         TargetOtherCard(conn);
@@ -1510,8 +1631,9 @@ public partial class PlayerManager : NetworkBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[RpcIncrementClick] ขัดข้อง: {ex}");
+            Debug.LogError($"[RpcIncrementClick] à¸‚à¸±à¸”à¸‚à¹‰à¸­à¸‡: {ex}");
         }
     }
 }
+
 

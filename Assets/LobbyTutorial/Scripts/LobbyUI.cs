@@ -138,8 +138,6 @@ public class LobbyUI : MonoBehaviour
             {
                 if (manager.CanStartGameNow(out var reason))
                     manager.StartGameIfReady();
-                else
-                    ;
             }
         }
         else

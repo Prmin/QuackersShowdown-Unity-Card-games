@@ -123,7 +123,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         var parent = ResolveZoneParent();
         if (parent == null)
         {
-            Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
+            // Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
             return false;
         }
 
