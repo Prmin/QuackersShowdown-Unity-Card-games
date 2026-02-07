@@ -11,11 +11,20 @@ public class TurnManager : NetworkBehaviour
     // Authoritative turn order (netId list) replicated to clients.
     public readonly SyncList<uint> TurnOrder = new SyncList<uint>();
 
+    [Header("Turn Timer")]
+    [SerializeField] private float turnDurationSeconds = 30f;
+
     [SyncVar(hook = nameof(OnCurrentTurnIndexChanged))]
     public int currentTurnIndex = -1;
 
     [SyncVar(hook = nameof(OnCurrentTurnNetIdChanged))]
     public uint currentTurnNetId = 0;
+
+    [SyncVar] public int currentTurnRemainingSeconds = 0;
+
+    private bool _turnClockArmed;
+    private double _turnDeadlineServerTime = -1d;
+    private int _lastLoggedRemainingSecond = -1;
 
     private static readonly string[] DuckKeysByIndex =
     {
@@ -62,10 +71,48 @@ public class TurnManager : NetworkBehaviour
             Instance = null;
     }
 
+    [ServerCallback]
+    private void Update()
+    {
+        if (!_turnClockArmed) return;
+        if (TurnOrder.Count <= 0 || currentTurnIndex < 0 || currentTurnIndex >= TurnOrder.Count)
+        {
+            ServerStopTurnTimer();
+            return;
+        }
+
+        if (_turnDeadlineServerTime <= 0d)
+            return;
+
+        double remain = _turnDeadlineServerTime - NetworkTime.time;
+        int remainingSeconds = Mathf.Max(0, Mathf.CeilToInt((float)remain));
+
+        if (currentTurnRemainingSeconds != remainingSeconds)
+            currentTurnRemainingSeconds = remainingSeconds;
+
+        if (remainingSeconds != _lastLoggedRemainingSecond)
+        {
+            _lastLoggedRemainingSecond = remainingSeconds;
+            ServerLogTurnClock("Tick", remainingSeconds, "Running");
+        }
+
+        if (remain <= 0d)
+        {
+            ServerLogTurnClock("Timeout", 0, "TimerExpired");
+            ServerAdvanceTurn("TimerExpired");
+        }
+    }
+
     public override void OnStartServer()
     {
         base.OnStartServer();
         ServerRebuildTurnOrder("OnStartServer");
+    }
+
+    public override void OnStopServer()
+    {
+        ServerStopTurnTimer();
+        base.OnStopServer();
     }
 
     public override void OnStartClient()
@@ -142,6 +189,7 @@ public class TurnManager : NetworkBehaviour
         {
             currentTurnIndex = -1;
             currentTurnNetId = 0;
+            ServerStopTurnTimer();
         }
         else
         {
@@ -149,6 +197,9 @@ public class TurnManager : NetworkBehaviour
             if (idx < 0) idx = 0;
             currentTurnIndex = idx;
             currentTurnNetId = TurnOrder[currentTurnIndex];
+
+            if (_turnClockArmed)
+                ServerStartCurrentTurnTimer($"Rebuild:{reason ?? "-"}");
         }
 
         ServerLogTurnOrder(reason);
@@ -207,6 +258,9 @@ public class TurnManager : NetworkBehaviour
             $"starterNetId={starterNetId} starterSeatIndex={starterSeat} starterDuckKey={starterDuckKey}"
         );
 
+        _turnClockArmed = true;
+        ServerStartCurrentTurnTimer($"Rotate:{reason ?? "-"}");
+
         ServerLogTurnOrder($"Rotate:{reason ?? "-"}");
         ServerRequestClientLayoutRefresh($"Rotate:{reason ?? "-"}");
     }
@@ -215,6 +269,26 @@ public class TurnManager : NetworkBehaviour
     public void ServerRequestClientLayoutRefresh(string reason = null)
     {
         RpcRequestClientLayoutRefresh(reason ?? "-");
+    }
+
+    [Server]
+    public void ServerAdvanceTurn(string reason = null)
+    {
+        if (TurnOrder.Count <= 0)
+        {
+            ServerStopTurnTimer();
+            return;
+        }
+
+        if (currentTurnIndex < 0 || currentTurnIndex >= TurnOrder.Count)
+            currentTurnIndex = 0;
+        else
+            currentTurnIndex = (currentTurnIndex + 1) % TurnOrder.Count;
+
+        currentTurnNetId = TurnOrder[currentTurnIndex];
+
+        ServerLogTurnClock("Advance", currentTurnRemainingSeconds, reason ?? "-");
+        ServerStartCurrentTurnTimer($"Advance:{reason ?? "-"}");
     }
 
     [ClientRpc]
@@ -292,6 +366,56 @@ public class TurnManager : NetworkBehaviour
         }
 
         return 0;
+    }
+
+    [Server]
+    private void ServerStartCurrentTurnTimer(string reason)
+    {
+        if (TurnOrder.Count <= 0 || currentTurnIndex < 0 || currentTurnIndex >= TurnOrder.Count)
+        {
+            ServerStopTurnTimer();
+            return;
+        }
+
+        float duration = Mathf.Max(1f, turnDurationSeconds);
+        _turnDeadlineServerTime = NetworkTime.time + duration;
+        currentTurnRemainingSeconds = Mathf.CeilToInt(duration);
+        _lastLoggedRemainingSecond = -1;
+
+        ServerLogTurnClock("Start", currentTurnRemainingSeconds, reason);
+    }
+
+    [Server]
+    private void ServerStopTurnTimer()
+    {
+        _turnDeadlineServerTime = -1d;
+        _lastLoggedRemainingSecond = -1;
+        currentTurnRemainingSeconds = 0;
+    }
+
+    [Server]
+    private void ServerLogTurnClock(string stage, int remainingSeconds, string reason)
+    {
+        uint turnNetId = ServerGetCurrentTurnNetId_Internal();
+        int seatIndex = -1;
+        int duckColorIndex = -1;
+        string duckKey = "-";
+
+        if (turnNetId != 0 &&
+            NetworkServer.spawned.TryGetValue(turnNetId, out NetworkIdentity ni) &&
+            ni != null &&
+            ni.TryGetComponent(out PlayerManager pm))
+        {
+            seatIndex = pm.SeatIndex;
+            duckColorIndex = pm.duckColorIndex;
+            duckKey = DuckKeyFromIndex(duckColorIndex);
+        }
+
+        Debug.Log(
+            $"[TurnManager] Turn{stage} reason={reason ?? "-"} " +
+            $"turnIndex={currentTurnIndex} netId={turnNetId} seatIndex={seatIndex} duckKey={duckKey} " +
+            $"remaining={remainingSeconds}s"
+        );
     }
 
     [Server]
