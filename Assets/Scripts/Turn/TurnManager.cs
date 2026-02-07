@@ -25,6 +25,12 @@ public class TurnManager : NetworkBehaviour
     private bool _turnClockArmed;
     private double _turnDeadlineServerTime = -1d;
     private int _lastLoggedRemainingSecond = -1;
+    private bool _currentTurnCardPlayed;
+    private bool _currentTurnSkillDeclared;
+    private bool _waitingForTurnFinishConditions;
+    private double _nextPendingFinishLogAt;
+    private bool _sawNonNoneSkillSinceCardPlayed;
+    private SkillMode _lastObservedSkillMode = SkillMode.None;
 
     private static readonly string[] DuckKeysByIndex =
     {
@@ -81,6 +87,17 @@ public class TurnManager : NetworkBehaviour
             return;
         }
 
+        if (_waitingForTurnFinishConditions)
+        {
+            ServerUpdateWaitingForTurnFinish();
+            return;
+        }
+
+        ServerTrackSkillStateAndLog(currentTurnRemainingSeconds);
+
+        if (ServerTryAdvanceResolved("CardAndSkillResolved", currentTurnRemainingSeconds))
+            return;
+
         if (_turnDeadlineServerTime <= 0d)
             return;
 
@@ -96,11 +113,39 @@ public class TurnManager : NetworkBehaviour
             ServerLogTurnClock("Tick", remainingSeconds, "Running");
         }
 
-        if (remain <= 0d)
+        if (remain > 0d) return;
+
+        // If player ran out of time without playing any card, skip turn immediately.
+        if (!_currentTurnCardPlayed)
         {
-            ServerLogTurnClock("Timeout", 0, "TimerExpired");
-            ServerAdvanceTurn("TimerExpired");
+            ServerLogTurnClock("Timeout", 0, "TimerExpiredNoCardPlayed");
+            ServerAdvanceTurn("TimerExpiredNoCardPlayed");
+            return;
         }
+
+        PlayerManager turnPlayer = ServerGetCurrentTurnPlayer();
+        SkillMode forcedFromMode = SkillMode.None;
+        bool forceEndedSkill = false;
+
+        if (turnPlayer != null && turnPlayer.activeSkillMode != SkillMode.None)
+        {
+            forcedFromMode = turnPlayer.activeSkillMode;
+            forceEndedSkill = turnPlayer.ServerForceEndActiveSkill("TimerExpired");
+            if (forceEndedSkill)
+                ServerLogTurnClock("SkillForceEnded", 0, $"from={forcedFromMode}");
+        }
+
+        if (!ServerCanFinishCurrentTurn(out string blockedBy))
+        {
+            // Fail-safe: never stay stuck at 0s.
+            ServerLogTurnClock("Timeout", 0, $"TimerExpiredForcedAdvance blockedBy={blockedBy}");
+            ServerAdvanceTurn("TimerExpiredForcedAdvance");
+            return;
+        }
+
+        string timeoutReason = forceEndedSkill ? "TimerExpiredForceEndSkill" : "TimerExpired";
+        ServerLogTurnClock("Timeout", 0, timeoutReason);
+        ServerAdvanceTurn(timeoutReason);
     }
 
     public override void OnStartServer()
@@ -274,6 +319,19 @@ public class TurnManager : NetworkBehaviour
     [Server]
     public void ServerAdvanceTurn(string reason = null)
     {
+        PlayerManager previousTurnPlayer = ServerGetCurrentTurnPlayer();
+        if (previousTurnPlayer != null)
+        {
+            bool cleared = previousTurnPlayer.ServerForceEndActiveSkill($"TurnAdvance:{reason ?? "-"}");
+            if (cleared)
+            {
+                Debug.Log(
+                    $"[TurnManager] TurnCleanup reason={reason ?? "-"} clearedNetId={previousTurnPlayer.netId} " +
+                    $"seatIndex={previousTurnPlayer.SeatIndex}"
+                );
+            }
+        }
+
         if (TurnOrder.Count <= 0)
         {
             ServerStopTurnTimer();
@@ -289,6 +347,66 @@ public class TurnManager : NetworkBehaviour
 
         ServerLogTurnClock("Advance", currentTurnRemainingSeconds, reason ?? "-");
         ServerStartCurrentTurnTimer($"Advance:{reason ?? "-"}");
+    }
+
+    [Server]
+    public void ServerNotifyCardPlayed(uint playerNetId, string cardName = null)
+    {
+        uint turnNetId = ServerGetCurrentTurnNetId_Internal();
+        if (turnNetId == 0)
+            return;
+
+        if (playerNetId != turnNetId)
+        {
+            Debug.LogWarning($"[TurnManager] Reject card play out-of-turn playerNetId={playerNetId} currentTurnNetId={turnNetId}");
+            return;
+        }
+
+        if (_currentTurnCardPlayed)
+            return;
+
+        _currentTurnCardPlayed = true;
+        _currentTurnSkillDeclared = false;
+        ServerLogTurnClock("CardPlayed", currentTurnRemainingSeconds, $"card={cardName ?? "-"}");
+
+        ServerTrackSkillStateAndLog(currentTurnRemainingSeconds);
+
+        if (ServerTryAdvanceResolved("CardPlayedImmediate", currentTurnRemainingSeconds))
+            return;
+    }
+
+    [Server]
+    public void ServerNotifySkillModeSelected(uint playerNetId, SkillMode selectedSkill)
+    {
+        if (selectedSkill == SkillMode.None)
+            return;
+
+        uint turnNetId = ServerGetCurrentTurnNetId_Internal();
+        if (turnNetId == 0)
+            return;
+
+        if (playerNetId != turnNetId)
+        {
+            Debug.LogWarning(
+                $"[TurnManager] Reject skill select out-of-turn playerNetId={playerNetId} currentTurnNetId={turnNetId} mode={selectedSkill}"
+            );
+            return;
+        }
+
+        if (!_currentTurnCardPlayed)
+        {
+            Debug.LogWarning(
+                $"[TurnManager] Reject skill select before card played playerNetId={playerNetId} mode={selectedSkill}"
+            );
+            return;
+        }
+
+        _currentTurnSkillDeclared = true;
+        ServerLogTurnClock("SkillDeclared", currentTurnRemainingSeconds, $"mode={selectedSkill}");
+        ServerTrackSkillStateAndLog(currentTurnRemainingSeconds);
+
+        if (ServerTryAdvanceResolved("SkillDeclaredImmediate", currentTurnRemainingSeconds))
+            return;
     }
 
     [ClientRpc]
@@ -369,6 +487,104 @@ public class TurnManager : NetworkBehaviour
     }
 
     [Server]
+    private bool ServerCanFinishCurrentTurn(out string blockedBy)
+    {
+        blockedBy = null;
+
+        PlayerManager turnPlayer = ServerGetCurrentTurnPlayer();
+        if (turnPlayer == null)
+        {
+            blockedBy = "NoCurrentTurnPlayer";
+            return false;
+        }
+
+        if (!_currentTurnCardPlayed)
+        {
+            blockedBy = "CardNotPlayedThisTurn";
+            return false;
+        }
+
+        if (!_currentTurnSkillDeclared)
+        {
+            blockedBy = "CardSkillNotActivatedYet";
+            return false;
+        }
+
+        if (turnPlayer.activeSkillMode != SkillMode.None)
+        {
+            blockedBy = $"SkillMode={turnPlayer.activeSkillMode}";
+            return false;
+        }
+
+        return true;
+    }
+
+    [Server]
+    private void ServerTrackSkillStateAndLog(int remainingSeconds)
+    {
+        PlayerManager turnPlayer = ServerGetCurrentTurnPlayer();
+        if (turnPlayer == null) return;
+
+        SkillMode now = turnPlayer.activeSkillMode;
+        if (_currentTurnCardPlayed && now != SkillMode.None)
+            _sawNonNoneSkillSinceCardPlayed = true;
+
+        if (now == _lastObservedSkillMode) return;
+
+        if (_currentTurnCardPlayed)
+        {
+            if (now == SkillMode.None && _lastObservedSkillMode != SkillMode.None)
+            {
+                ServerLogTurnClock("SkillResolved", remainingSeconds, $"from={_lastObservedSkillMode}");
+            }
+            else if (now != SkillMode.None)
+            {
+                ServerLogTurnClock("SkillActive", remainingSeconds, $"mode={now}");
+            }
+        }
+
+        _lastObservedSkillMode = now;
+    }
+
+    [Server]
+    private bool ServerTryAdvanceResolved(string reason, int remainingSeconds)
+    {
+        if (!_currentTurnCardPlayed)
+            return false;
+
+        if (!ServerCanFinishCurrentTurn(out _))
+            return false;
+
+        string detail = _sawNonNoneSkillSinceCardPlayed ? "SkillResolved" : "SkillActivatedInstant";
+        ServerLogTurnClock("ReadyToEnd", remainingSeconds, $"{reason}|{detail}");
+        ServerAdvanceTurn(reason);
+        return true;
+    }
+
+    [Server]
+    private void ServerUpdateWaitingForTurnFinish()
+    {
+        currentTurnRemainingSeconds = 0;
+
+        PlayerManager turnPlayer = ServerGetCurrentTurnPlayer();
+        SkillMode forcedFromMode = SkillMode.None;
+        bool forceEndedSkill = false;
+
+        if (turnPlayer != null && turnPlayer.activeSkillMode != SkillMode.None)
+        {
+            forcedFromMode = turnPlayer.activeSkillMode;
+            forceEndedSkill = turnPlayer.ServerForceEndActiveSkill("TimeoutWaiting");
+            if (forceEndedSkill)
+                ServerLogTurnClock("SkillForceEnded", 0, $"from={forcedFromMode}|reason=TimeoutWaiting");
+        }
+
+        string reason = forceEndedSkill ? "TimerExpiredForceEndSkill" : "TimerExpiredForcedAdvance";
+        ServerLogTurnClock("Timeout", 0, reason);
+        _waitingForTurnFinishConditions = false;
+        ServerAdvanceTurn(reason);
+    }
+
+    [Server]
     private void ServerStartCurrentTurnTimer(string reason)
     {
         if (TurnOrder.Count <= 0 || currentTurnIndex < 0 || currentTurnIndex >= TurnOrder.Count)
@@ -381,6 +597,12 @@ public class TurnManager : NetworkBehaviour
         _turnDeadlineServerTime = NetworkTime.time + duration;
         currentTurnRemainingSeconds = Mathf.CeilToInt(duration);
         _lastLoggedRemainingSecond = -1;
+        _currentTurnCardPlayed = false;
+        _currentTurnSkillDeclared = false;
+        _waitingForTurnFinishConditions = false;
+        _nextPendingFinishLogAt = 0d;
+        _sawNonNoneSkillSinceCardPlayed = false;
+        _lastObservedSkillMode = ServerGetCurrentTurnPlayer()?.activeSkillMode ?? SkillMode.None;
 
         ServerLogTurnClock("Start", currentTurnRemainingSeconds, reason);
     }
@@ -391,6 +613,12 @@ public class TurnManager : NetworkBehaviour
         _turnDeadlineServerTime = -1d;
         _lastLoggedRemainingSecond = -1;
         currentTurnRemainingSeconds = 0;
+        _currentTurnCardPlayed = false;
+        _currentTurnSkillDeclared = false;
+        _waitingForTurnFinishConditions = false;
+        _nextPendingFinishLogAt = 0d;
+        _sawNonNoneSkillSinceCardPlayed = false;
+        _lastObservedSkillMode = SkillMode.None;
     }
 
     [Server]
@@ -400,6 +628,7 @@ public class TurnManager : NetworkBehaviour
         int seatIndex = -1;
         int duckColorIndex = -1;
         string duckKey = "-";
+        SkillMode skillMode = SkillMode.None;
 
         if (turnNetId != 0 &&
             NetworkServer.spawned.TryGetValue(turnNetId, out NetworkIdentity ni) &&
@@ -409,12 +638,13 @@ public class TurnManager : NetworkBehaviour
             seatIndex = pm.SeatIndex;
             duckColorIndex = pm.duckColorIndex;
             duckKey = DuckKeyFromIndex(duckColorIndex);
+            skillMode = pm.activeSkillMode;
         }
 
         Debug.Log(
             $"[TurnManager] Turn{stage} reason={reason ?? "-"} " +
             $"turnIndex={currentTurnIndex} netId={turnNetId} seatIndex={seatIndex} duckKey={duckKey} " +
-            $"remaining={remainingSeconds}s"
+            $"remaining={remainingSeconds}s cardPlayed={_currentTurnCardPlayed} skillDeclared={_currentTurnSkillDeclared} skillMode={skillMode}"
         );
     }
 

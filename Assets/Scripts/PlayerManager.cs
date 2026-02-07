@@ -219,6 +219,18 @@ public partial class PlayerManager : NetworkBehaviour
     [Command]
     public void CmdSetSkillMode(SkillMode newMode)
     {
+        TurnManager tm = TurnManager.Instance;
+        if (tm != null)
+        {
+            uint turnNetId = tm.ServerGetCurrentTurnNetId();
+            if (turnNetId != 0 && turnNetId != netId)
+            {
+                Debug.LogWarning(
+                    $"[CmdSetSkillMode] Reject out-of-turn mode set playerNetId={netId} currentTurnNetId={turnNetId} mode={newMode}"
+                );
+                return;
+            }
+        }
 
         // Debug.Log($"[CmdSetSkillMode] from connId={connectionToClient?.connectionId} pmNetId={netId} mode={newMode}");
 
@@ -250,6 +262,36 @@ public partial class PlayerManager : NetworkBehaviour
         {
             activeSkillMode = SkillMode.None;
         }
+
+        if (tm != null && newMode != SkillMode.None)
+        {
+            tm.ServerNotifySkillModeSelected(netId, newMode);
+        }
+    }
+
+    [Server]
+    public bool ServerForceEndActiveSkill(string reason = null)
+    {
+        SkillMode previousMode = activeSkillMode;
+        bool hadActiveSkill = previousMode != SkillMode.None;
+
+        // Clear temporary multi-step selection state to prevent stale references
+        // from carrying into the next turn.
+        firstSelectedDuck = null;
+        firstTwoBirdsCard = null;
+        twoBirdsClickCount = 0;
+        doubleBarrelClickCount = 0;
+        firstClickedCard = null;
+        targetedDuckNetId = 0;
+
+        if (!hadActiveSkill)
+            return false;
+
+        activeSkillMode = SkillMode.None;
+        Debug.Log(
+            $"[PlayerManager] SkillForceEnded reason={reason ?? "-"} netId={netId} seatIndex={SeatIndex} from={previousMode} to={activeSkillMode}"
+        );
+        return true;
     }
 
 
@@ -257,7 +299,6 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        // à¸à¸±à¸™à¸„à¸¥à¸´à¸à¸à¸²à¸£à¹Œà¸”à¸—à¸µà¹ˆà¹„à¸¡à¹ˆà¹ƒà¸Šà¹ˆà¹€à¸›à¹‡à¸”à¹ƒà¸™ DuckZone (à¹€à¸Šà¹ˆà¸™ à¸à¸²à¸£à¹Œà¸”à¹ƒà¸™ DropZone/à¸¡à¸·à¸­)
         if (clickedCard == null || clickedCard.zone != ZoneKind.DuckZone)
             return;
 
@@ -1395,6 +1436,18 @@ public partial class PlayerManager : NetworkBehaviour
             ;
             return;
         }
+
+        TurnManager tm = TurnManager.Instance;
+        if (tm != null)
+        {
+            uint turnNetId = tm.ServerGetCurrentTurnNetId();
+            if (turnNetId != 0 && turnNetId != netId)
+            {
+                Debug.LogWarning($"[CmdPlayCard] Reject out-of-turn play playerNetId={netId} currentTurnNetId={turnNetId}");
+                return;
+            }
+        }
+
         if (card.scene.isLoaded)
         {
             var duck = card.GetComponent<DuckCard>();
@@ -1408,6 +1461,7 @@ public partial class PlayerManager : NetworkBehaviour
                 // ...
             }
             RpcShowCard(card.GetComponent<NetworkIdentity>(), "Played");
+            tm?.ServerNotifyCardPlayed(netId, card.name);
             // ---------------------------------------------------------
             // ??  ???????????????????????
             // ---------------------------------------------------------
@@ -1487,11 +1541,10 @@ public partial class PlayerManager : NetworkBehaviour
     [ClientRpc]
     void RpcShowCard(NetworkIdentity cardIdentity, string type)
     {
-        // à¸à¸±à¸™à¹€à¸„à¸ª RPC à¸¡à¸²à¸Šà¹‰à¸²/à¸à¸²à¸£à¹Œà¸”à¸–à¸¹à¸à¸¥à¸šà¹„à¸›à¹à¸¥à¹‰à¸§
         if (!NetworkClient.active) return;
         if (cardIdentity == null || cardIdentity.gameObject == null)
         {
-            Debug.LogWarning("[RpcShowCard] à¸à¸²à¸£à¹Œà¸”à¸§à¹ˆà¸²à¸‡à¸«à¸£à¸·à¸­à¸–à¸¹à¸à¸—à¸³à¸¥à¸²à¸¢à¹à¸¥à¹‰à¸§ à¸‚à¹‰à¸²à¸¡à¸à¸²à¸£à¹à¸ªà¸”à¸‡à¸œà¸¥");
+            Debug.LogWarning("[RpcShowCard] cardIdentity or its gameObject is null.");
             return;
         }
         try
@@ -1500,7 +1553,6 @@ public partial class PlayerManager : NetworkBehaviour
             GameObject card = cardIdentity.gameObject;
             if (type == "Dealt")
             {
-                // à¸à¸±à¹ˆà¸‡à¸¨à¸±à¸•à¸£à¸¹à¸žà¸¥à¸´à¸à¸«à¸¥à¸±à¸‡à¸—à¸±à¸™à¸—à¸µ (à¸›à¸¥à¹ˆà¸­à¸¢à¹ƒà¸«à¹‰ DuckCard à¸ˆà¸±à¸” layout à¹€à¸­à¸‡)
                 if (!cardIdentity.isOwned && EnemyArea != null)
                 {
                     card.GetComponent<CardFlipper>()?.Flip();
@@ -1523,7 +1575,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[RpcShowCard] à¸‚à¸±à¸”à¸‚à¹‰à¸­à¸‡: {ex}");
+            Debug.LogError($"[RpcShowCard] Error: {ex}");
         }
     }
 
@@ -1566,7 +1618,6 @@ public partial class PlayerManager : NetworkBehaviour
             selectedSkill = SkillMode.Resurrection;
         if (selectedSkill != SkillMode.None)
         {
-            // ??? Command ??????? State ????? Server
             CmdSetSkillMode(selectedSkill);
         }
     }
