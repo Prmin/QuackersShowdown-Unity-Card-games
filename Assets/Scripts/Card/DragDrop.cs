@@ -1,11 +1,13 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Mirror;
+using UnityEngine.EventSystems;
 
 public class DragDrop : NetworkBehaviour
 {
-    private LocalHandCard _localHandCard;  // รันบน hand ท้องถิ่นหรือไม่
+    private LocalHandCard _localHandCard;
     public bool IsLocalHandCard => _localHandCard != null;
+    public bool IsDragging => isDragging;
 
     public GameObject canvasObject;
     public PlayerManager PlayerManager;
@@ -20,11 +22,8 @@ public class DragDrop : NetworkBehaviour
     {
         canvasObject = GameObject.Find("Main Canvas");
 
-        // ไม่ให้ลากถ้าไม่มี authority
         if (!GetComponent<NetworkIdentity>().isOwned)
-        {
             isDraggable = false;
-        }
     }
 
     public void SetLocalHandMode(LocalHandCard localHandCard)
@@ -52,83 +51,156 @@ public class DragDrop : NetworkBehaviour
 
     public void StartDrag()
     {
-        if (!isDraggable) return;
-        // ถ้ามีสกิลกำลังทำงานอยู่ ไม่ให้ลากใบใหม่จนกว่าจะจบ
-        var pm = PlayerManager.localInstance;
-        if (pm != null && pm.activeSkillMode != SkillMode.None)
+        if (!CanDragNow())
             return;
+
         isDragging = true;
         startParent = transform.parent;
+    }
 
-        ;
+    // EventTrigger BeginDrag(BaseEventData) support
+    public void StartDrag(BaseEventData _)
+    {
+        StartDrag();
     }
 
     public void EndDrag()
     {
-        if (!isDraggable) return;
-        // ถ้ามีสกิลกำลังทำงานอยู่ ไม่ให้ลากใบใหม่จนกว่าจะจบ
-        var pm = PlayerManager.localInstance;
-        if (pm != null && pm.activeSkillMode != SkillMode.None)
+        if (!isDraggable)
             return;
+
+        if (!isDragging)
+            return;
+
+        if (!CanDragNow())
+        {
+            CancelDragAndRestore();
+            return;
+        }
+
         isDragging = false;
         var rt = transform as RectTransform;
 
         if (isOverDropZone && dropZone != null)
         {
-            transform.SetParent(dropZone.transform, false);
-            GetComponent<CardZoom>()?.OnHoverExit();
-            isDraggable = false;
-
-            if (rt != null)
-            {
-                rt.anchoredPosition3D = Vector3.zero;
-                rt.localScale = Vector3.one;
-                rt.localRotation = Quaternion.identity;
-            }
-
-            ForceParentLayout(dropZone.transform);
-
             if (IsLocalHandCard)
             {
+                transform.SetParent(dropZone.transform, false);
+                GetComponent<CardZoom>()?.OnHoverExit();
+                isDraggable = false;
+
+                if (rt != null)
+                {
+                    rt.anchoredPosition3D = Vector3.zero;
+                    rt.localScale = Vector3.one;
+                    rt.localRotation = Quaternion.identity;
+                }
+
+                ForceParentLayout(dropZone.transform);
                 _localHandCard.OnPlayedFromHand();
                 return;
             }
 
-            NetworkIdentity networkIdentity = NetworkClient.connection.identity;
-            PlayerManager = networkIdentity.GetComponent<PlayerManager>();
+            // Keep network card in hand locally until server accepts CmdPlayCard.
+            CancelDragAndRestore();
+
+            NetworkIdentity networkIdentity = NetworkClient.connection?.identity;
+            PlayerManager = networkIdentity != null ? networkIdentity.GetComponent<PlayerManager>() : null;
 
             if (PlayerManager != null)
-            {
                 PlayerManager.PlayCard(gameObject);
-            }
+
+            return;
         }
-        else
+
+        var parent = startParent != null ? startParent : transform.parent;
+        transform.SetParent(parent, false);
+
+        if (rt != null)
         {
-            var parent = startParent != null ? startParent : transform.parent;
-
-            transform.SetParent(parent, false);
-            if (rt != null)
-            {
-                rt.anchoredPosition = Vector2.zero;
-                rt.anchoredPosition3D = new Vector3(rt.anchoredPosition3D.x, rt.anchoredPosition3D.y, 0f);
-                rt.localScale = Vector3.one;
-                rt.localRotation = Quaternion.identity;
-            }
-            transform.SetAsLastSibling();
-
-            ForceParentLayout(parent);
+            rt.anchoredPosition = Vector2.zero;
+            rt.anchoredPosition3D = new Vector3(rt.anchoredPosition3D.x, rt.anchoredPosition3D.y, 0f);
+            rt.localScale = Vector3.one;
+            rt.localRotation = Quaternion.identity;
         }
+
+        transform.SetAsLastSibling();
+        ForceParentLayout(parent);
+    }
+
+    // EventTrigger EndDrag(BaseEventData) support
+    public void EndDrag(BaseEventData _)
+    {
+        EndDrag();
     }
 
     void Update()
     {
-        if (isDragging)
+        if (!isDragging)
+            return;
+
+        if (!CanDragNow())
         {
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            mousePos.z = 0f; // keep UI on-plane
-            transform.position = mousePos;
-            transform.SetParent(canvasObject.transform, true);
+            CancelDragAndRestore();
+            return;
         }
+
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePos.z = 0f;
+        transform.position = mousePos;
+        transform.SetParent(canvasObject.transform, true);
+    }
+
+    private bool CanDragNow()
+    {
+        if (!isDraggable)
+            return false;
+
+        var pm = PlayerManager.localInstance;
+        if (pm != null && pm.activeSkillMode != SkillMode.None)
+            return false;
+
+        var tm = TurnManager.Instance;
+        if (tm == null)
+            return false;
+
+        uint localNetId = PlayerManager.LocalPlayerNetId;
+        if (localNetId == 0)
+            return false;
+
+        uint turnNetId = tm.currentTurnNetId;
+        if (turnNetId == 0)
+            return false;
+
+        return turnNetId == localNetId;
+    }
+
+    public bool CanPlayNow()
+    {
+        return CanDragNow();
+    }
+
+    private void CancelDragAndRestore()
+    {
+        isDragging = false;
+
+        var parent = startParent != null ? startParent : transform.parent;
+        if (parent == null)
+            return;
+
+        transform.SetParent(parent, false);
+
+        var rt = transform as RectTransform;
+        if (rt != null)
+        {
+            rt.anchoredPosition = Vector2.zero;
+            rt.anchoredPosition3D = new Vector3(rt.anchoredPosition3D.x, rt.anchoredPosition3D.y, 0f);
+            rt.localScale = Vector3.one;
+            rt.localRotation = Quaternion.identity;
+        }
+
+        transform.SetAsLastSibling();
+        ForceParentLayout(parent);
     }
 
     private void ForceParentLayout(Transform parent)
@@ -141,4 +213,3 @@ public class DragDrop : NetworkBehaviour
         }
     }
 }
-
