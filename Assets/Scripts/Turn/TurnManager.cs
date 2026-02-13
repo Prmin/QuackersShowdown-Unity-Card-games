@@ -152,6 +152,11 @@ public class TurnManager : NetworkBehaviour
     {
         base.OnStartServer();
         ServerRebuildTurnOrder("OnStartServer");
+
+        if (DuckOwnershipStatusService.Instance != null)
+            DuckOwnershipStatusService.Instance.ServerForceRefreshNow("TurnManager.OnStartServer");
+        else
+            Debug.LogWarning("[TurnManager] DuckOwnershipStatusService not found. Owned duck count UI will not update.");
     }
 
     public override void OnStopServer()
@@ -347,6 +352,8 @@ public class TurnManager : NetworkBehaviour
 
         ServerLogTurnClock("Advance", currentTurnRemainingSeconds, reason ?? "-");
         ServerStartCurrentTurnTimer($"Advance:{reason ?? "-"}");
+
+        DuckOwnershipStatusService.Instance?.ServerForceRefreshNow($"TurnAdvance:{reason ?? "-"}");
     }
 
     [Server]

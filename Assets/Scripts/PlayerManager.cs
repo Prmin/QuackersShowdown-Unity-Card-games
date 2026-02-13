@@ -40,6 +40,10 @@ public partial class PlayerManager : NetworkBehaviour
 
     [SyncVar(hook = nameof(OnSkillModeChanged))]
     public SkillMode activeSkillMode = SkillMode.None;
+
+    [SyncVar(hook = nameof(OnOwnedDuckCountChanged))]
+    [SerializeField] private int ownedDuckCount = 0;
+    public int OwnedDuckCount => ownedDuckCount;
     // --- PATCH: Barrier Hooks ---
     private static bool s_barrierHooksBoundServer = false;
     private static bool s_barrierHooksBoundClient = false;
@@ -216,6 +220,10 @@ public partial class PlayerManager : NetworkBehaviour
 
     }
 
+    void OnOwnedDuckCountChanged(int oldValue, int newValue)
+    {
+    }
+
     [Command]
     public void CmdSetSkillMode(SkillMode newMode)
     {
@@ -292,6 +300,16 @@ public partial class PlayerManager : NetworkBehaviour
             $"[PlayerManager] SkillForceEnded reason={reason ?? "-"} netId={netId} seatIndex={SeatIndex} from={previousMode} to={activeSkillMode}"
         );
         return true;
+    }
+
+    [Server]
+    public void ServerSetOwnedDuckCount(int value)
+    {
+        int safeValue = Mathf.Max(0, value);
+        if (ownedDuckCount == safeValue)
+            return;
+
+        ownedDuckCount = safeValue;
     }
 
 
