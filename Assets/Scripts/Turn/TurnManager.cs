@@ -14,6 +14,9 @@ public class TurnManager : NetworkBehaviour
     [Header("Turn Timer")]
     [SerializeField] private float turnDurationSeconds = 30f;
 
+    [Header("Timeout Penalty")]
+    [SerializeField] private bool destroyOwnedDuckOnTimeout = true;
+
     [SyncVar(hook = nameof(OnCurrentTurnIndexChanged))]
     public int currentTurnIndex = -1;
 
@@ -118,6 +121,7 @@ public class TurnManager : NetworkBehaviour
         // If player ran out of time without playing any card, skip turn immediately.
         if (!_currentTurnCardPlayed)
         {
+            ServerApplyTimeoutPenaltyAndLog(ServerGetCurrentTurnPlayer(), "TimerExpiredNoCardPlayed");
             ServerLogTurnClock("Timeout", 0, "TimerExpiredNoCardPlayed");
             ServerAdvanceTurn("TimerExpiredNoCardPlayed");
             return;
@@ -137,6 +141,7 @@ public class TurnManager : NetworkBehaviour
 
         if (!ServerCanFinishCurrentTurn(out string blockedBy))
         {
+            ServerApplyTimeoutPenaltyAndLog(turnPlayer, "TimerExpiredForcedAdvance");
             // Fail-safe: never stay stuck at 0s.
             ServerLogTurnClock("Timeout", 0, $"TimerExpiredForcedAdvance blockedBy={blockedBy}");
             ServerAdvanceTurn("TimerExpiredForcedAdvance");
@@ -144,6 +149,7 @@ public class TurnManager : NetworkBehaviour
         }
 
         string timeoutReason = forceEndedSkill ? "TimerExpiredForceEndSkill" : "TimerExpired";
+        ServerApplyTimeoutPenaltyAndLog(turnPlayer, timeoutReason);
         ServerLogTurnClock("Timeout", 0, timeoutReason);
         ServerAdvanceTurn(timeoutReason);
     }
@@ -586,9 +592,174 @@ public class TurnManager : NetworkBehaviour
         }
 
         string reason = forceEndedSkill ? "TimerExpiredForceEndSkill" : "TimerExpiredForcedAdvance";
+        ServerApplyTimeoutPenaltyAndLog(turnPlayer, reason);
         ServerLogTurnClock("Timeout", 0, reason);
         _waitingForTurnFinishConditions = false;
         ServerAdvanceTurn(reason);
+    }
+
+    [Server]
+    private void ServerApplyTimeoutPenaltyAndLog(PlayerManager timedOutPlayer, string reason)
+    {
+        if (!destroyOwnedDuckOnTimeout)
+        {
+            ServerLogTurnClock("Penalty", currentTurnRemainingSeconds, $"Disabled|reason={reason}");
+            return;
+        }
+
+        if (!ServerTryApplyTimeoutPenalty(timedOutPlayer, reason, out string penaltyDetail))
+        {
+            ServerLogTurnClock("Penalty", currentTurnRemainingSeconds, $"None|{penaltyDetail}");
+            return;
+        }
+
+        ServerLogTurnClock("Penalty", currentTurnRemainingSeconds, penaltyDetail);
+    }
+
+    [Server]
+    private bool ServerTryApplyTimeoutPenalty(PlayerManager timedOutPlayer, string reason, out string penaltyDetail)
+    {
+        penaltyDetail = "NoPenalty";
+
+        if (timedOutPlayer == null)
+        {
+            penaltyDetail = $"NoCurrentTurnPlayer|reason={reason}";
+            return false;
+        }
+
+        string duckKey = DuckKeyFromIndex(timedOutPlayer.duckColorIndex);
+        if (string.IsNullOrWhiteSpace(duckKey) || duckKey == "-")
+        {
+            penaltyDetail = $"InvalidDuckKey|reason={reason}|netId={timedOutPlayer.netId}";
+            return false;
+        }
+
+        if (CardPoolManager.TryConsumeCard(duckKey))
+        {
+            DuckOwnershipStatusService.Instance?.ServerForceRefreshNow($"TimeoutPenalty:{reason}");
+            penaltyDetail =
+                $"DestroyedOneDuck|reason={reason}|netId={timedOutPlayer.netId}|seatIndex={timedOutPlayer.SeatIndex}|duckKey={duckKey}|from=Pool";
+            return true;
+        }
+
+        List<DuckCard> candidates = ServerCollectOwnedDuckCandidates(timedOutPlayer.netId, duckKey);
+        if (candidates.Count > 0)
+        {
+            candidates.Sort((a, b) =>
+            {
+                int col = a.ColNet.CompareTo(b.ColNet); // front-most first
+                if (col != 0) return col;
+                return a.netId.CompareTo(b.netId);
+            });
+
+            DuckCard victim = candidates[0];
+            uint victimNetId = victim.netId;
+
+            ServerDestroyTargetsForDuck(victimNetId);
+            NetworkServer.Destroy(victim.gameObject);
+            ServerResequenceDuckZoneColumns();
+            ServerRefillDuckZoneToSix();
+            DuckOwnershipStatusService.Instance?.ServerForceRefreshNow($"TimeoutPenalty:{reason}");
+
+            penaltyDetail =
+                $"DestroyedOneDuck|reason={reason}|netId={timedOutPlayer.netId}|seatIndex={timedOutPlayer.SeatIndex}|duckKey={duckKey}|from=DuckZone|victimNetId={victimNetId}";
+            return true;
+        }
+
+        penaltyDetail =
+            $"NoOwnedDuckRemaining|reason={reason}|netId={timedOutPlayer.netId}|seatIndex={timedOutPlayer.SeatIndex}|duckKey={duckKey}";
+        return false;
+    }
+
+    [Server]
+    private static List<DuckCard> ServerCollectOwnedDuckCandidates(uint ownerNetId, string duckKey)
+    {
+        var candidates = new List<DuckCard>();
+        foreach (NetworkIdentity ni in NetworkServer.spawned.Values)
+        {
+            if (ni == null || !ni.TryGetComponent(out DuckCard dc))
+                continue;
+            if (dc.zone != ZoneKind.DuckZone)
+                continue;
+
+            bool byOwner = dc.ownerNetId != 0 && dc.ownerNetId == ownerNetId;
+            bool byColor = string.Equals(DuckKeyFromCardName(dc.name), duckKey, StringComparison.OrdinalIgnoreCase);
+            if (byOwner || byColor)
+                candidates.Add(dc);
+        }
+        return candidates;
+    }
+
+    [Server]
+    private static void ServerDestroyTargetsForDuck(uint duckNetId)
+    {
+        foreach (TargetMarker marker in FindObjectsOfType<TargetMarker>())
+        {
+            if (marker != null && marker.FollowDuckNetId == duckNetId)
+                NetworkServer.Destroy(marker.gameObject);
+        }
+
+        foreach (TargetFollow follow in FindObjectsOfType<TargetFollow>())
+        {
+            if (follow != null && follow.targetNetId == duckNetId)
+                NetworkServer.Destroy(follow.gameObject);
+        }
+    }
+
+    [Server]
+    private static void ServerResequenceDuckZoneColumns()
+    {
+        var ducks = new List<DuckCard>();
+        foreach (NetworkIdentity ni in NetworkServer.spawned.Values)
+        {
+            if (ni == null || !ni.TryGetComponent(out DuckCard dc))
+                continue;
+            if (dc.zone != ZoneKind.DuckZone)
+                continue;
+
+            ducks.Add(dc);
+        }
+
+        ducks.Sort((a, b) =>
+        {
+            int col = a.ColNet.CompareTo(b.ColNet);
+            if (col != 0) return col;
+            return a.netId.CompareTo(b.netId);
+        });
+
+        for (int i = 0; i < ducks.Count; i++)
+            ducks[i].ServerAssignToZone(ZoneKind.DuckZone, 0, i);
+    }
+
+    [Server]
+    private static void ServerRefillDuckZoneToSix()
+    {
+        int current = 0;
+        foreach (NetworkIdentity ni in NetworkServer.spawned.Values)
+        {
+            if (ni == null || !ni.TryGetComponent(out DuckCard dc))
+                continue;
+            if (dc.zone == ZoneKind.DuckZone)
+                current++;
+        }
+
+        int col = current;
+        while (col < 6 && CardPoolManager.HasCards())
+        {
+            GameObject card = CardPoolManager.DrawRandomCard();
+            if (card == null)
+                break;
+
+            if (!card.TryGetComponent(out DuckCard dc))
+            {
+                UnityEngine.Object.Destroy(card);
+                continue;
+            }
+
+            dc.ServerAssignToZone(ZoneKind.DuckZone, 0, col);
+            NetworkServer.Spawn(card);
+            col++;
+        }
     }
 
     [Server]
