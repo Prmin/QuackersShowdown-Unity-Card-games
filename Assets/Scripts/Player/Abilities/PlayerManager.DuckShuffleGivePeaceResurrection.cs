@@ -69,19 +69,21 @@ public partial class PlayerManager
         RemoveAllTargets();
     }
 
-
     // ===== Resurrection =====
     [Server]
     private void Server_ActivateResurrectionMode()
     {
-        // const int maxPerColor = 5;
+        const int maxPerColor = 5;
 
         string myColor = ColorIndexToDuckKey(duckColorIndex);
+        if (string.IsNullOrEmpty(myColor))
+        {
+            Debug.LogWarning($"[Resurrection] invalid color index={duckColorIndex} pmNetId={netId}");
+            return;
+        }
 
-        // pool ก่อน
         int poolBefore = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
 
-        // zone ก่อน (นับเฉพาะแถว 0 + สีตัวเอง)
         int zoneBefore = 0;
         foreach (var d in FindDucksInRow(0))
         {
@@ -91,40 +93,38 @@ public partial class PlayerManager
 
         int totalBefore = poolBefore + zoneBefore;
 
-        // if (totalBefore >= maxPerColor)
-        // {
-        //     Debug.Log(
-        //         $"[Resurrection] no effect color={myColor} " +
-        //         $"| total {totalBefore}->{totalBefore} (max {maxPerColor}) " +
-        //         $"| pool {poolBefore}->{poolBefore} | zone {zoneBefore}->{zoneBefore} " +
-        //         $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
-        //     );
-        //     return;
-        // }
+        // Guard both pool cap and total cap (max 5 copies per duck color).
+        if (poolBefore >= maxPerColor || totalBefore >= maxPerColor)
+        {
+            Debug.Log(
+                $"[Resurrection] no effect color={myColor} " +
+                $"| total {totalBefore}->{totalBefore} (max {maxPerColor}) " +
+                $"| pool {poolBefore}->{poolBefore} | zone {zoneBefore}->{zoneBefore} " +
+                $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
+            );
+            return;
+        }
 
         CardPoolManager.AddToPool(myColor);
+        DuckOwnershipStatusService.Instance?.ServerForceRefreshNow("Resurrection");
 
-        // int poolAfter = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
-        // int zoneAfter = zoneBefore;
-        // int totalAfter = poolAfter + zoneAfter;
+        int poolAfter = CardPoolManager.GetAllPoolCounts().GetValueOrDefault(myColor, 0);
+        int zoneAfter = zoneBefore;
+        int totalAfter = poolAfter + zoneAfter;
 
-        // Debug.Log(
-        //     $"[Resurrection] revived color={myColor} " +
-        //     $"| total {totalBefore}->{totalAfter} (max {maxPerColor}) " +
-        //     $"| pool {poolBefore}->{poolAfter} | zone {zoneBefore}->{zoneAfter} " +
-        //     $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
-        // );
+        Debug.Log(
+            $"[Resurrection] revived color={myColor} " +
+            $"| total {totalBefore}->{totalAfter} (max {maxPerColor}) " +
+            $"| pool {poolBefore}->{poolAfter} | zone {zoneBefore}->{zoneAfter} " +
+            $"| from connId={connectionToClient?.connectionId} pmNetId={netId}"
+        );
     }
-
-
 
     [TargetRpc]
     private void TargetResurrectionLog(NetworkConnectionToClient conn, string msg)
     {
         Debug.Log(msg);
     }
-
-
 
     [Server]
     private Dictionary<string, int> GetTotalDuckCounts()
