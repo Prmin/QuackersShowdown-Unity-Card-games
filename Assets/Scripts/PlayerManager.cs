@@ -230,12 +230,6 @@ public partial class PlayerManager : NetworkBehaviour
         TurnManager tm = TurnManager.Instance;
         if (tm != null)
         {
-            if (tm.ServerIsMatchEnded())
-            {
-                Debug.LogWarning($"[CmdSetSkillMode] Reject because match already ended playerNetId={netId} mode={newMode}");
-                return;
-            }
-
             uint turnNetId = tm.ServerGetCurrentTurnNetId();
             if (turnNetId != 0 && turnNetId != netId)
             {
@@ -1116,15 +1110,13 @@ public partial class PlayerManager : NetworkBehaviour
     [Command(requiresAuthority = false)]
     public void CmdSyncDuckCards()
     {
-        // à¸­à¸¢à¹ˆà¸²à¸„à¸´à¸” order à¸à¸±à¹ˆà¸‡ client (SyncVar à¸­à¸²à¸ˆà¸¡à¸²à¸–à¸¶à¸‡à¹„à¸¡à¹ˆà¸—à¸±à¸™ à¸—à¸³à¹ƒà¸«à¹‰ sort à¹€à¸žà¸µà¹‰à¸¢à¸™à¹à¸šà¸šà¸ªà¸¸à¹ˆà¸¡à¹†)
-        // à¹ƒà¸«à¹‰ server à¸ªà¹ˆà¸‡ "à¸¥à¸³à¸”à¸±à¸š netId à¸—à¸µà¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡" à¸¡à¸²à¹€à¸¥à¸¢
+
         Server_PushDuckZoneOrder(0);
     }
 
     [Server]
     private void Server_PushDuckZoneOrder(int row)
     {
-        // à¹ƒà¸Šà¹‰ state à¸à¸±à¹ˆà¸‡ server à¹€à¸›à¹‡à¸™à¸•à¸±à¸§à¸ˆà¸£à¸´à¸‡: sort à¸”à¹‰à¸§à¸¢ ColNet
         List<DuckCard> ducks = FindDucksInRow(row);
         ducks.Sort((a, b) =>
         {
@@ -1145,7 +1137,6 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (!NetworkClient.active) return;
 
-        // DuckZone à¸­à¸²à¸ˆà¸ˆà¸°à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰ cache à¸•à¸­à¸™ RPC à¸¡à¸²à¹€à¸£à¹‡à¸§ à¹†
         if (DuckZone == null)
         {
             DuckZone = GameObject.Find("DuckZone");
@@ -1156,20 +1147,17 @@ public partial class PlayerManager : NetworkBehaviour
         {
             Transform dz = DuckZone.transform;
 
-            // SetSiblingIndex = à¸•à¸±à¸§à¸—à¸µà¹ˆ GridLayoutGroup à¹ƒà¸Šà¹‰à¸ˆà¸±à¸”à¸„à¸­à¸¥à¸±à¸¡à¸™à¹Œ
             for (int i = 0; i < orderedDuckNetIds.Length; i++)
             {
                 uint id = orderedDuckNetIds[i];
                 if (!NetworkClient.spawned.TryGetValue(id, out NetworkIdentity ni) || ni == null) continue;
 
-                // à¸à¸±à¸™à¸«à¸¥à¸¸à¸” parent
                 if (ni.transform.parent != dz)
                     ni.transform.SetParent(dz, false);
 
                 ni.transform.SetSiblingIndex(i);
             }
 
-            // à¸šà¸±à¸‡à¸„à¸±à¸šà¹ƒà¸«à¹‰ layout à¸­à¸±à¸›à¹€à¸”à¸•à¸—à¸±à¸™à¸—à¸µ (à¸à¸±à¸™à¹€à¸Ÿà¸£à¸¡à¹€à¸”à¸µà¸¢à¸§à¸—à¸µà¹ˆà¹€à¸«à¹‡à¸™à¹€à¸žà¸µà¹‰à¸¢à¸™)
             var rt = dz as RectTransform;
             if (rt != null)
             {
@@ -1291,8 +1279,6 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void ShiftColumnsDown(int shotRow, int shotCol)
     {
-        // à¹ƒà¸Šà¹‰ GridLayoutGroup à¸­à¸¢à¸¹à¹ˆà¹à¸¥à¹‰à¸§ â€” à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¹„à¸› set anchoredPosition à¹€à¸­à¸‡
-        // à¹à¸„à¹ˆà¸‚à¸¢à¸±à¸š ColNet à¸‚à¸­à¸‡à¹€à¸›à¹‡à¸”à¸—à¸µà¹ˆà¸­à¸¢à¸¹à¹ˆà¸‚à¸§à¸²à¸à¸§à¹ˆà¸² (col > shotCol) à¹à¸¥à¹‰à¸§à¸”à¸±à¸™ order à¹„à¸› client
         List<DuckCard> ducks = FindDucksInRow(shotRow);
         for (int i = 0; i < ducks.Count; i++)
         {
@@ -1410,18 +1396,7 @@ public partial class PlayerManager : NetworkBehaviour
         // Spawn ????????????????????????
         SpawnAndAddCardToDuckZone(drawnCard);
     }
-    // private IEnumerator AutoDrawCards()
-    // {
-    //     yield return new WaitForSeconds(3f); // ?? 3 ??????????????????
-    //     while (true)
-    //     {
-    //         if (PlayerArea != null && PlayerArea.transform.childCount < 3)
-    //         {
-    //             CmdDrawActionCard();
-    //         }
-    //         yield return new WaitForSeconds(1f);
-    //     }
-    // }
+
     // ===== Helper: ?????????????????? (????????????????????) =====
     [Server]
     private int Server_CountCardsInZone(ZoneKind z, NetworkConnectionToClient owner)
@@ -1464,12 +1439,6 @@ public partial class PlayerManager : NetworkBehaviour
         TurnManager tm = TurnManager.Instance;
         if (tm != null)
         {
-            if (tm.ServerIsMatchEnded())
-            {
-                Debug.LogWarning($"[CmdPlayCard] Reject because match already ended playerNetId={netId}");
-                return;
-            }
-
             uint turnNetId = tm.ServerGetCurrentTurnNetId();
             if (turnNetId != 0 && turnNetId != netId)
             {
@@ -1516,11 +1485,11 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (duckNi == null) return;
         uint targetId = duckNi.netId;
-        // à¸¥à¸š TargetFollow à¸—à¸µà¹ˆà¸Šà¸µà¹‰à¸¡à¸²à¸—à¸µà¹ˆà¸à¸²à¸£à¹Œà¸”à¸™à¸µà¹‰à¸—à¸¸à¸à¸­à¸±à¸™
+
         foreach (var tf in FindObjectsOfType<TargetFollow>())
             if (tf != null && tf.targetNetId == targetId)
                 NetworkServer.Destroy(tf.gameObject);
-        // à¸¥à¸š TargetMarker à¸—à¸µà¹ˆà¸Šà¸µà¹‰à¸¡à¸²à¸—à¸µà¹ˆà¸à¸²à¸£à¹Œà¸”à¸™à¸µà¹‰à¸—à¸¸à¸à¸­à¸±à¸™ (à¹ƒà¸™ TargetZone)
+
         foreach (var mk in FindObjectsOfType<TargetMarker>())
             if (mk != null && mk.FollowDuckNetId == targetId)
                 NetworkServer.Destroy(mk.gameObject);
@@ -1529,7 +1498,7 @@ public partial class PlayerManager : NetworkBehaviour
     private void MoveTargetFromTo(NetworkIdentity fromCard, NetworkIdentity toCard)
     {
         if (fromCard == null || toCard == null) return;
-        // à¸–à¹‰à¸²à¸›à¸¥à¸²à¸¢à¸—à¸²à¸‡à¸¡à¸µ Target à¸­à¸¢à¸¹à¹ˆ à¸¥à¸šà¸—à¸´à¹‰à¸‡à¸à¹ˆà¸­à¸™
+
         RemoveTargetFromCard(toCard);
         foreach (var tf in FindObjectsOfType<TargetFollow>())
         {
@@ -1537,7 +1506,7 @@ public partial class PlayerManager : NetworkBehaviour
             {
                 tf.targetNetId = toCard.netId;
                 tf.ResetTargetTransform();
-                // à¸­à¸±à¸›à¹€à¸”à¸• TargetMarker à¸„à¸¹à¹ˆà¸à¸±à¸™
+
                 foreach (var mk in FindObjectsOfType<TargetMarker>())
                 {
                     if (mk != null && mk.FollowDuckNetId == fromCard.netId)
