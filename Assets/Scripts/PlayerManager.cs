@@ -230,6 +230,12 @@ public partial class PlayerManager : NetworkBehaviour
         TurnManager tm = TurnManager.Instance;
         if (tm != null)
         {
+            if (tm.ServerIsMatchEnded())
+            {
+                Debug.LogWarning($"[CmdSetSkillMode] Reject because match already ended playerNetId={netId} mode={newMode}");
+                return;
+            }
+
             uint turnNetId = tm.ServerGetCurrentTurnNetId();
             if (turnNetId != 0 && turnNetId != netId)
             {
@@ -1458,6 +1464,12 @@ public partial class PlayerManager : NetworkBehaviour
         TurnManager tm = TurnManager.Instance;
         if (tm != null)
         {
+            if (tm.ServerIsMatchEnded())
+            {
+                Debug.LogWarning($"[CmdPlayCard] Reject because match already ended playerNetId={netId}");
+                return;
+            }
+
             uint turnNetId = tm.ServerGetCurrentTurnNetId();
             if (turnNetId != 0 && turnNetId != netId)
             {

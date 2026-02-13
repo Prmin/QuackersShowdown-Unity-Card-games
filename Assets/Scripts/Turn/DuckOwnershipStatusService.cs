@@ -82,6 +82,10 @@ public class DuckOwnershipStatusService : NetworkBehaviour
 
             pm.ServerSetOwnedDuckCount(count);
         }
+
+        TurnManager tm = TurnManager.Instance;
+        if (tm != null)
+            tm.ServerEvaluateMatchEnd(totalsByKey, "DuckOwnershipRefresh");
     }
 
     [Server]

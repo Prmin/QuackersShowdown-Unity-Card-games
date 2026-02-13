@@ -164,6 +164,9 @@ public class DragDrop : NetworkBehaviour
         if (tm == null)
             return false;
 
+        if (tm.isMatchEnded)
+            return false;
+
         uint localNetId = PlayerManager.LocalPlayerNetId;
         if (localNetId == 0)
             return false;

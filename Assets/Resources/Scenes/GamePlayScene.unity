@@ -967,9 +967,13 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   turnDurationSeconds: 30
+  destroyOwnedDuckOnTimeout: 1
   currentTurnIndex: -1
   currentTurnNetId: 0
   currentTurnRemainingSeconds: 0
+  isMatchEnded: 0
+  matchEndOverlayPrefab: {fileID: 4090836023597202807, guid: 63169ac61226ecc43a2be644c2a64db7, type: 3}
+  matchEndCanvasName: Main Canvas
 --- !u!4 &948841407
 Transform:
   m_ObjectHideFlags: 0
@@ -1633,6 +1637,14 @@ PrefabInstance:
     - target: {fileID: 994607814757060342, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: sceneId
       value: 1956038939
+      objectReference: {fileID: 0}
+    - target: {fileID: 1116306314318824600, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -132
+      objectReference: {fileID: 0}
+    - target: {fileID: 1116306314318824600, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 84
       objectReference: {fileID: 0}
     - target: {fileID: 1389167254085417955, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_TagString

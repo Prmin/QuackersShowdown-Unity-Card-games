@@ -25,6 +25,10 @@ public class TurnManager : NetworkBehaviour
 
     [SyncVar] public int currentTurnRemainingSeconds = 0;
 
+    [SyncVar] public bool isMatchEnded = false;
+    [SyncVar] private string winnerDuckKey = "";
+    [SyncVar] private int winnerRemainingCount = 0;
+
     private bool _turnClockArmed;
     private double _turnDeadlineServerTime = -1d;
     private int _lastLoggedRemainingSecond = -1;
@@ -34,6 +38,11 @@ public class TurnManager : NetworkBehaviour
     private double _nextPendingFinishLogAt;
     private bool _sawNonNoneSkillSinceCardPlayed;
     private SkillMode _lastObservedSkillMode = SkillMode.None;
+    private bool _localMatchEndOverlayShown;
+
+    [Header("Match End UI")]
+    [SerializeField] private GameObject matchEndOverlayPrefab;
+    [SerializeField] private string matchEndCanvasName = "Main Canvas";
 
     private static readonly string[] DuckKeysByIndex =
     {
@@ -83,6 +92,7 @@ public class TurnManager : NetworkBehaviour
     [ServerCallback]
     private void Update()
     {
+        if (isMatchEnded) return;
         if (!_turnClockArmed) return;
         if (TurnOrder.Count <= 0 || currentTurnIndex < 0 || currentTurnIndex >= TurnOrder.Count)
         {
@@ -174,12 +184,14 @@ public class TurnManager : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
+        _localMatchEndOverlayShown = false;
         TurnOrder.Callback += OnTurnOrderChangedClient;
         PlayerManager.RequestTurnOrderLayoutRefresh("TurnManager.OnStartClient");
     }
 
     public override void OnStopClient()
     {
+        _localMatchEndOverlayShown = false;
         TurnOrder.Callback -= OnTurnOrderChangedClient;
         base.OnStopClient();
     }
@@ -330,6 +342,9 @@ public class TurnManager : NetworkBehaviour
     [Server]
     public void ServerAdvanceTurn(string reason = null)
     {
+        if (isMatchEnded)
+            return;
+
         PlayerManager previousTurnPlayer = ServerGetCurrentTurnPlayer();
         if (previousTurnPlayer != null)
         {
@@ -365,6 +380,9 @@ public class TurnManager : NetworkBehaviour
     [Server]
     public void ServerNotifyCardPlayed(uint playerNetId, string cardName = null)
     {
+        if (isMatchEnded)
+            return;
+
         uint turnNetId = ServerGetCurrentTurnNetId_Internal();
         if (turnNetId == 0)
             return;
@@ -391,6 +409,9 @@ public class TurnManager : NetworkBehaviour
     [Server]
     public void ServerNotifySkillModeSelected(uint playerNetId, SkillMode selectedSkill)
     {
+        if (isMatchEnded)
+            return;
+
         if (selectedSkill == SkillMode.None)
             return;
 
@@ -797,6 +818,97 @@ public class TurnManager : NetworkBehaviour
         _nextPendingFinishLogAt = 0d;
         _sawNonNoneSkillSinceCardPlayed = false;
         _lastObservedSkillMode = SkillMode.None;
+    }
+
+    [Server]
+    public bool ServerIsMatchEnded()
+    {
+        return isMatchEnded;
+    }
+
+    [Server]
+    public bool ServerEvaluateMatchEnd(Dictionary<string, int> totalsByKey, string reason = null)
+    {
+        if (isMatchEnded)
+            return true;
+
+        if (totalsByKey == null)
+            return false;
+
+        int activeColors = 0;
+        string lastKey = null;
+        int lastCount = 0;
+
+        for (int i = 0; i < DuckKeysByIndex.Length; i++)
+        {
+            string key = DuckKeysByIndex[i];
+            int count = totalsByKey.TryGetValue(key, out int value) ? value : 0;
+            if (count <= 0)
+                continue;
+
+            activeColors++;
+            lastKey = key;
+            lastCount = count;
+
+            if (activeColors > 1)
+                return false;
+        }
+
+        if (activeColors != 1 || string.IsNullOrWhiteSpace(lastKey))
+            return false;
+
+        isMatchEnded = true;
+        winnerDuckKey = lastKey;
+        winnerRemainingCount = Mathf.Max(0, lastCount);
+
+        uint winnerNetId = ServerFindPlayerNetIdByDuckKey(lastKey);
+        int winnerSeat = -1;
+        if (winnerNetId != 0 &&
+            NetworkServer.spawned.TryGetValue(winnerNetId, out NetworkIdentity ni) &&
+            ni != null &&
+            ni.TryGetComponent(out PlayerManager winnerPm))
+        {
+            winnerSeat = winnerPm.SeatIndex;
+        }
+
+        _turnClockArmed = false;
+        ServerStopTurnTimer();
+
+        string endReason = reason ?? "-";
+        Debug.Log(
+            $"[TurnManager] MatchEnd reason={endReason} winnerDuckKey={winnerDuckKey} winnerRemaining={winnerRemainingCount} " +
+            $"winnerNetId={winnerNetId} winnerSeatIndex={winnerSeat}"
+        );
+
+        RpcShowMatchEndOverlay(winnerDuckKey, winnerRemainingCount, endReason);
+        return true;
+    }
+
+    [ClientRpc]
+    private void RpcShowMatchEndOverlay(string winnerKey, int remainingCount, string reason)
+    {
+        if (!NetworkClient.active)
+            return;
+
+        if (_localMatchEndOverlayShown)
+            return;
+
+        _localMatchEndOverlayShown = true;
+
+        if (matchEndOverlayPrefab == null)
+        {
+            Debug.LogWarning("[TurnManager] matchEndOverlayPrefab is not assigned.");
+            return;
+        }
+
+        Transform parent = null;
+        GameObject canvasGo = GameObject.Find(matchEndCanvasName);
+        if (canvasGo != null)
+            parent = canvasGo.transform;
+
+        GameObject overlay = Instantiate(matchEndOverlayPrefab, parent, false);
+        if (overlay.TryGetComponent(out MatchEndOverlayUI overlayUi))
+            overlayUi.Initialize(winnerKey, remainingCount, reason);
     }
 
     [Server]
