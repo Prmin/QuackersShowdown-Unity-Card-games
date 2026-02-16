@@ -72,8 +72,9 @@ public class PlayerTurnSeatingBinder : NetworkBehaviour
     {
         if (!NetworkClient.active) return;
 
-        // Reset first; local turn-order mapping will reopen only the slots that are truly used.
-        RefreshVisibleSlotsByUsedSlots(null);
+        // Keep a safe fallback visible set first; local turn-order mapping will refine it after recompute.
+        int playerCount = CountClientPlayers();
+        RefreshVisibleSlotsForCount(playerCount);
         PlayerManager.RequestTurnOrderLayoutRefresh("PlayerTurnSeatingBinder.ForceRecompute");
     }
 

@@ -52,6 +52,7 @@ public partial class PlayerManager : NetworkBehaviour
     public static bool DeferInitialDealToBarrier = true;
     // ???????????????????? ????? BarrierGoServer ???????????????
     private static bool s_matchStarted = false;
+    private static uint s_actionPoolOwnerNetId = 0;
     // ============= GameObject References =============
     // ????? ???????
     public GameObject Shoot;
@@ -750,6 +751,10 @@ public partial class PlayerManager : NetworkBehaviour
 
             if (targetParent == null) continue;
 
+            // If a slot was hidden by an earlier fallback, show it when an enemy card actually targets it.
+            if (targetParent != PlayerArea?.transform && !targetParent.gameObject.activeSelf)
+                targetParent.gameObject.SetActive(true);
+
             if (dc.transform.parent != targetParent)
                 dc.transform.SetParent(targetParent, false);
 
@@ -778,15 +783,47 @@ public partial class PlayerManager : NetworkBehaviour
             localInstance.CacheEnemySlotsFromScene();
         if (s_enemySlots == null)
             return null;
+
         if (s_remoteSlotIndex.TryGetValue(netId, out int idx))
         {
             if (idx >= 0 && idx < s_enemySlots.Length)
             {
                 var slot = s_enemySlots[idx];
-                ;
+                if (slot != null && !slot.gameObject.activeSelf)
+                    slot.gameObject.SetActive(true);
                 return slot;
             }
         }
+
+        // Fallback: derive slot directly from current TurnOrder when map cache is not ready yet.
+        TurnManager tm = TurnManager.Instance;
+        if (tm != null && localInstance != null && tm.TurnOrder.Count > 0)
+        {
+            List<uint> order = tm.TurnOrder.ToList();
+            int myIndex = order.IndexOf(localInstance.netId);
+            int otherIndex = order.IndexOf(netId);
+
+            if (myIndex >= 0 && otherIndex >= 0 && myIndex != otherIndex)
+            {
+                int delta = otherIndex - myIndex;
+                int slotNumber = delta < 0 ? -delta : 6 - delta; // 1..5
+                slotNumber = Mathf.Clamp(slotNumber, 1, 5);
+                int fallbackIdx = slotNumber - 1;
+
+                if (fallbackIdx >= 0 && fallbackIdx < s_enemySlots.Length)
+                {
+                    Transform fallbackSlot = s_enemySlots[fallbackIdx];
+                    if (fallbackSlot != null)
+                    {
+                        s_remoteSlotIndex[netId] = fallbackIdx;
+                        if (!fallbackSlot.gameObject.activeSelf)
+                            fallbackSlot.gameObject.SetActive(true);
+                        return fallbackSlot;
+                    }
+                }
+            }
+        }
+
         return null;
     }
 
@@ -963,7 +1000,7 @@ public partial class PlayerManager : NetworkBehaviour
         TryBindBarrierServer();
         // 2) ??????????? + ???? Action ???????? (??????????????? Barrier)
         EnsureSeatIndexAssigned();
-        InitializeActionCardPool();
+        EnsureSharedActionPoolOwnerAndInit();
         // 3) ???? Prefab ??? Action Card ??????????????????????
         actionCardPrefabMap = new Dictionary<string, GameObject>();
         if (resurrectionPrefab != null) actionCardPrefabMap["Resurrection"] = resurrectionPrefab;
@@ -1037,13 +1074,84 @@ public partial class PlayerManager : NetworkBehaviour
         // 4) Deal three action cards to every connected player
         foreach (var pm in players)
         {
-            var conn = pm.connectionToClient;
-            if (conn == null) continue;
+            var conn = ServerResolveConnectionByPlayerNetId(pm.netId);
+            if (conn == null)
+                Debug.LogWarning($"[ActionPool] InitialDeal unresolved connection netId={pm.netId}, trying draw without explicit owner-conn.");
+
             for (int i = 0; i < 3; i++)
-                host.Server_DrawActionCardFor(conn, pm.netId);
+            {
+                if (!host.Server_DrawActionCardFor(conn, pm.netId))
+                    break;
+            }
         }
         ;
     }
+    [Server]
+    private void EnsureSharedActionPoolOwnerAndInit()
+    {
+        if (s_actionPoolOwnerNetId == 0 ||
+            !NetworkServer.spawned.TryGetValue(s_actionPoolOwnerNetId, out NetworkIdentity ownerNi) ||
+            ownerNi == null ||
+            !ownerNi.TryGetComponent(out PlayerManager ownerPm) ||
+            ownerPm == null)
+        {
+            s_actionPoolOwnerNetId = netId;
+            InitializeActionCardPool();
+            Debug.Log($"[ActionPool] OwnerAssigned netId={s_actionPoolOwnerNetId}");
+            return;
+        }
+
+        if (s_actionPoolOwnerNetId != netId && actionCardPool.Count > 0)
+            actionCardPool.Clear();
+    }
+
+    [Server]
+    private static PlayerManager ServerGetActionPoolOwner()
+    {
+        if (s_actionPoolOwnerNetId != 0 &&
+            NetworkServer.spawned.TryGetValue(s_actionPoolOwnerNetId, out NetworkIdentity ownerNi) &&
+            ownerNi != null &&
+            ownerNi.TryGetComponent(out PlayerManager ownerPm) &&
+            ownerPm != null)
+        {
+            return ownerPm;
+        }
+
+        foreach (var kv in NetworkServer.connections)
+        {
+            NetworkConnectionToClient conn = kv.Value;
+            if (conn == null || conn.identity == null)
+                continue;
+
+            PlayerManager pm = conn.identity.GetComponent<PlayerManager>();
+            if (pm == null || !pm.isActiveAndEnabled || pm.SeatIndex < 0)
+                continue;
+
+            s_actionPoolOwnerNetId = pm.netId;
+            Debug.Log($"[ActionPool] OwnerReassigned netId={s_actionPoolOwnerNetId}");
+            return pm;
+        }
+
+        return null;
+    }
+
+    [Server]
+    public static int ServerGetSharedActionPoolRemaining()
+    {
+        PlayerManager owner = ServerGetActionPoolOwner();
+        if (owner == null)
+            return 0;
+
+        int total = 0;
+        foreach (var kv in owner.actionCardPool)
+        {
+            if (kv.Value > 0)
+                total += kv.Value;
+        }
+
+        return total;
+    }
+
     [Server]
     private void InitializeActionCardPool()
     {
@@ -1346,8 +1454,12 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private string GetRandomActionCardFromPool()
     {
+        PlayerManager owner = ServerGetActionPoolOwner();
+        if (owner == null)
+            return null;
+
         List<string> availableCards = new List<string>();
-        foreach (var card in actionCardPool)
+        foreach (var card in owner.actionCardPool)
         {
             if (card.Value > 0)
             {
@@ -1360,7 +1472,10 @@ public partial class PlayerManager : NetworkBehaviour
             return null;
         }
         string selectedCard = availableCards[UnityEngine.Random.Range(0, availableCards.Count)];
-        actionCardPool[selectedCard]--;  // ?????????????? pool
+        owner.actionCardPool[selectedCard]--;  // Shared action pool
+        Debug.Log(
+            $"[ActionPool] Draw card={selectedCard} ownerNetId={owner.netId} cardRemaining={Mathf.Max(0, owner.actionCardPool[selectedCard])} totalRemaining={ServerGetSharedActionPoolRemaining()}"
+        );
         return selectedCard;
     }
     private GameObject GetRandomDuckCardFromPool()
@@ -1472,7 +1587,7 @@ public partial class PlayerManager : NetworkBehaviour
             // ??  ???????????????????????
             // ---------------------------------------------------------
             // (?????) ????????? 1 ???? ??? SyncVar (zone) ???????????????????? ???????????????
-            StartCoroutine(DrawNextCardCoroutine(connectionToClient));
+            StartCoroutine(DrawNextCardCoroutine(connectionToClient, netId));
         }
         else
         {
@@ -1559,10 +1674,9 @@ public partial class PlayerManager : NetworkBehaviour
             GameObject card = cardIdentity.gameObject;
             if (type == "Dealt")
             {
-                if (!cardIdentity.isOwned && EnemyArea != null)
-                {
-                    card.GetComponent<CardFlipper>()?.Flip();
-                }
+                card.SetActive(true);
+                bool shouldShowBack = !cardIdentity.isOwned && EnemyArea != null;
+                ApplyCardFace(card, showFront: !shouldShowBack);
             }
             else if (type == "Played")
             {
@@ -1571,8 +1685,7 @@ public partial class PlayerManager : NetworkBehaviour
                 var dropZone = FindObjectOfType<DropZone>();
                 if (dropZone != null)
                     dropZone.PlaceCard(card);
-                if (!cardIdentity.isOwned)
-                    card.GetComponent<CardFlipper>()?.Flip();
+                ApplyCardFace(card, showFront: true);
                 if (isLocalPlayer && cardIdentity.isOwned)
                 {
                     HandleCardActivation(card);
@@ -1583,6 +1696,36 @@ public partial class PlayerManager : NetworkBehaviour
         {
             Debug.LogError($"[RpcShowCard] Error: {ex}");
         }
+    }
+
+    private static void ApplyCardFace(GameObject card, bool showFront)
+    {
+        if (card == null) return;
+
+        Image cardImage = card.GetComponent<Image>();
+        if (cardImage == null) return;
+
+        CardFlipper flipper = card.GetComponent<CardFlipper>();
+        if (flipper != null)
+        {
+            Sprite target = showFront ? flipper.CardFront : flipper.CardBack;
+            if (target != null)
+                cardImage.sprite = target;
+        }
+
+        if (!cardImage.enabled)
+            cardImage.enabled = true;
+
+        Color c = cardImage.color;
+        if (c.a <= 0.01f)
+        {
+            c.a = 1f;
+            cardImage.color = c;
+        }
+
+        CanvasGroup canvasGroup = card.GetComponent<CanvasGroup>();
+        if (canvasGroup != null && canvasGroup.alpha <= 0.01f)
+            canvasGroup.alpha = 1f;
     }
 
     private void HandleCardActivation(GameObject card)
@@ -1640,19 +1783,19 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (target == null)
         {
-            Debug.LogError("[CmdTargetOtherCard] target GameObject à¹€à¸›à¹‡à¸™ null à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
+            Debug.LogError("[CmdTargetOtherCard] target GameObject null à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
             return;
         }
         var opponentIdentity = target.GetComponent<NetworkIdentity>();
         if (opponentIdentity == null)
         {
-            Debug.LogError("[CmdTargetOtherCard] target à¹„à¸¡à¹ˆà¸¡à¸µ NetworkIdentity à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
+            Debug.LogError("[CmdTargetOtherCard] target  NetworkIdentity à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
             return;
         }
         var conn = opponentIdentity.connectionToClient;
         if (conn == null)
         {
-            Debug.LogWarning("[CmdTargetOtherCard] connectionToClient à¹€à¸›à¹‡à¸™ null à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
+            Debug.LogWarning("[CmdTargetOtherCard] connectionToClient null à¸‚à¹‰à¸²à¸¡à¸„à¸³à¸ªà¸±à¹ˆà¸‡");
             return;
         }
         TargetOtherCard(conn);
@@ -1688,7 +1831,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[RpcIncrementClick] à¸‚à¸±à¸”à¸‚à¹‰à¸­à¸‡: {ex}");
+            Debug.LogError($"[RpcIncrementClick] {ex}");
         }
     }
 }

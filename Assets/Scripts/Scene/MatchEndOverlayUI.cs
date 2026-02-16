@@ -23,6 +23,8 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
     [SerializeField] private string winnerNamePrefix = "Winner: ";
     [SerializeField] private string countPrefix = "Remaining: ";
     [SerializeField] private string clickHint = "Click anywhere to return to lobby";
+    [SerializeField] private string drawTitle = "Draw";
+    [SerializeField] private string drawSubtitle = "All action cards are exhausted";
 
     private static readonly string[] DuckKeysByIndex =
     {
@@ -33,20 +35,29 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
 
     public void Initialize(string winnerDuckKey, int remainingCount, string reason)
     {
+        bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
         int colorIndex = DuckKeyToColorIndex(winnerDuckKey);
 
         if (winnerDuckImage != null)
         {
-            Sprite sprite = (colorIndex >= 0 && colorIndex < duckColorSprites.Length) ? duckColorSprites[colorIndex] : null;
-            if (sprite != null)
-                winnerDuckImage.sprite = sprite;
+            if (isDraw)
+            {
+                winnerDuckImage.enabled = false;
+            }
+            else
+            {
+                winnerDuckImage.enabled = true;
+                Sprite sprite = (colorIndex >= 0 && colorIndex < duckColorSprites.Length) ? duckColorSprites[colorIndex] : null;
+                if (sprite != null)
+                    winnerDuckImage.sprite = sprite;
+            }
         }
 
         if (winnerNameText != null)
-            winnerNameText.text = winnerNamePrefix + HumanizeDuckKey(winnerDuckKey);
+            winnerNameText.text = isDraw ? drawTitle : winnerNamePrefix + HumanizeDuckKey(winnerDuckKey);
 
         if (winnerCountText != null)
-            winnerCountText.text = countPrefix + Mathf.Max(0, remainingCount).ToString();
+            winnerCountText.text = isDraw ? drawSubtitle : countPrefix + Mathf.Max(0, remainingCount).ToString();
 
         if (clickHintText != null)
             clickHintText.text = clickHint;

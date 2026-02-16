@@ -17,6 +17,9 @@ public class TurnManager : NetworkBehaviour
     [Header("Timeout Penalty")]
     [SerializeField] private bool destroyOwnedDuckOnTimeout = true;
 
+    [Header("Debug")]
+    [SerializeField] private bool enableTurnLogs = false;
+
     [SyncVar(hook = nameof(OnCurrentTurnIndexChanged))]
     public int currentTurnIndex = -1;
 
@@ -320,11 +323,14 @@ public class TurnManager : NetworkBehaviour
             starterDuckKey = DuckKeyFromIndex(starterPm.duckColorIndex);
         }
 
-        Debug.Log(
-            $"[TurnManager] Starter picked reason={reason ?? "-"} by={starterBy} " +
-            $"frontDuckNetId={(frontDuck != null ? frontDuck.netId.ToString() : "-")} frontDuckKey={frontDuckKey ?? "-"} " +
-            $"starterNetId={starterNetId} starterSeatIndex={starterSeat} starterDuckKey={starterDuckKey}"
-        );
+        if (enableTurnLogs)
+        {
+            Debug.Log(
+                $"[TurnManager] Starter picked reason={reason ?? "-"} by={starterBy} " +
+                $"frontDuckNetId={(frontDuck != null ? frontDuck.netId.ToString() : "-")} frontDuckKey={frontDuckKey ?? "-"} " +
+                $"starterNetId={starterNetId} starterSeatIndex={starterSeat} starterDuckKey={starterDuckKey}"
+            );
+        }
 
         _turnClockArmed = true;
         ServerStartCurrentTurnTimer($"Rotate:{reason ?? "-"}");
@@ -349,7 +355,7 @@ public class TurnManager : NetworkBehaviour
         if (previousTurnPlayer != null)
         {
             bool cleared = previousTurnPlayer.ServerForceEndActiveSkill($"TurnAdvance:{reason ?? "-"}");
-            if (cleared)
+            if (cleared && enableTurnLogs)
             {
                 Debug.Log(
                     $"[TurnManager] TurnCleanup reason={reason ?? "-"} clearedNetId={previousTurnPlayer.netId} " +
@@ -570,6 +576,7 @@ public class TurnManager : NetworkBehaviour
             if (now == SkillMode.None && _lastObservedSkillMode != SkillMode.None)
             {
                 ServerLogTurnClock("SkillResolved", remainingSeconds, $"from={_lastObservedSkillMode}");
+                DuckOwnershipStatusService.Instance?.ServerForceRefreshNow("SkillResolved");
             }
             else if (now != SkillMode.None)
             {
@@ -588,6 +595,11 @@ public class TurnManager : NetworkBehaviour
 
         if (!ServerCanFinishCurrentTurn(out _))
             return false;
+
+        // Re-evaluate win/draw right after card ability resolves and before advancing turn.
+        DuckOwnershipStatusService.Instance?.ServerForceRefreshNow($"TurnResolved:{reason}");
+        if (isMatchEnded)
+            return true;
 
         string detail = _sawNonNoneSkillSinceCardPlayed ? "SkillResolved" : "SkillActivatedInstant";
         ServerLogTurnClock("ReadyToEnd", remainingSeconds, $"{reason}|{detail}");
@@ -851,37 +863,148 @@ public class TurnManager : NetworkBehaviour
             lastCount = count;
 
             if (activeColors > 1)
-                return false;
+                break;
         }
 
-        if (activeColors != 1 || string.IsNullOrWhiteSpace(lastKey))
+        if (activeColors == 1 && !string.IsNullOrWhiteSpace(lastKey))
+        {
+            isMatchEnded = true;
+            winnerDuckKey = lastKey;
+            winnerRemainingCount = Mathf.Max(0, lastCount);
+
+            uint winnerNetId = ServerFindPlayerNetIdByDuckKey(lastKey);
+            int winnerSeat = -1;
+            if (winnerNetId != 0 &&
+                NetworkServer.spawned.TryGetValue(winnerNetId, out NetworkIdentity ni) &&
+                ni != null &&
+                ni.TryGetComponent(out PlayerManager winnerPm))
+            {
+                winnerSeat = winnerPm.SeatIndex;
+            }
+
+            _turnClockArmed = false;
+            ServerStopTurnTimer();
+
+            string endReason = reason ?? "-";
+            Debug.Log(
+                $"[TurnManager] MatchEnd reason={endReason} winnerDuckKey={winnerDuckKey} winnerRemaining={winnerRemainingCount} " +
+                $"winnerNetId={winnerNetId} winnerSeatIndex={winnerSeat}"
+            );
+
+            RpcShowMatchEndOverlay(winnerDuckKey, winnerRemainingCount, endReason);
+            return true;
+        }
+
+        if (ServerCanEvaluateDrawFromActionExhausted(out string drawBlockedBy) &&
+            ServerAreActionCardsExhausted(out int actionPoolRemaining, out int actionHandRemaining, out int trackedPlayers))
+        {
+            isMatchEnded = true;
+            winnerDuckKey = "Draw";
+            winnerRemainingCount = 0;
+
+            _turnClockArmed = false;
+            ServerStopTurnTimer();
+
+            string endReason = reason ?? "-";
+            Debug.Log(
+                $"[TurnManager] MatchDraw reason={endReason} activeDuckColors={activeColors} " +
+                $"actionPoolRemaining={actionPoolRemaining} actionHandRemaining={actionHandRemaining} trackedPlayers={trackedPlayers}"
+            );
+
+            RpcShowMatchEndOverlay(winnerDuckKey, winnerRemainingCount, $"{endReason}|ActionCardsExhausted");
+            return true;
+        }
+        else if (!string.IsNullOrEmpty(drawBlockedBy) && enableTurnLogs)
+        {
+            Debug.Log(
+                $"[TurnManager] DrawCheckDeferred reason={reason ?? "-"} blockedBy={drawBlockedBy} " +
+                $"cardPlayed={_currentTurnCardPlayed} skillDeclared={_currentTurnSkillDeclared}"
+            );
+        }
+
+        return false;
+    }
+
+    [Server]
+    private bool ServerCanEvaluateDrawFromActionExhausted(out string blockedBy)
+    {
+        blockedBy = null;
+
+        PlayerManager turnPlayer = ServerGetCurrentTurnPlayer();
+        if (turnPlayer == null)
+            return true;
+
+        if (turnPlayer.activeSkillMode != SkillMode.None)
+        {
+            blockedBy = $"SkillMode={turnPlayer.activeSkillMode}";
+            return false;
+        }
+
+        // If card was played this turn, wait until its skill is declared/resolved before draw check.
+        if (_currentTurnCardPlayed && !_currentTurnSkillDeclared)
+        {
+            blockedBy = "CardSkillNotActivatedYet";
+            return false;
+        }
+
+        return true;
+    }
+
+    [Server]
+    private bool ServerAreActionCardsExhausted(out int actionPoolRemaining, out int actionHandRemaining, out int trackedPlayers)
+    {
+        actionPoolRemaining = 0;
+        actionHandRemaining = 0;
+        trackedPlayers = 0;
+
+        if (!_turnClockArmed || TurnOrder.Count <= 0)
             return false;
 
-        isMatchEnded = true;
-        winnerDuckKey = lastKey;
-        winnerRemainingCount = Mathf.Max(0, lastCount);
-
-        uint winnerNetId = ServerFindPlayerNetIdByDuckKey(lastKey);
-        int winnerSeat = -1;
-        if (winnerNetId != 0 &&
-            NetworkServer.spawned.TryGetValue(winnerNetId, out NetworkIdentity ni) &&
-            ni != null &&
-            ni.TryGetComponent(out PlayerManager winnerPm))
+        int trackedHandRemaining = 0;
+        foreach (var kv in NetworkServer.connections)
         {
-            winnerSeat = winnerPm.SeatIndex;
+            NetworkConnectionToClient conn = kv.Value;
+            if (conn == null || conn.identity == null)
+                continue;
+
+            PlayerManager pm = conn.identity.GetComponent<PlayerManager>();
+            if (pm == null || !pm.isActiveAndEnabled || pm.SeatIndex < 0)
+                continue;
+
+            trackedPlayers++;
+            trackedHandRemaining += Mathf.Max(0, pm.ActionHandCount);
         }
 
-        _turnClockArmed = false;
-        ServerStopTurnTimer();
+        actionPoolRemaining = PlayerManager.ServerGetSharedActionPoolRemaining();
 
-        string endReason = reason ?? "-";
-        Debug.Log(
-            $"[TurnManager] MatchEnd reason={endReason} winnerDuckKey={winnerDuckKey} winnerRemaining={winnerRemainingCount} " +
-            $"winnerNetId={winnerNetId} winnerSeatIndex={winnerSeat}"
-        );
+        int sceneHandRemaining = ServerCountActionCardsInPlayerArea();
+        actionHandRemaining = Mathf.Max(trackedHandRemaining, sceneHandRemaining);
 
-        RpcShowMatchEndOverlay(winnerDuckKey, winnerRemainingCount, endReason);
-        return true;
+        if (trackedPlayers <= 0)
+            return false;
+
+        return actionPoolRemaining <= 0 && actionHandRemaining <= 0;
+    }
+
+    [Server]
+    private static int ServerCountActionCardsInPlayerArea()
+    {
+        int count = 0;
+        foreach (NetworkIdentity ni in NetworkServer.spawned.Values)
+        {
+            if (ni == null || !ni.TryGetComponent(out DuckCard dc))
+                continue;
+            if (dc.zone != ZoneKind.PlayerArea)
+                continue;
+
+            // Duck colors/Marsh are identity cards, not action cards.
+            if (!string.IsNullOrWhiteSpace(DuckKeyFromCardName(dc.name)))
+                continue;
+
+            count++;
+        }
+
+        return count;
     }
 
     [ClientRpc]
@@ -914,6 +1037,9 @@ public class TurnManager : NetworkBehaviour
     [Server]
     private void ServerLogTurnClock(string stage, int remainingSeconds, string reason)
     {
+        if (!enableTurnLogs)
+            return;
+
         uint turnNetId = ServerGetCurrentTurnNetId_Internal();
         int seatIndex = -1;
         int duckColorIndex = -1;
@@ -967,6 +1093,9 @@ public class TurnManager : NetworkBehaviour
     [Server]
     private void ServerLogTurnOrder(string reason)
     {
+        if (!enableTurnLogs)
+            return;
+
         var lines = new List<string>
         {
             $"[TurnManager] TurnOrder reason={reason ?? "-"} count={TurnOrder.Count} currentTurnIndex={currentTurnIndex} currentTurnNetId={currentTurnNetId}"
