@@ -72,8 +72,8 @@ public class PlayerTurnSeatingBinder : NetworkBehaviour
     {
         if (!NetworkClient.active) return;
 
-        int playerCount = CountClientPlayers();
-        RefreshVisibleSlotsForCount(playerCount);
+        // Reset first; local turn-order mapping will reopen only the slots that are truly used.
+        RefreshVisibleSlotsByUsedSlots(null);
         PlayerManager.RequestTurnOrderLayoutRefresh("PlayerTurnSeatingBinder.ForceRecompute");
     }
 
@@ -86,6 +86,29 @@ public class PlayerTurnSeatingBinder : NetworkBehaviour
         HashSet<int> visible = VisibleSlotsByPlayerCount.TryGetValue(count, out int[] slots)
             ? new HashSet<int>(slots)
             : new HashSet<int>(new[] { 1, 2, 3, 4, 5 });
+
+        for (int slot = 1; slot <= 5; slot++)
+        {
+            Transform tr = FindEnemySlot(root, slot);
+            if (tr == null) continue;
+            tr.gameObject.SetActive(visible.Contains(slot));
+        }
+    }
+
+    public static void RefreshVisibleSlotsByUsedSlots(IEnumerable<int> usedSlots)
+    {
+        Transform root = FindEnemiesAreaRoot();
+        if (root == null) return;
+
+        HashSet<int> visible = new HashSet<int>();
+        if (usedSlots != null)
+        {
+            foreach (int slot in usedSlots)
+            {
+                if (slot >= 1 && slot <= 5)
+                    visible.Add(slot);
+            }
+        }
 
         for (int slot = 1; slot <= 5; slot++)
         {

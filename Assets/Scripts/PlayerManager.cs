@@ -689,6 +689,7 @@ public partial class PlayerManager : NetworkBehaviour
         if (PlayerArea == null)
             PlayerArea = FindUIObject("PlayerArea");
 
+        HashSet<int> usedEnemySlots = new HashSet<int>();
         foreach (PlayerManager pm in players)
         {
             if (pm.netId == myNetId)
@@ -711,6 +712,7 @@ public partial class PlayerManager : NetworkBehaviour
             {
                 pm.EnemyArea = slotTransform.gameObject;
                 s_remoteSlotIndex[pm.netId] = slot - 1; // 0..4
+                usedEnemySlots.Add(slot);
             }
             else
             {
@@ -718,7 +720,11 @@ public partial class PlayerManager : NetworkBehaviour
             }
         }
 
-        PlayerTurnSeatingBinder.RefreshVisibleSlotsForCount(players.Count);
+        if (usedEnemySlots.Count > 0)
+            PlayerTurnSeatingBinder.RefreshVisibleSlotsByUsedSlots(usedEnemySlots);
+        else
+            PlayerTurnSeatingBinder.RefreshVisibleSlotsForCount(players.Count);
+
         RefreshPlayerAreaCardParentsByMapping();
         return true;
     }
@@ -783,6 +789,7 @@ public partial class PlayerManager : NetworkBehaviour
         }
         return null;
     }
+
     private GameObject FindUIObject(string childName)
     {
         var direct = GameObject.Find(childName);
