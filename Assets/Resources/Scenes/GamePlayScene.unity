@@ -1634,6 +1634,14 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 554051809084329814, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 209
+      objectReference: {fileID: 0}
+    - target: {fileID: 554051809084329814, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 39
+      objectReference: {fileID: 0}
     - target: {fileID: 994607814757060342, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: sceneId
       value: 1956038939
@@ -1653,6 +1661,14 @@ PrefabInstance:
     - target: {fileID: 1389167254085417955, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1753983579234799393, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 206
+      objectReference: {fileID: 0}
+    - target: {fileID: 1753983579234799393, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -33
       objectReference: {fileID: 0}
     - target: {fileID: 1937355199010134878, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_CellSize.x
@@ -1681,6 +1697,14 @@ PrefabInstance:
     - target: {fileID: 2079219304295235635, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: PlayerManager
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2256757095469729081, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 184
+      objectReference: {fileID: 0}
+    - target: {fileID: 2256757095469729081, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 118
       objectReference: {fileID: 0}
     - target: {fileID: 2651689605433486275, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_Camera
@@ -1750,6 +1774,10 @@ PrefabInstance:
       propertyPath: m_CellSize.x
       value: 120
       objectReference: {fileID: 0}
+    - target: {fileID: 5124980839518912471, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: turnRemainingText
+      value: 
+      objectReference: {fileID: 6560894684031802671}
     - target: {fileID: 5403961612016476819, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_SizeDelta.x
       value: -1469.42
@@ -1969,6 +1997,17 @@ MonoBehaviour:
   localHandRoot: {fileID: 0}
   enemyHandSlots: []
   actionCardPrefabs: []
+--- !u!114 &6560894684031802671 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8668799489039020581, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+  m_PrefabInstance: {fileID: 6560894684031802668}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
