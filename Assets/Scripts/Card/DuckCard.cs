@@ -16,6 +16,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
 
     private Coroutine _layoutCoroutine;
     private const float ManualSpacingX = 150f;
+    private bool _transformSyncDisabled;
 
     private PlayerManager GetOwnerPlayerManager()
     {
@@ -35,7 +36,25 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     {
         base.OnStartClient();
 
+        DisableTransformSyncIfPresent();
         TryApplyLayout("OnStartClient");
+    }
+
+    private void DisableTransformSyncIfPresent()
+    {
+        if (_transformSyncDisabled)
+            return;
+
+        DisableComponentByName("NetworkTransformUnreliable");
+        DisableComponentByName("NetworkTransform");
+        _transformSyncDisabled = true;
+    }
+
+    private void DisableComponentByName(string typeName)
+    {
+        var behaviour = GetComponent(typeName) as Behaviour;
+        if (behaviour != null && behaviour.enabled)
+            behaviour.enabled = false;
     }
 
     // SyncVar hooks -------------------------------------------------------
@@ -120,10 +139,12 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         var rect = transform as RectTransform;
         if (rect == null) return false;
 
+        DisableTransformSyncIfPresent();
+
         var parent = ResolveZoneParent();
         if (parent == null)
         {
-            Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
+            // Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
             return false;
         }
 
@@ -134,6 +155,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.localScale = Vector3.one;
         rect.localRotation = Quaternion.identity;
+        rect.localPosition = new Vector3(rect.localPosition.x, rect.localPosition.y, 0f);
 
         bool parentHasLayout = parent.GetComponent<LayoutGroup>() != null;
 
@@ -162,13 +184,66 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
             targetIndex = parent.childCount;
         transform.SetSiblingIndex(targetIndex);
 
+        EnsureVisibleState();
         LogLayout(reason, parent, rect);
         return true;
     }
 
+    private void EnsureVisibleState()
+    {
+        if (zone != ZoneKind.PlayerArea)
+            return;
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        if (TryGetComponent<Image>(out var image))
+        {
+            if (!image.enabled)
+                image.enabled = true;
+
+            if (image.color.a <= 0.01f)
+            {
+                Color c = image.color;
+                c.a = 1f;
+                image.color = c;
+            }
+        }
+
+        if (TryGetComponent<CanvasGroup>(out var canvasGroup) && canvasGroup.alpha <= 0.01f)
+            canvasGroup.alpha = 1f;
+    }
+
     private void LogLayout(string reason, Transform parent, RectTransform rect)
     {
-        ;
+        bool hasImage = TryGetComponent<Image>(out var image);
+        float imageAlpha = hasImage ? image.color.a : -1f;
+        bool hasCanvasGroup = TryGetComponent<CanvasGroup>(out var canvasGroup);
+        float canvasGroupAlpha = hasCanvasGroup ? canvasGroup.alpha : -1f;
+
+        bool suspicious = zone == ZoneKind.PlayerArea &&
+                          (
+                              !gameObject.activeInHierarchy ||
+                              parent == null ||
+                              !parent.gameObject.activeInHierarchy ||
+                              (hasImage && (!image.enabled || imageAlpha <= 0.01f)) ||
+                              (hasCanvasGroup && canvasGroupAlpha <= 0.01f) ||
+                              rect.rect.width <= 1f ||
+                              rect.rect.height <= 1f ||
+                              Mathf.Abs(rect.anchoredPosition.x) > 3000f ||
+                              Mathf.Abs(rect.anchoredPosition.y) > 3000f
+                          );
+
+        if (!suspicious)
+            return;
+
+        Debug.LogWarning(
+            $"[DuckCard][LayoutSuspect] name={name} netId={netId} owner={ownerNetId} zone={zone} reason={reason} " +
+            $"parent={(parent != null ? parent.name : "null")} activeSelf={gameObject.activeSelf} activeInHierarchy={gameObject.activeInHierarchy} " +
+            $"parentActive={(parent != null && parent.gameObject.activeInHierarchy)} pos={rect.anchoredPosition} size={rect.rect.size} scale={rect.localScale} " +
+            $"imageEnabled={(hasImage ? image.enabled.ToString() : "n/a")} imageAlpha={(hasImage ? imageAlpha.ToString("0.00") : "n/a")} " +
+            $"canvasAlpha={(hasCanvasGroup ? canvasGroupAlpha.ToString("0.00") : "n/a")}"
+        );
     }
 
     private Transform ResolveZoneParent()
