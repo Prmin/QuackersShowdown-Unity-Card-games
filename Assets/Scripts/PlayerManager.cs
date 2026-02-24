@@ -560,6 +560,39 @@ public partial class PlayerManager : NetworkBehaviour
             return s_enemySlots[idx];
         return null;
     }
+
+    /// <summary>
+    /// Resolve EnemyArea slot from TurnOrder indices.
+    /// - Previous side: EA1, EA2, ...
+    /// - Next side: EA5, EA4, ...
+    /// For >=4 players, use circular shortest direction to avoid collapsing everyone to EA1..EA4
+    /// when local player is near the tail of TurnOrder.
+    /// </summary>
+    private static int ComputeEnemySlotByTurnOrder(int myIndex, int otherIndex, int orderCount)
+    {
+        if (orderCount < 2 || myIndex < 0 || otherIndex < 0 || myIndex == otherIndex)
+            return -1;
+
+        // Preserve legacy 3-player mapping used by existing game rules.
+        if (orderCount <= 3)
+        {
+            int linearDelta = otherIndex - myIndex;
+            int slotLinear = linearDelta < 0 ? -linearDelta : 6 - linearDelta;
+            return Mathf.Clamp(slotLinear, 1, 5);
+        }
+
+        // Circular distances.
+        int prevSteps = (myIndex - otherIndex + orderCount) % orderCount; // 1..orderCount-1
+        int nextSteps = (otherIndex - myIndex + orderCount) % orderCount; // 1..orderCount-1
+        if (prevSteps == 0 || nextSteps == 0)
+            return -1;
+
+        // Tie-break to previous side for deterministic behavior.
+        if (prevSteps <= nextSteps)
+            return Mathf.Clamp(prevSteps, 1, 5);
+
+        return Mathf.Clamp(6 - nextSteps, 1, 5);
+    }
     [Client]
     public void RecomputeLocalLayoutByTurnOrder()
     {
@@ -702,11 +735,8 @@ public partial class PlayerManager : NetworkBehaviour
             int otherIndex = order.IndexOf(pm.netId);
             if (otherIndex < 0) continue;
 
-            int delta = otherIndex - myIndex;
-            if (delta == 0) continue;
-
-            int slot = delta < 0 ? -delta : 6 - delta;
-            slot = Mathf.Clamp(slot, 1, 5);
+            int slot = ComputeEnemySlotByTurnOrder(myIndex, otherIndex, order.Count);
+            if (slot < 1) continue;
 
             Transform slotTransform = GetSlotByRelIndex(slot);
             if (slotTransform != null)
@@ -805,9 +835,9 @@ public partial class PlayerManager : NetworkBehaviour
 
             if (myIndex >= 0 && otherIndex >= 0 && myIndex != otherIndex)
             {
-                int delta = otherIndex - myIndex;
-                int slotNumber = delta < 0 ? -delta : 6 - delta; // 1..5
-                slotNumber = Mathf.Clamp(slotNumber, 1, 5);
+                int slotNumber = ComputeEnemySlotByTurnOrder(myIndex, otherIndex, order.Count);
+                if (slotNumber < 1)
+                    return null;
                 int fallbackIdx = slotNumber - 1;
 
                 if (fallbackIdx >= 0 && fallbackIdx < s_enemySlots.Length)
