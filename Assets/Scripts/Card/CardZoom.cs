@@ -11,7 +11,7 @@ public class CardZoom : NetworkBehaviour
 
     private GameObject zoomCard;
     private Sprite zoomSprite;
-    private const float ZoomScale = 3f; // was 1.5f
+    private const float ZoomScale = 2f;
     private static readonly Vector2 ZoomBaseSize = new Vector2(180f, 258f);
 
     public void Awake()

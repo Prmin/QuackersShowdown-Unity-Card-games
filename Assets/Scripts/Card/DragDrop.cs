@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using Mirror;
@@ -5,6 +6,8 @@ using UnityEngine.EventSystems;
 
 public class DragDrop : NetworkBehaviour
 {
+    public static event Action<bool> LocalDragStateChanged;
+
     private LocalHandCard _localHandCard;
     public bool IsLocalHandCard => _localHandCard != null;
     public bool IsDragging => isDragging;
@@ -56,6 +59,7 @@ public class DragDrop : NetworkBehaviour
 
         isDragging = true;
         startParent = transform.parent;
+        NotifyLocalDragState(true);
     }
 
     // EventTrigger BeginDrag(BaseEventData) support
@@ -79,6 +83,7 @@ public class DragDrop : NetworkBehaviour
         }
 
         isDragging = false;
+        NotifyLocalDragState(false);
         var rt = transform as RectTransform;
 
         if (isOverDropZone && dropZone != null)
@@ -186,6 +191,7 @@ public class DragDrop : NetworkBehaviour
     private void CancelDragAndRestore()
     {
         isDragging = false;
+        NotifyLocalDragState(false);
 
         var parent = startParent != null ? startParent : transform.parent;
         if (parent == null)
@@ -204,6 +210,33 @@ public class DragDrop : NetworkBehaviour
 
         transform.SetAsLastSibling();
         ForceParentLayout(parent);
+    }
+
+    private void OnDisable()
+    {
+        if (isDragging)
+        {
+            isDragging = false;
+            NotifyLocalDragState(false);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (isDragging)
+        {
+            isDragging = false;
+            NotifyLocalDragState(false);
+        }
+    }
+
+    private void NotifyLocalDragState(bool dragging)
+    {
+        var ni = GetComponent<NetworkIdentity>();
+        if (ni == null || !ni.isOwned)
+            return;
+
+        LocalDragStateChanged?.Invoke(dragging);
     }
 
     private void ForceParentLayout(Transform parent)
