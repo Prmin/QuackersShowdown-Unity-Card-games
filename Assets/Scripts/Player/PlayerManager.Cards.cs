@@ -58,25 +58,16 @@ public partial class PlayerManager
         {
             conn = ServerResolveConnectionByPlayerNetId(ownerPMNetId);
             if (conn == null)
-            {
-                Debug.LogWarning($"[ActionPool] Missing connection for ownerNetId={ownerPMNetId}, skip draw.");
                 return false;
-            }
         }
 
         string cardName = GetRandomActionCardFromPool();
         if (string.IsNullOrEmpty(cardName))
-        {
-            Debug.LogWarning("[ActionPool] No action cards left in shared pool.");
             return false;
-        }
 
         GameObject prefab = FindCardPrefabByName(cardName);
         if (prefab == null)
-        {
-            Debug.LogError($"[ActionPool] Missing action prefab for card={cardName}");
             return false;
-        }
 
         GameObject spawnedCard = Instantiate(prefab);
 
@@ -114,10 +105,7 @@ public partial class PlayerManager
 
         NetworkConnectionToClient resolvedConn = conn ?? ServerResolveConnectionByPlayerNetId(ownerPMNetId);
         if (resolvedConn == null)
-        {
-            Debug.LogWarning($"[ActionPool] DrawNextCard aborted, connection missing for ownerNetId={ownerPMNetId}");
             yield break;
-        }
 
         int cardsInHand = ServerCountActionCardsInHandByOwner(ownerPMNetId);
         while (cardsInHand < 3 && ServerGetSharedActionPoolRemaining() > 0)

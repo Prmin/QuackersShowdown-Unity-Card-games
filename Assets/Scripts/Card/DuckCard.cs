@@ -38,6 +38,9 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
 
         DisableTransformSyncIfPresent();
         TryApplyLayout("OnStartClient");
+
+        if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
+            PlayerManager.RequestTurnOrderLayoutRefresh("DuckCard.OnStartClient");
     }
 
     private void DisableTransformSyncIfPresent()
@@ -107,6 +110,9 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     {
         if (!NetworkClient.active) return;
         TryApplyLayout(reason);
+
+        if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
+            PlayerManager.RequestTurnOrderLayoutRefresh($"DuckCard.{reason}");
     }
 
     // Layout --------------------------------------------------------------
@@ -260,11 +266,8 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
                 var mapped = PlayerManager.TryGetEnemySlotForNetId(ownerNetId);
                 if (mapped != null) return mapped;
 
-                var ownerPM = GetOwnerPlayerManager();
-                if (ownerPM != null && ownerPM.EnemyArea != null)
-                    return ownerPM.EnemyArea.transform;
-
-                return localPM?.EnemyArea?.transform ?? FindZoneRecursive(ZoneKind.PlayerArea, "EnemyArea");
+                // TurnOrder mapping is not ready yet; keep current parent and wait for refresh.
+                return transform.parent;
 
             case ZoneKind.DuckZone:
                 return localPM?.DuckZone?.transform ?? FindZoneRecursive(ZoneKind.DuckZone);

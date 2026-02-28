@@ -55,9 +55,6 @@ public class DuckOwnershipStatusService : NetworkBehaviour
     {
         _nextRefreshAt = 0d;
         ServerRefreshOwnedDuckCounts();
-
-        if (!string.IsNullOrWhiteSpace(reason))
-            Debug.Log($"[DuckOwnershipStatusService] ForceRefresh reason={reason}");
     }
 
     [Server]
