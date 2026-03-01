@@ -17,6 +17,7 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
     [SyncVar] public int statsWin;
     [SyncVar] public int statsLoss;
     [SyncVar] public int statsDraw;
+    [SyncVar] public int statsDuckShots;
 
     public override void OnStartServer()
     {
@@ -137,16 +138,17 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
             return;
 
         LocalMatchStats.Snapshot snap = LocalMatchStats.Get();
-        CmdSubmitLocalStats(snap.played, snap.win, snap.loss, snap.draw);
+        CmdSubmitLocalStats(snap.played, snap.win, snap.loss, snap.draw, snap.duckShots);
     }
 
     [Command]
-    private void CmdSubmitLocalStats(int played, int win, int loss, int draw)
+    private void CmdSubmitLocalStats(int played, int win, int loss, int draw, int duckShots)
     {
         played = Mathf.Max(0, played);
         win = Mathf.Max(0, win);
         loss = Mathf.Max(0, loss);
         draw = Mathf.Max(0, draw);
+        duckShots = Mathf.Max(0, duckShots);
 
         int sum = win + loss + draw;
         if (played < sum)
@@ -156,6 +158,7 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
         statsWin = win;
         statsLoss = loss;
         statsDraw = draw;
+        statsDuckShots = duckShots;
     }
 
     [Command(requiresAuthority = false)]

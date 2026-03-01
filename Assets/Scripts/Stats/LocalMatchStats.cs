@@ -13,6 +13,7 @@ public static class LocalMatchStats
     private const string KeyWin = "stats.win";
     private const string KeyLoss = "stats.loss";
     private const string KeyDraw = "stats.draw";
+    private const string KeyDuckShots = "stats.duck_shots";
 
     public struct Snapshot
     {
@@ -20,6 +21,7 @@ public static class LocalMatchStats
         public int win;
         public int loss;
         public int draw;
+        public int duckShots;
     }
 
     public static Snapshot Get()
@@ -29,7 +31,8 @@ public static class LocalMatchStats
             played = PlayerPrefs.GetInt(KeyPlayed, 0),
             win = PlayerPrefs.GetInt(KeyWin, 0),
             loss = PlayerPrefs.GetInt(KeyLoss, 0),
-            draw = PlayerPrefs.GetInt(KeyDraw, 0)
+            draw = PlayerPrefs.GetInt(KeyDraw, 0),
+            duckShots = PlayerPrefs.GetInt(KeyDuckShots, 0)
         };
     }
 
@@ -50,6 +53,15 @@ public static class LocalMatchStats
                 break;
         }
 
+        PlayerPrefs.Save();
+    }
+
+    public static void RecordDuckShots(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        PlayerPrefs.SetInt(KeyDuckShots, PlayerPrefs.GetInt(KeyDuckShots, 0) + amount);
         PlayerPrefs.Save();
     }
 }

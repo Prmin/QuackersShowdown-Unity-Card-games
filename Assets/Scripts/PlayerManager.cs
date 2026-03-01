@@ -158,6 +158,30 @@ public partial class PlayerManager : NetworkBehaviour
         s_pendingTurnOrderLayoutRefresh = true;
         s_pendingTurnOrderLayoutReason = reason;
     }
+
+    [Server]
+    private void ServerRecordDuckShotCount(int count)
+    {
+        if (count <= 0)
+            return;
+
+        if (connectionToClient != null)
+        {
+            TargetRecordDuckShotCount(connectionToClient, count);
+            return;
+        }
+
+        // Host fallback: local player may not have a remote connection object.
+        if (isLocalPlayer)
+            LocalMatchStats.RecordDuckShots(count);
+    }
+
+    [TargetRpc]
+    private void TargetRecordDuckShotCount(NetworkConnection target, int count)
+    {
+        LocalMatchStats.RecordDuckShots(count);
+    }
+
     private DuckCard firstSelectedDuck = null; // ??????????????????????
     private NetworkIdentity firstTwoBirdsCard = null;
     private int twoBirdsClickCount = 0;

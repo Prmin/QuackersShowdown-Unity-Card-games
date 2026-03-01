@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using TMPro;
 using UnityEngine;
@@ -33,6 +34,7 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
 
     private bool _isReturning;
     private bool _statsRecorded;
+    private bool _sceneLoadHooked;
 
     private void Awake()
     {
@@ -93,6 +95,7 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
             return;
 
         _isReturning = true;
+        UIFlow.I?.HideAllForGameplay();
 
         NetworkManager manager = NetworkManager.singleton;
         if (manager != null)
@@ -105,7 +108,41 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
                 manager.StopServer();
         }
 
+        if (!_sceneLoadHooked)
+        {
+            SceneManager.sceneLoaded += OnSceneLoadedShowLobbyList;
+            _sceneLoadHooked = true;
+        }
+
         SceneManager.LoadScene(lobbySceneName);
+    }
+
+    private void OnSceneLoadedShowLobbyList(Scene scene, LoadSceneMode mode)
+    {
+        string expectedName = lobbySceneName;
+        int slash = expectedName.LastIndexOf('/');
+        if (slash >= 0 && slash < expectedName.Length - 1)
+            expectedName = expectedName.Substring(slash + 1);
+
+        int dot = expectedName.LastIndexOf('.');
+        if (dot > 0)
+            expectedName = expectedName.Substring(0, dot);
+
+        if (!string.Equals(scene.name, expectedName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        SceneManager.sceneLoaded -= OnSceneLoadedShowLobbyList;
+        _sceneLoadHooked = false;
+        UIFlow.I?.ShowLobbyList();
+    }
+
+    private void OnDestroy()
+    {
+        if (_sceneLoadHooked)
+        {
+            SceneManager.sceneLoaded -= OnSceneLoadedShowLobbyList;
+            _sceneLoadHooked = false;
+        }
     }
 
     private static int DuckKeyToColorIndex(string duckKey)

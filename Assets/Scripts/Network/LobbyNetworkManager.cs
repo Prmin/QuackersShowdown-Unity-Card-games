@@ -12,6 +12,9 @@ public class LobbyNetworkManager : NetworkRoomManager
     [Header("Discovery (optional)")]
     public MyNetworkDiscovery discovery;
 
+    [Header("UI Flow")]
+    [SerializeField] private string lobbySceneName = "LobbyTutorial_Done";
+
     public override void OnStartHost()
     {
         base.OnStartHost();
@@ -176,19 +179,46 @@ public class LobbyNetworkManager : NetworkRoomManager
     {
         base.OnStopClient();
         // กลับหน้า LobbyList แล้วเริ่มสแกนใหม่
-        UIFlow.I?.ShowLobbyList();
-        DiscoveryBridge.I?.StartClientScan();
+        HandleDisconnectedClientUIFlow();
         // ;
     }
 
     public override void OnClientDisconnect()
     {
         base.OnClientDisconnect();
-        // โดนเตะ/โฮสต์ปิด → เด้งกลับ LobbyList แล้วสแกนใหม่
-        UIFlow.I?.ShowLobbyList();
-        DiscoveryBridge.I?.StartClientScan();
-        // ;
+        HandleDisconnectedClientUIFlow();
     }
 
-}
 
+    private void HandleDisconnectedClientUIFlow()
+    {
+        UIFlow flow = UIFlow.I;
+        if (flow == null)
+            return;
+
+        Scene active = SceneManager.GetActiveScene();
+        if (IsSceneMatch(active, GameplayScene))
+        {
+            // Keep lobby UI hidden while gameplay scene is still active.
+            flow.HideAllForGameplay();
+            return;
+        }
+
+        flow.ShowLobbyList();
+    }
+
+    private static bool IsSceneMatch(Scene scene, string configuredPathOrName)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPathOrName))
+            return false;
+
+        if (string.Equals(scene.path, configuredPathOrName, System.StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        string expectedName = System.IO.Path.GetFileNameWithoutExtension(configuredPathOrName);
+        if (string.IsNullOrWhiteSpace(expectedName))
+            expectedName = configuredPathOrName;
+
+        return string.Equals(scene.name, expectedName, System.StringComparison.OrdinalIgnoreCase);
+    }
+}

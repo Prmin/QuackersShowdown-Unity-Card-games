@@ -22,6 +22,7 @@ public class LobbyPlayerSingleUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI winText;
     [SerializeField] private TextMeshProUGUI lossText;
     [SerializeField] private TextMeshProUGUI drawText;
+    [SerializeField] private TextMeshProUGUI duckShotText;
 
     private uint targetNetId;
 
@@ -52,7 +53,7 @@ public class LobbyPlayerSingleUI : MonoBehaviour
             characterImage.sprite = LobbyAssets.Instance ? LobbyAssets.Instance.GetDuckSpriteByIndex(lp.duckColorIndex) : null;
 
         ApplyReadyVisual(lp.readyToBegin);
-        ApplyStatsVisual(lp.statsPlayed, lp.statsWin, lp.statsLoss, lp.statsDraw);
+        ApplyStatsVisual(lp.statsPlayed, lp.statsWin, lp.statsLoss, lp.statsDraw, lp.statsDuckShots);
 
         if (readyStateImage != null)
             readyStateImage.gameObject.SetActive(!lp.isHost);
@@ -75,12 +76,13 @@ public class LobbyPlayerSingleUI : MonoBehaviour
         readyStateImage.color = isReady ? readyTint : notReadyTint;
     }
 
-    private void ApplyStatsVisual(int played, int win, int loss, int draw)
+    private void ApplyStatsVisual(int played, int win, int loss, int draw, int duckShots)
     {
         if (playedText != null) playedText.text = $"P:{Mathf.Max(0, played)}";
         if (winText != null) winText.text = $"W:{Mathf.Max(0, win)}";
         if (lossText != null) lossText.text = $"L:{Mathf.Max(0, loss)}";
         if (drawText != null) drawText.text = $"D:{Mathf.Max(0, draw)}";
+        if (duckShotText != null) duckShotText.text = $"S:{Mathf.Max(0, duckShots)}";
     }
 
     private void KickPlayer()
