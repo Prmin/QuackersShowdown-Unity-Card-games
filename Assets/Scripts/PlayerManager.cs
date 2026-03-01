@@ -221,7 +221,10 @@ public partial class PlayerManager : NetworkBehaviour
     // (Optional) Hook ?????? Client UI 
     void OnSkillModeChanged(SkillMode oldMode, SkillMode newMode)
     {
+        if (!isLocalPlayer)
+            return;
 
+        ActiveSkillDescriptionUI.NotifySkillModeChanged(newMode);
     }
 
     void OnOwnedDuckCountChanged(int oldValue, int newValue)
@@ -410,39 +413,29 @@ public partial class PlayerManager : NetworkBehaviour
     {
         base.OnStartClient();
         TryBindBarrierClient();
-        // ????? Main Canvas
-        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        // Resolve canvas from scene only.
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
         if (mainCanvas == null)
         {
-            Debug.LogError("[PlayerManager.OnStartClient] ? 'Main Canvas' not found");
+            Debug.LogError("[PlayerManager.OnStartClient] ? Canvas not found");
             return;
         }
-        // ?? root UI ??????? "Image" (??????????? Main Canvas)
-        Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
-        if (uiRoot == null)
-        {
-            Debug.LogError("[PlayerManager.OnStartClient] ? 'Image' root not found under Main Canvas");
-            return;
-        }
-        // ????????? ?
-        DuckZone = FindChildRecursive(uiRoot, "DuckZone")?.gameObject;
-        DropZone = FindChildRecursive(uiRoot, "DropZone")?.gameObject;
-        TargetZone = FindChildRecursive(uiRoot, "TargetZone")?.gameObject;
-        EnemyArea = FindChildRecursive(uiRoot, "EnemyArea")?.gameObject;
+
+        // Prefer "Image" root if present, otherwise use canvas directly.
+        Transform uiRoot = FindChildRecursive(mainCanvas, "Image") ?? mainCanvas;
+
+        DuckZone = ResolveSceneUiObject(uiRoot, mainCanvas, "DuckZone", DuckZone);
+        DropZone = ResolveSceneUiObject(uiRoot, mainCanvas, "DropZone", DropZone);
+        TargetZone = ResolveSceneUiObject(uiRoot, mainCanvas, "TargetZone", TargetZone);
+        EnemyArea = ResolveSceneUiObject(uiRoot, mainCanvas, "EnemyArea", EnemyArea);
+
         var ni = GetComponent<NetworkIdentity>();
         if (ni != null && ni.isOwned)
         {
-            // ?????? local player
-            PlayerArea = FindChildRecursive(uiRoot, "PlayerArea")?.gameObject;
+            PlayerArea = ResolveSceneUiObject(uiRoot, mainCanvas, "PlayerArea", PlayerArea);
             localInstance = this;
         }
-        if (DuckZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? DuckZone not found");
-        if (DropZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? DropZone not found");
-        if (TargetZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? TargetZone not found");
-        if (EnemyArea == null) Debug.LogError("[PlayerManager.OnStartClient] ? EnemyArea not found");
-        if (ni != null && ni.isOwned && PlayerArea == null)
-            Debug.LogError("[PlayerManager.OnStartClient] ? PlayerArea not found for local player");
-        ;
+
         CacheEnemySlotsFromScene();
         RequestTurnOrderLayoutRefresh("PlayerManager.OnStartClient");
     }
@@ -489,10 +482,10 @@ public partial class PlayerManager : NetworkBehaviour
     // ??/??? EnemyArea1..5 ??? Scene
     private void CacheEnemySlotsFromScene()
     {
-        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
         if (mainCanvas == null)
         {
-            Debug.LogWarning("[CacheEnemySlots] 'Main Canvas' not found!");
+            Debug.LogWarning("[CacheEnemySlots] Canvas not found!");
             s_enemySlots = null;
             return;
         }
@@ -546,6 +539,32 @@ public partial class PlayerManager : NetworkBehaviour
                 return found;
         }
         return null;
+    }
+
+    private static bool IsSceneGameObject(GameObject go)
+    {
+        return go != null && go.scene.IsValid() && go.scene.isLoaded;
+    }
+
+    private static bool IsSceneTransform(Transform tr)
+    {
+        return tr != null && tr.gameObject != null && tr.gameObject.scene.IsValid() && tr.gameObject.scene.isLoaded;
+    }
+
+    private GameObject ResolveSceneUiObject(Transform preferredRoot, Transform fallbackRoot, string childName, GameObject currentValue)
+    {
+        if (IsSceneGameObject(currentValue))
+            return currentValue;
+
+        Transform found = null;
+        if (IsSceneTransform(preferredRoot))
+            found = FindChildRecursive(preferredRoot, childName);
+        if (!IsSceneTransform(found) && IsSceneTransform(fallbackRoot))
+            found = FindChildRecursive(fallbackRoot, childName);
+        if (!IsSceneTransform(found))
+            found = GameObject.Find(childName)?.transform;
+
+        return IsSceneTransform(found) ? found.gameObject : null;
     }
     /// ??? Transform ?????????????? rel (0..5)
     /// rel=0 -> PlayerArea (??? local), rel=1..5 -> EnemyArea1..5
@@ -1910,6 +1929,7 @@ public partial class PlayerManager : NetworkBehaviour
             selectedSkill = SkillMode.Resurrection;
         if (selectedSkill != SkillMode.None)
         {
+            ActiveSkillDescriptionUI.NotifySkillTriggered(selectedSkill);
             CmdSetSkillMode(selectedSkill);
         }
     }
