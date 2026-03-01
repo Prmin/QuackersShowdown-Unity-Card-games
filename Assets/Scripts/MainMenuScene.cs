@@ -22,7 +22,7 @@ public class MainMenuScene : MonoBehaviour
     // ฟังก์ชันสำหรับการเปลี่ยน Scene
     public void GoToPlayScene()
     {
-        SceneManager.LoadScene("PlayScene");
+        SceneManager.LoadScene("LobbyTutorial_Done");
     }
 
     public void GoToTraining_modeScene()
