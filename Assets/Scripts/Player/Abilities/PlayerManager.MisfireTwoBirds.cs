@@ -24,6 +24,7 @@ public partial class PlayerManager
         uint shotId = randomNeighbor.netId;
 
         ShootCardDirect(randomNeighbor);
+        ServerRecordDuckShotCount(1);
 
         // ✅ ลบเป้าของ "ใบที่โดนทำลายจริงๆ"
         Server_DestroyAllTargetsFor(shotId);
@@ -91,6 +92,7 @@ public partial class PlayerManager
                 if (dc1 == null || dc2 == null) { /* ... */ }
                 int row1 = dc1.RowNet, col1 = dc1.ColNet;
                 int row2 = dc2.RowNet, col2 = dc2.ColNet;
+                ServerRecordDuckShotCount(2);
                 NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
                 NetworkServer.Destroy(clickedCard.gameObject);
                 RemoveTargetFromCard(firstTwoBirdsCard);
@@ -107,6 +109,7 @@ public partial class PlayerManager
                     if (dc1 != null)
                     {
                         int row1 = dc1.RowNet, col1 = dc1.ColNet;
+                        ServerRecordDuckShotCount(1);
                         NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
                         RemoveTargetFromCard(firstTwoBirdsCard);
                         ShiftColumnsDown(row1, col1);

@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using TMPro;
 using UnityEngine;
@@ -32,6 +33,8 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
     };
 
     private bool _isReturning;
+    private bool _statsRecorded;
+    private bool _sceneLoadHooked;
 
     private void Awake()
     {
@@ -44,6 +47,8 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
 
     public void Initialize(string winnerDuckKey, int remainingCount, string reason)
     {
+        TryRecordLocalMatchStats(winnerDuckKey);
+
         bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
         int colorIndex = DuckKeyToColorIndex(winnerDuckKey);
 
@@ -90,6 +95,7 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
             return;
 
         _isReturning = true;
+        UIFlow.I?.HideAllForGameplay();
 
         NetworkManager manager = NetworkManager.singleton;
         if (manager != null)
@@ -102,7 +108,41 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
                 manager.StopServer();
         }
 
+        if (!_sceneLoadHooked)
+        {
+            SceneManager.sceneLoaded += OnSceneLoadedShowLobbyList;
+            _sceneLoadHooked = true;
+        }
+
         SceneManager.LoadScene(lobbySceneName);
+    }
+
+    private void OnSceneLoadedShowLobbyList(Scene scene, LoadSceneMode mode)
+    {
+        string expectedName = lobbySceneName;
+        int slash = expectedName.LastIndexOf('/');
+        if (slash >= 0 && slash < expectedName.Length - 1)
+            expectedName = expectedName.Substring(slash + 1);
+
+        int dot = expectedName.LastIndexOf('.');
+        if (dot > 0)
+            expectedName = expectedName.Substring(0, dot);
+
+        if (!string.Equals(scene.name, expectedName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        SceneManager.sceneLoaded -= OnSceneLoadedShowLobbyList;
+        _sceneLoadHooked = false;
+        UIFlow.I?.ShowLobbyList();
+    }
+
+    private void OnDestroy()
+    {
+        if (_sceneLoadHooked)
+        {
+            SceneManager.sceneLoaded -= OnSceneLoadedShowLobbyList;
+            _sceneLoadHooked = false;
+        }
     }
 
     private static int DuckKeyToColorIndex(string duckKey)
@@ -129,5 +169,41 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
             key = key.Substring(4);
 
         return key;
+    }
+
+    private void TryRecordLocalMatchStats(string winnerDuckKey)
+    {
+        if (_statsRecorded)
+            return;
+
+        _statsRecorded = true;
+
+        if (string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase))
+        {
+            LocalMatchStats.Record(MatchResult.Draw);
+            return;
+        }
+
+        if (!TryGetLocalDuckKey(out string localDuckKey))
+            return;
+
+        bool isWin = string.Equals(localDuckKey, winnerDuckKey, System.StringComparison.OrdinalIgnoreCase);
+        LocalMatchStats.Record(isWin ? MatchResult.Win : MatchResult.Loss);
+    }
+
+    private static bool TryGetLocalDuckKey(out string duckKey)
+    {
+        duckKey = null;
+
+        PlayerManager local = PlayerManager.localInstance;
+        if (local == null || !local.isLocalPlayer)
+            return false;
+
+        int colorIndex = local.duckColorIndex;
+        if (colorIndex < 0 || colorIndex >= DuckKeysByIndex.Length)
+            return false;
+
+        duckKey = DuckKeysByIndex[colorIndex];
+        return !string.IsNullOrWhiteSpace(duckKey);
     }
 }

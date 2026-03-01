@@ -66,6 +66,7 @@ public partial class PlayerManager
 
         int shotRow = shotDuck.RowNet;
         int shotCol = shotDuck.ColNet;
+        ServerRecordDuckShotCount(1);
         NetworkServer.Destroy(duckCardIdentity.gameObject);
         Server_DestroyAllTargetsFor(duckCardIdentity.netId);
         Server_ResequenceDuckZoneColumns();

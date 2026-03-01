@@ -158,6 +158,30 @@ public partial class PlayerManager : NetworkBehaviour
         s_pendingTurnOrderLayoutRefresh = true;
         s_pendingTurnOrderLayoutReason = reason;
     }
+
+    [Server]
+    private void ServerRecordDuckShotCount(int count)
+    {
+        if (count <= 0)
+            return;
+
+        if (connectionToClient != null)
+        {
+            TargetRecordDuckShotCount(connectionToClient, count);
+            return;
+        }
+
+        // Host fallback: local player may not have a remote connection object.
+        if (isLocalPlayer)
+            LocalMatchStats.RecordDuckShots(count);
+    }
+
+    [TargetRpc]
+    private void TargetRecordDuckShotCount(NetworkConnection target, int count)
+    {
+        LocalMatchStats.RecordDuckShots(count);
+    }
+
     private DuckCard firstSelectedDuck = null; // ??????????????????????
     private NetworkIdentity firstTwoBirdsCard = null;
     private int twoBirdsClickCount = 0;
@@ -1121,8 +1145,6 @@ public partial class PlayerManager : NetworkBehaviour
     [Server]
     private void Server_ResequenceDuckZoneColumns()
     {
-        // à¸­à¸¢à¹ˆà¸²à¹€à¸£à¸µà¸¢à¸‡à¸ˆà¸²à¸ UI (anchoredPosition) à¹€à¸žà¸£à¸²à¸° GridLayoutGroup / timing / headless server à¸—à¸³à¹ƒà¸«à¹‰à¹€à¸žà¸µà¹‰à¸¢à¸™à¹„à¸”à¹‰
-        // à¹€à¸£à¸µà¸¢à¸‡à¸ˆà¸²à¸ state à¸à¸±à¹ˆà¸‡ server: ColNet à¹à¸¥à¹‰à¸§à¸„à¸­à¸¡à¹à¸žà¸„à¹ƒà¸«à¹‰à¹€à¸›à¹‡à¸™ 0..n-1
         List<DuckCard> ducks = FindDucksInRow(0);
         ducks.Sort((a, b) =>
         {
@@ -1134,11 +1156,10 @@ public partial class PlayerManager : NetworkBehaviour
         for (int i = 0; i < ducks.Count; i++)
             ducks[i].ServerAssignToZone(ZoneKind.DuckZone, 0, i);
 
-        // à¸”à¸±à¸™ order à¹„à¸›à¸à¸±à¹ˆà¸‡ client à¹ƒà¸«à¹‰ GridLayoutGroup à¸ˆà¸±à¸”à¸•à¸³à¹à¸«à¸™à¹ˆà¸‡à¸„à¸­à¸¥à¸±à¸¡à¸™à¹Œà¸–à¸¹à¸à¸—à¸±à¸™à¸—à¸µ
         Server_PushDuckZoneOrder(0);
     }
 
-    // ====(???? server helpers) 
+    // ====(server helpers) 
     [Server]
     private Transform GetSceneDropZone() => GameObject.Find("DropZone")?.transform;
     [Server]
@@ -1224,7 +1245,7 @@ public partial class PlayerManager : NetworkBehaviour
         var selectedPrefabs = duckPrefabs
             .Where(kv => selected.Contains(kv.Key) && kv.Value != null)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
-        CardPoolManager.Initialize(selectedPrefabs, initialCount: 5);
+        CardPoolManager.Initialize(selectedPrefabs, initialCount: 1);
         // 2) Ensure the shared DuckZone is filled before we begin
         host.RefillDuckZoneIfNeeded();
         // 3) Build/rotate authoritative TurnOrder from DuckZone front card
