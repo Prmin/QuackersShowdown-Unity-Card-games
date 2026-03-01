@@ -146,6 +146,9 @@ public partial class PlayerManager : NetworkBehaviour
     {
         if (!NetworkClient.active) return;
 
+        // Prevent stale netId->slot cache while TurnOrder/layout is changing.
+        s_remoteSlotIndex.Clear();
+
         if (localInstance != null)
         {
             localInstance.ScheduleTurnOrderLayoutRecompute(reason);
@@ -218,7 +221,10 @@ public partial class PlayerManager : NetworkBehaviour
     // (Optional) Hook ?????? Client UI 
     void OnSkillModeChanged(SkillMode oldMode, SkillMode newMode)
     {
+        if (!isLocalPlayer)
+            return;
 
+        ActiveSkillDescriptionUI.NotifySkillModeChanged(newMode);
     }
 
     void OnOwnedDuckCountChanged(int oldValue, int newValue)
@@ -407,39 +413,29 @@ public partial class PlayerManager : NetworkBehaviour
     {
         base.OnStartClient();
         TryBindBarrierClient();
-        // ????? Main Canvas
-        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        // Resolve canvas from scene only.
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
         if (mainCanvas == null)
         {
-            Debug.LogError("[PlayerManager.OnStartClient] ? 'Main Canvas' not found");
+            Debug.LogError("[PlayerManager.OnStartClient] ? Canvas not found");
             return;
         }
-        // ?? root UI ??????? "Image" (??????????? Main Canvas)
-        Transform uiRoot = FindChildRecursive(mainCanvas, "Image");
-        if (uiRoot == null)
-        {
-            Debug.LogError("[PlayerManager.OnStartClient] ? 'Image' root not found under Main Canvas");
-            return;
-        }
-        // ????????? ?
-        DuckZone = FindChildRecursive(uiRoot, "DuckZone")?.gameObject;
-        DropZone = FindChildRecursive(uiRoot, "DropZone")?.gameObject;
-        TargetZone = FindChildRecursive(uiRoot, "TargetZone")?.gameObject;
-        EnemyArea = FindChildRecursive(uiRoot, "EnemyArea")?.gameObject;
+
+        // Prefer "Image" root if present, otherwise use canvas directly.
+        Transform uiRoot = FindChildRecursive(mainCanvas, "Image") ?? mainCanvas;
+
+        DuckZone = ResolveSceneUiObject(uiRoot, mainCanvas, "DuckZone", DuckZone);
+        DropZone = ResolveSceneUiObject(uiRoot, mainCanvas, "DropZone", DropZone);
+        TargetZone = ResolveSceneUiObject(uiRoot, mainCanvas, "TargetZone", TargetZone);
+        EnemyArea = ResolveSceneUiObject(uiRoot, mainCanvas, "EnemyArea", EnemyArea);
+
         var ni = GetComponent<NetworkIdentity>();
         if (ni != null && ni.isOwned)
         {
-            // ?????? local player
-            PlayerArea = FindChildRecursive(uiRoot, "PlayerArea")?.gameObject;
+            PlayerArea = ResolveSceneUiObject(uiRoot, mainCanvas, "PlayerArea", PlayerArea);
             localInstance = this;
         }
-        if (DuckZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? DuckZone not found");
-        if (DropZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? DropZone not found");
-        if (TargetZone == null) Debug.LogError("[PlayerManager.OnStartClient] ? TargetZone not found");
-        if (EnemyArea == null) Debug.LogError("[PlayerManager.OnStartClient] ? EnemyArea not found");
-        if (ni != null && ni.isOwned && PlayerArea == null)
-            Debug.LogError("[PlayerManager.OnStartClient] ? PlayerArea not found for local player");
-        ;
+
         CacheEnemySlotsFromScene();
         RequestTurnOrderLayoutRefresh("PlayerManager.OnStartClient");
     }
@@ -486,10 +482,10 @@ public partial class PlayerManager : NetworkBehaviour
     // ??/??? EnemyArea1..5 ??? Scene
     private void CacheEnemySlotsFromScene()
     {
-        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform;
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
         if (mainCanvas == null)
         {
-            Debug.LogWarning("[CacheEnemySlots] 'Main Canvas' not found!");
+            Debug.LogWarning("[CacheEnemySlots] Canvas not found!");
             s_enemySlots = null;
             return;
         }
@@ -518,11 +514,12 @@ public partial class PlayerManager : NetworkBehaviour
         for (int i = 0; i < s_enemySlots.Length; i++)
         {
             string childName = $"{enemySlotPrefix}{i + 1}";
-            var child = FindChildRecursive(root, childName);
+            // Bind by direct child under EnemiesArea only (avoid recursive mismatches).
+            var child = root.Find(childName);
             if (child == null)
             {
                 string altChild = $"{enemySlotPrefix}{i}";
-                child = FindChildRecursive(root, altChild);
+                child = root.Find(altChild);
             }
             s_enemySlots[i] = child;
             if (child == null)
@@ -543,6 +540,32 @@ public partial class PlayerManager : NetworkBehaviour
         }
         return null;
     }
+
+    private static bool IsSceneGameObject(GameObject go)
+    {
+        return go != null && go.scene.IsValid() && go.scene.isLoaded;
+    }
+
+    private static bool IsSceneTransform(Transform tr)
+    {
+        return tr != null && tr.gameObject != null && tr.gameObject.scene.IsValid() && tr.gameObject.scene.isLoaded;
+    }
+
+    private GameObject ResolveSceneUiObject(Transform preferredRoot, Transform fallbackRoot, string childName, GameObject currentValue)
+    {
+        if (IsSceneGameObject(currentValue))
+            return currentValue;
+
+        Transform found = null;
+        if (IsSceneTransform(preferredRoot))
+            found = FindChildRecursive(preferredRoot, childName);
+        if (!IsSceneTransform(found) && IsSceneTransform(fallbackRoot))
+            found = FindChildRecursive(fallbackRoot, childName);
+        if (!IsSceneTransform(found))
+            found = GameObject.Find(childName)?.transform;
+
+        return IsSceneTransform(found) ? found.gameObject : null;
+    }
     /// ??? Transform ?????????????? rel (0..5)
     /// rel=0 -> PlayerArea (??? local), rel=1..5 -> EnemyArea1..5
     private Transform GetSlotByRelIndex(int rel)
@@ -552,13 +575,25 @@ public partial class PlayerManager : NetworkBehaviour
             // ?????? local ????????: ??? PlayerArea ???????????? OnStartClient
             return PlayerArea != null ? PlayerArea.transform : null;
         }
-        // ????????????????? EnemyArea1..5 ????
-        if (s_enemySlots == null || s_enemySlots.Any(t => t == null))
-            CacheEnemySlotsFromScene();
-        int idx = rel - 1; // 1..5 -> 0..4
-        if (s_enemySlots != null && idx >= 0 && idx < s_enemySlots.Length)
-            return s_enemySlots[idx];
-        return null;
+
+        return ResolveEnemySlotTransformByNumber(rel);
+    }
+
+    /// <summary>
+    /// Resolve EnemyArea slot from TurnOrder indices.
+    /// - Previous side: EA1, EA2, ...
+    /// - Next side: EA5, EA4, ...
+    /// Fixed ring mapping:
+    /// delta < 0 => EA1, EA2, ...
+    /// delta > 0 => EA5, EA4, ...
+    /// </summary>
+    private static int ComputeEnemySlotByTurnOrder(int myIndex, int otherIndex, int orderCount)
+    {
+        if (orderCount < 2 || myIndex < 0 || otherIndex < 0 || myIndex == otherIndex)
+            return -1;
+        int delta = otherIndex - myIndex;
+        int slot = delta < 0 ? -delta : 6 - delta;
+        return Mathf.Clamp(slot, 1, 5);
     }
     [Client]
     public void RecomputeLocalLayoutByTurnOrder()
@@ -702,11 +737,8 @@ public partial class PlayerManager : NetworkBehaviour
             int otherIndex = order.IndexOf(pm.netId);
             if (otherIndex < 0) continue;
 
-            int delta = otherIndex - myIndex;
-            if (delta == 0) continue;
-
-            int slot = delta < 0 ? -delta : 6 - delta;
-            slot = Mathf.Clamp(slot, 1, 5);
+            int slot = ComputeEnemySlotByTurnOrder(myIndex, otherIndex, order.Count);
+            if (slot < 1) continue;
 
             Transform slotTransform = GetSlotByRelIndex(slot);
             if (slotTransform != null)
@@ -733,7 +765,7 @@ public partial class PlayerManager : NetworkBehaviour
     [Client]
     private void RefreshPlayerAreaCardParentsByMapping()
     {
-        foreach (DuckCard dc in FindObjectsOfType<DuckCard>())
+        foreach (DuckCard dc in FindAllClientDuckCards())
         {
             if (dc == null || dc.zone != ZoneKind.PlayerArea) continue;
 
@@ -751,9 +783,13 @@ public partial class PlayerManager : NetworkBehaviour
 
             if (targetParent == null) continue;
 
-            // If a slot was hidden by an earlier fallback, show it when an enemy card actually targets it.
-            if (targetParent != PlayerArea?.transform && !targetParent.gameObject.activeSelf)
-                targetParent.gameObject.SetActive(true);
+            if (!targetParent.gameObject.activeSelf)
+            {
+                int preferredSlot = ResolveEnemySlotNumberFromTransform(targetParent);
+                Transform forcedActive = ResolveActiveEnemySlotFallback(preferredSlot);
+                if (forcedActive != null)
+                    targetParent = forcedActive;
+            }
 
             if (dc.transform.parent != targetParent)
                 dc.transform.SetParent(targetParent, false);
@@ -765,6 +801,38 @@ public partial class PlayerManager : NetworkBehaviour
             }
         }
     }
+
+    [Client]
+    private static IEnumerable<DuckCard> FindAllClientDuckCards()
+    {
+        // Include inactive cards so we can recover cards that were temporarily parented under hidden EA slots.
+        return Resources.FindObjectsOfTypeAll<DuckCard>()
+            .Where(dc =>
+                dc != null &&
+                dc.gameObject != null &&
+                dc.gameObject.scene.IsValid() &&
+                dc.gameObject.scene.isLoaded);
+    }
+
+    [Client]
+    private static int ResolveEnemySlotNumberFromTransform(Transform parent)
+    {
+        if (parent == null || s_enemySlots == null)
+            return -1;
+
+        for (int i = 0; i < s_enemySlots.Length; i++)
+        {
+            Transform slot = s_enemySlots[i];
+            if (slot == null)
+                continue;
+
+            if (parent == slot || parent.IsChildOf(slot))
+                return i + 1;
+        }
+
+        return -1;
+    }
+
     // ??? Transform ????????????????????????? PlayerManager ?????? (?????????????? null)
     private Transform GetMyEnemySlot()
     {
@@ -784,18 +852,7 @@ public partial class PlayerManager : NetworkBehaviour
         if (s_enemySlots == null)
             return null;
 
-        if (s_remoteSlotIndex.TryGetValue(netId, out int idx))
-        {
-            if (idx >= 0 && idx < s_enemySlots.Length)
-            {
-                var slot = s_enemySlots[idx];
-                if (slot != null && !slot.gameObject.activeSelf)
-                    slot.gameObject.SetActive(true);
-                return slot;
-            }
-        }
-
-        // Fallback: derive slot directly from current TurnOrder when map cache is not ready yet.
+        // Prefer authoritative TurnOrder mapping first.
         TurnManager tm = TurnManager.Instance;
         if (tm != null && localInstance != null && tm.TurnOrder.Count > 0)
         {
@@ -805,26 +862,138 @@ public partial class PlayerManager : NetworkBehaviour
 
             if (myIndex >= 0 && otherIndex >= 0 && myIndex != otherIndex)
             {
-                int delta = otherIndex - myIndex;
-                int slotNumber = delta < 0 ? -delta : 6 - delta; // 1..5
-                slotNumber = Mathf.Clamp(slotNumber, 1, 5);
+                int slotNumber = ComputeEnemySlotByTurnOrder(myIndex, otherIndex, order.Count);
+                if (slotNumber < 1)
+                    return null;
+                Transform fallbackSlot = ResolveEnemySlotTransformByNumber(slotNumber);
                 int fallbackIdx = slotNumber - 1;
-
-                if (fallbackIdx >= 0 && fallbackIdx < s_enemySlots.Length)
+                if (fallbackSlot != null && fallbackSlot.gameObject.activeSelf)
                 {
-                    Transform fallbackSlot = s_enemySlots[fallbackIdx];
-                    if (fallbackSlot != null)
-                    {
-                        s_remoteSlotIndex[netId] = fallbackIdx;
-                        if (!fallbackSlot.gameObject.activeSelf)
-                            fallbackSlot.gameObject.SetActive(true);
-                        return fallbackSlot;
-                    }
+                    s_remoteSlotIndex[netId] = fallbackIdx;
+                    return fallbackSlot;
                 }
+
+                Transform activeFallback = ResolveActiveEnemySlotFallback(slotNumber);
+                if (activeFallback != null)
+                {
+                    int activeSlot = ResolveEnemySlotNumberFromTransform(activeFallback);
+                    if (activeSlot >= 1)
+                        s_remoteSlotIndex[netId] = activeSlot - 1;
+                    return activeFallback;
+                }
+            }
+
+            // TurnOrder is available but mapping not ready yet: avoid stale cache fallback.
+            return null;
+        }
+
+        // Fallback to cache only when TurnOrder mapping is unavailable.
+        if (s_remoteSlotIndex.TryGetValue(netId, out int idx))
+        {
+            int slotNumber = idx + 1;
+            if (slotNumber >= 1 && slotNumber <= 5)
+            {
+                var slot = ResolveEnemySlotTransformByNumber(slotNumber);
+                if (slot != null && slot.gameObject.activeSelf)
+                    return slot;
             }
         }
 
+        return ResolveActiveEnemySlotFallback(-1);
+    }
+
+    private static Transform ResolveActiveEnemySlotFallback(int preferredSlot)
+    {
+        if (s_enemySlots == null || s_enemySlots.Length == 0)
+            return null;
+
+        // Prefer side-consistent fallback.
+        if (preferredSlot >= 4)
+        {
+            for (int i = s_enemySlots.Length - 1; i >= 0; i--)
+            {
+                Transform slot = s_enemySlots[i];
+                if (slot != null && slot.gameObject.activeSelf)
+                    return slot;
+            }
+        }
+        else if (preferredSlot >= 1)
+        {
+            for (int i = 0; i < s_enemySlots.Length; i++)
+            {
+                Transform slot = s_enemySlots[i];
+                if (slot != null && slot.gameObject.activeSelf)
+                    return slot;
+            }
+        }
+
+        // Any active slot as final fallback.
+        for (int i = 0; i < s_enemySlots.Length; i++)
+        {
+            Transform slot = s_enemySlots[i];
+            if (slot != null && slot.gameObject.activeSelf)
+                return slot;
+        }
+
         return null;
+    }
+
+    private static Transform ResolveEnemySlotTransformByNumber(int slotNumber)
+    {
+        if (slotNumber < 1 || slotNumber > 5)
+            return null;
+
+        int idx = slotNumber - 1;
+
+        if (s_enemySlots != null && idx >= 0 && idx < s_enemySlots.Length)
+        {
+            Transform cached = s_enemySlots[idx];
+            if (cached != null)
+            {
+                string n = cached.name;
+                string oneBased = $"{localInstance?.enemySlotPrefix ?? "EnemyArea"}{slotNumber}";
+                string zeroBased = $"{localInstance?.enemySlotPrefix ?? "EnemyArea"}{slotNumber - 1}";
+                if (n == oneBased || n == zeroBased)
+                    return cached;
+            }
+        }
+
+        Transform root = FindEnemiesAreaRootForLookup();
+        if (root == null)
+            return null;
+
+        string prefix = localInstance != null ? localInstance.enemySlotPrefix : "EnemyArea";
+        Transform resolved = root.Find($"{prefix}{slotNumber}") ?? root.Find($"{prefix}{slotNumber - 1}");
+        if (resolved != null)
+        {
+            if (s_enemySlots == null || s_enemySlots.Length != 5)
+                s_enemySlots = new Transform[5];
+            s_enemySlots[idx] = resolved;
+        }
+
+        return resolved;
+    }
+
+    private static Transform FindEnemiesAreaRootForLookup()
+    {
+        string rootName = localInstance != null ? localInstance.enemiesAreaRootName : "EnemiesArea";
+        Transform mainCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
+        if (mainCanvas != null)
+        {
+            Transform uiRoot = localInstance != null
+                ? localInstance.FindChildRecursive(mainCanvas, "Image")
+                : null;
+            Transform root = null;
+            if (uiRoot != null && localInstance != null)
+                root = localInstance.FindChildRecursive(uiRoot, rootName);
+            if (root == null && localInstance != null)
+                root = localInstance.FindChildRecursive(mainCanvas, rootName);
+            if (root != null)
+                return root;
+        }
+
+        GameObject fallback = GameObject.Find(rootName);
+        return fallback != null ? fallback.transform : null;
     }
 
     private GameObject FindUIObject(string childName)
@@ -1075,8 +1244,6 @@ public partial class PlayerManager : NetworkBehaviour
         foreach (var pm in players)
         {
             var conn = ServerResolveConnectionByPlayerNetId(pm.netId);
-            if (conn == null)
-                Debug.LogWarning($"[ActionPool] InitialDeal unresolved connection netId={pm.netId}, trying draw without explicit owner-conn.");
 
             for (int i = 0; i < 3; i++)
             {
@@ -1097,7 +1264,6 @@ public partial class PlayerManager : NetworkBehaviour
         {
             s_actionPoolOwnerNetId = netId;
             InitializeActionCardPool();
-            Debug.Log($"[ActionPool] OwnerAssigned netId={s_actionPoolOwnerNetId}");
             return;
         }
 
@@ -1128,7 +1294,6 @@ public partial class PlayerManager : NetworkBehaviour
                 continue;
 
             s_actionPoolOwnerNetId = pm.netId;
-            Debug.Log($"[ActionPool] OwnerReassigned netId={s_actionPoolOwnerNetId}");
             return pm;
         }
 
@@ -1473,9 +1638,6 @@ public partial class PlayerManager : NetworkBehaviour
         }
         string selectedCard = availableCards[UnityEngine.Random.Range(0, availableCards.Count)];
         owner.actionCardPool[selectedCard]--;  // Shared action pool
-        Debug.Log(
-            $"[ActionPool] Draw card={selectedCard} ownerNetId={owner.netId} cardRemaining={Mathf.Max(0, owner.actionCardPool[selectedCard])} totalRemaining={ServerGetSharedActionPoolRemaining()}"
-        );
         return selectedCard;
     }
     private GameObject GetRandomDuckCardFromPool()
@@ -1767,6 +1929,7 @@ public partial class PlayerManager : NetworkBehaviour
             selectedSkill = SkillMode.Resurrection;
         if (selectedSkill != SkillMode.None)
         {
+            ActiveSkillDescriptionUI.NotifySkillTriggered(selectedSkill);
             CmdSetSkillMode(selectedSkill);
         }
     }

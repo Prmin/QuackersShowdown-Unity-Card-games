@@ -38,6 +38,9 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
 
         DisableTransformSyncIfPresent();
         TryApplyLayout("OnStartClient");
+
+        if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
+            PlayerManager.RequestTurnOrderLayoutRefresh("DuckCard.OnStartClient");
     }
 
     private void DisableTransformSyncIfPresent()
@@ -107,6 +110,9 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     {
         if (!NetworkClient.active) return;
         TryApplyLayout(reason);
+
+        if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
+            PlayerManager.RequestTurnOrderLayoutRefresh($"DuckCard.{reason}");
     }
 
     // Layout --------------------------------------------------------------
@@ -142,7 +148,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         DisableTransformSyncIfPresent();
 
         var parent = ResolveZoneParent();
-        if (parent == null)
+        if (!IsSceneTransform(parent))
         {
             // Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
             return false;
@@ -255,25 +261,42 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         {
             case ZoneKind.PlayerArea:
                 if (ownedByLocal)
-                    return localPM?.PlayerArea?.transform ?? FindZoneRecursive(ZoneKind.PlayerArea);
+                {
+                    Transform localArea = localPM != null ? localPM.PlayerArea?.transform : null;
+                    if (IsSceneTransform(localArea))
+                        return localArea;
+                    return FindZoneRecursive(ZoneKind.PlayerArea);
+                }
 
                 var mapped = PlayerManager.TryGetEnemySlotForNetId(ownerNetId);
-                if (mapped != null) return mapped;
+                if (IsSceneTransform(mapped)) return mapped;
 
-                var ownerPM = GetOwnerPlayerManager();
-                if (ownerPM != null && ownerPM.EnemyArea != null)
-                    return ownerPM.EnemyArea.transform;
-
-                return localPM?.EnemyArea?.transform ?? FindZoneRecursive(ZoneKind.PlayerArea, "EnemyArea");
+                // TurnOrder mapping is not ready yet; keep current parent and wait for refresh.
+                return IsSceneTransform(transform.parent) ? transform.parent : null;
 
             case ZoneKind.DuckZone:
-                return localPM?.DuckZone?.transform ?? FindZoneRecursive(ZoneKind.DuckZone);
+            {
+                Transform zoneTr = localPM != null ? localPM.DuckZone?.transform : null;
+                if (IsSceneTransform(zoneTr))
+                    return zoneTr;
+                return FindZoneRecursive(ZoneKind.DuckZone);
+            }
 
             case ZoneKind.DropZone:
-                return localPM?.DropZone?.transform ?? FindZoneRecursive(ZoneKind.DropZone);
+            {
+                Transform zoneTr = localPM != null ? localPM.DropZone?.transform : null;
+                if (IsSceneTransform(zoneTr))
+                    return zoneTr;
+                return FindZoneRecursive(ZoneKind.DropZone);
+            }
 
             case ZoneKind.TargetZone:
-                return localPM?.TargetZone?.transform ?? FindZoneRecursive(ZoneKind.TargetZone);
+            {
+                Transform zoneTr = localPM != null ? localPM.TargetZone?.transform : null;
+                if (IsSceneTransform(zoneTr))
+                    return zoneTr;
+                return FindZoneRecursive(ZoneKind.TargetZone);
+            }
 
             default:
                 return null;
@@ -305,6 +328,14 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         }
 
         return null;
+    }
+
+    private static bool IsSceneTransform(Transform tr)
+    {
+        return tr != null &&
+               tr.gameObject != null &&
+               tr.gameObject.scene.IsValid() &&
+               tr.gameObject.scene.isLoaded;
     }
 
     // Server-side assignment is purely logical; clients recompute layout locally.

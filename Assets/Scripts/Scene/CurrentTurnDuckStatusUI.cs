@@ -33,6 +33,12 @@ public class CurrentTurnDuckStatusUI : MonoBehaviour
 
     private void Awake()
     {
+        turnTextPrefix = "Turn: ";
+        yourTurnText = "Your Turn";
+        noTurnText = "-";
+        remainingPrefix = "Time: ";
+        remainingSuffix = "s";
+
         if (turnDuckBadgeImage != null)
             _defaultBadgeSprite = turnDuckBadgeImage.sprite;
     }

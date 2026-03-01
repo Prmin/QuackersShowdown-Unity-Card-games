@@ -12,7 +12,7 @@ public class TurnManager : NetworkBehaviour
     public readonly SyncList<uint> TurnOrder = new SyncList<uint>();
 
     [Header("Turn Timer")]
-    [SerializeField] private float turnDurationSeconds = 30f;
+    [SerializeField] private float turnDurationSeconds = 3000000f; // เลวาในแต่ละเทิร์น
 
     [Header("Timeout Penalty")]
     [SerializeField] private bool destroyOwnedDuckOnTimeout = true;
@@ -174,8 +174,6 @@ public class TurnManager : NetworkBehaviour
 
         if (DuckOwnershipStatusService.Instance != null)
             DuckOwnershipStatusService.Instance.ServerForceRefreshNow("TurnManager.OnStartServer");
-        else
-            Debug.LogWarning("[TurnManager] DuckOwnershipStatusService not found. Owned duck count UI will not update.");
     }
 
     public override void OnStopServer()

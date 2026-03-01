@@ -14,7 +14,13 @@ public partial class PlayerManager
         int curRow = duck.RowNet;
         int curCol = duck.ColNet;
         DuckCard leftDuck = FindDuckAt(curRow, curCol - 1);
-        if (leftDuck == null) return;
+        if (leftDuck == null)
+        {
+            // Left edge: no card to receive target, so destroy target on selected card.
+            RemoveTargetFromCard(clickedCard);
+            activeSkillMode = SkillMode.None;
+            return;
+        }
 
         MoveTargetFromTo(clickedCard, leftDuck.GetComponent<NetworkIdentity>());
         activeSkillMode = SkillMode.None;
@@ -32,7 +38,13 @@ public partial class PlayerManager
         int curRow = duck.RowNet;
         int curCol = duck.ColNet;
         DuckCard rightDuck = FindDuckAt(curRow, curCol + 1);
-        if (rightDuck == null) return;
+        if (rightDuck == null)
+        {
+            // Right edge: no card to receive target, so destroy target on selected card.
+            RemoveTargetFromCard(clickedCard);
+            activeSkillMode = SkillMode.None;
+            return;
+        }
 
         MoveTargetFromTo(clickedCard, rightDuck.GetComponent<NetworkIdentity>());
         activeSkillMode = SkillMode.None;

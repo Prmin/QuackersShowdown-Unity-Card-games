@@ -33,6 +33,15 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
 
     private bool _isReturning;
 
+    private void Awake()
+    {
+        winnerNamePrefix = "Winner: ";
+        countPrefix = "Remaining: ";
+        clickHint = "Click anywhere to return to lobby";
+        drawTitle = "Draw";
+        drawSubtitle = "All action cards are exhausted";
+    }
+
     public void Initialize(string winnerDuckKey, int remainingCount, string reason)
     {
         bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
