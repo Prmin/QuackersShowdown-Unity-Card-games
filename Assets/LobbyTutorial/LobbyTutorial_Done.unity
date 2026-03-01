@@ -1469,6 +1469,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef0782641ca1e5a4197c3db174773ae5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lobbySceneName: LobbyTutorial_Done
   authenticatePanel: {fileID: 2089917344}
   lobbyListPanel: {fileID: 769093582}
   lobbyCreatePanel: {fileID: 1266130831}
@@ -4546,6 +4547,7 @@ MonoBehaviour:
   clientIndex: 0
   maxPlayersAllowed: 6
   discovery: {fileID: 1051633782}
+  lobbySceneName: LobbyTutorial_Done
 --- !u!4 &1051633779
 Transform:
   m_ObjectHideFlags: 0
