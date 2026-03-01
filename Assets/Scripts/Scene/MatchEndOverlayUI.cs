@@ -32,6 +32,7 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
     };
 
     private bool _isReturning;
+    private bool _statsRecorded;
 
     private void Awake()
     {
@@ -44,6 +45,8 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
 
     public void Initialize(string winnerDuckKey, int remainingCount, string reason)
     {
+        TryRecordLocalMatchStats(winnerDuckKey);
+
         bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
         int colorIndex = DuckKeyToColorIndex(winnerDuckKey);
 
@@ -129,5 +132,41 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
             key = key.Substring(4);
 
         return key;
+    }
+
+    private void TryRecordLocalMatchStats(string winnerDuckKey)
+    {
+        if (_statsRecorded)
+            return;
+
+        _statsRecorded = true;
+
+        if (string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase))
+        {
+            LocalMatchStats.Record(MatchResult.Draw);
+            return;
+        }
+
+        if (!TryGetLocalDuckKey(out string localDuckKey))
+            return;
+
+        bool isWin = string.Equals(localDuckKey, winnerDuckKey, System.StringComparison.OrdinalIgnoreCase);
+        LocalMatchStats.Record(isWin ? MatchResult.Win : MatchResult.Loss);
+    }
+
+    private static bool TryGetLocalDuckKey(out string duckKey)
+    {
+        duckKey = null;
+
+        PlayerManager local = PlayerManager.localInstance;
+        if (local == null || !local.isLocalPlayer)
+            return false;
+
+        int colorIndex = local.duckColorIndex;
+        if (colorIndex < 0 || colorIndex >= DuckKeysByIndex.Length)
+            return false;
+
+        duckKey = DuckKeysByIndex[colorIndex];
+        return !string.IsNullOrWhiteSpace(duckKey);
     }
 }
