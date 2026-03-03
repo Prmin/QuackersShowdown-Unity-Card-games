@@ -901,6 +901,7 @@ MonoBehaviour:
   avatarSprites:
   - {fileID: 21300000, guid: 810db66ec1481184a8a3b610c5ff15ca, type: 3}
   - {fileID: 21300000, guid: 21065028e5e8fc64f872042fc01d600b, type: 3}
+  - {fileID: 21300000, guid: 3029105401fc1504ca39fca23c479cdb, type: 3}
   avatarPickerPrefab: {fileID: 1718457949263809560, guid: 4a39e3699c2d4d84faf9508c2f2a69c0, type: 3}
   popupParent: {fileID: 0}
   playedText: {fileID: 544871272}

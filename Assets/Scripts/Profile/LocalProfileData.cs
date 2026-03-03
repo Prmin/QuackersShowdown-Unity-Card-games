@@ -40,6 +40,11 @@ public static class LocalProfileData
         return Mathf.Clamp(idx, 0, avatarCount - 1);
     }
 
+    public static int GetAvatarIndexRaw(int defaultIndex = 0)
+    {
+        return Mathf.Max(0, PlayerPrefs.GetInt(KeyAvatarIndex, defaultIndex));
+    }
+
     public static void SetAvatarIndex(int index)
     {
         PlayerPrefs.SetInt(KeyAvatarIndex, Mathf.Max(0, index));

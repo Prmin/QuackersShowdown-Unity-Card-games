@@ -7,6 +7,7 @@ public class LobbyPlayerSingleUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI playerNameText;
     [SerializeField] private Image characterImage;
+    [SerializeField] private Image profileImage;
     [SerializeField] private Button kickPlayerButton;
 
     [Header("Ready State Display")]
@@ -50,7 +51,21 @@ public class LobbyPlayerSingleUI : MonoBehaviour
             playerNameText.text = name;
 
         if (characterImage != null)
+        {
+            // Keep original behavior: character image follows duck color.
             characterImage.sprite = LobbyAssets.Instance ? LobbyAssets.Instance.GetDuckSpriteByIndex(lp.duckColorIndex) : null;
+            characterImage.preserveAspect = true;
+        }
+
+        if (profileImage != null)
+        {
+            // New separate profile avatar image.
+            Sprite avatar = LobbyAssets.Instance ? LobbyAssets.Instance.GetProfileAvatarSpriteByIndex(lp.profileAvatarIndex) : null;
+            profileImage.sprite = avatar;
+            profileImage.enabled = avatar != null;
+            if (avatar != null)
+                profileImage.preserveAspect = true;
+        }
 
         ApplyReadyVisual(lp.readyToBegin);
         ApplyStatsVisual(lp.statsPlayed, lp.statsWin, lp.statsLoss, lp.statsDraw, lp.statsDuckShots);
