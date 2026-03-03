@@ -9,8 +9,8 @@ public class AuthenticateUI : MonoBehaviour
     {
         authenticateButton.onClick.AddListener(() =>
         {
-            var name = EditPlayerName.Instance.GetPlayerName();
-            PlayerPrefs.SetString(LobbyManager.KEY_PLAYER_NAME, name);
+            string name = LocalProfileData.GetPlayerName("Player");
+            LocalProfileData.SetPlayerName(name);
 
             // ถ้าเราอยู่ในห้องอยู่แล้ว ให้ตั้งชื่อด้วย
             var me = LobbyRoomPlayer.Local;
