@@ -44,6 +44,14 @@ public partial class PlayerManager : NetworkBehaviour
     [SyncVar(hook = nameof(OnOwnedDuckCountChanged))]
     [SerializeField] private int ownedDuckCount = 0;
     public int OwnedDuckCount => ownedDuckCount;
+
+    [SyncVar]
+    [SerializeField] private string displayName = "Player";
+    public string DisplayName => string.IsNullOrWhiteSpace(displayName) ? "Player" : displayName;
+
+    [SyncVar]
+    [SerializeField] private int profileAvatarIndex = 0;
+    public int ProfileAvatarIndex => Mathf.Max(0, profileAvatarIndex);
     // --- PATCH: Barrier Hooks ---
     private static bool s_barrierHooksBoundServer = false;
     private static bool s_barrierHooksBoundClient = false;
@@ -341,6 +349,18 @@ public partial class PlayerManager : NetworkBehaviour
             return;
 
         ownedDuckCount = safeValue;
+    }
+
+    [Server]
+    public void SetDisplayName(string value)
+    {
+        displayName = string.IsNullOrWhiteSpace(value) ? "Player" : value.Trim();
+    }
+
+    [Server]
+    public void SetProfileAvatarIndex(int value)
+    {
+        profileAvatarIndex = Mathf.Max(0, value);
     }
 
 
