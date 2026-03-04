@@ -40,6 +40,14 @@ public class PlayerTurnSeatingBinder : NetworkBehaviour
         TurnManager tm = TurnManager.Instance;
         if (tm == null) return;
 
+        // During gameplay disconnect flow, TurnManager already removed this netId from TurnOrder.
+        // Skip seat-based rebuild here to preserve "next player shifts up" order.
+        if (tm.TurnOrder.Count > 0 && !tm.TurnOrder.Contains(netId))
+        {
+            tm.ServerRequestClientLayoutRefresh("Binder.OnStopServer");
+            return;
+        }
+
         tm.ServerRebuildTurnOrder($"Binder.OnStopServer netId={netId}");
         tm.ServerRequestClientLayoutRefresh("Binder.OnStopServer");
     }

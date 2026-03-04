@@ -344,6 +344,47 @@ public class TurnManager : NetworkBehaviour
     }
 
     [Server]
+    public void ServerHandlePlayerDisconnected(uint disconnectedNetId, int disconnectedDuckColorIndex, string reason = null)
+    {
+        if (disconnectedNetId == 0)
+            return;
+
+        string resolvedReason = reason ?? $"PlayerDisconnected:{disconnectedNetId}";
+
+        string duckKey = DuckKeyFromIndex(disconnectedDuckColorIndex);
+        if (string.IsNullOrWhiteSpace(duckKey) || duckKey == "-")
+        {
+            if (NetworkServer.spawned.TryGetValue(disconnectedNetId, out NetworkIdentity ni) &&
+                ni != null &&
+                ni.TryGetComponent(out PlayerManager pm))
+            {
+                duckKey = DuckKeyFromIndex(pm.duckColorIndex);
+            }
+        }
+
+        int destroyedCards = ServerDestroyDisconnectedPlayerCards(disconnectedNetId, duckKey);
+        int removedFromPool = ServerConsumeAllDuckCardsFromPool(duckKey);
+
+        if (destroyedCards > 0 || removedFromPool > 0)
+        {
+            ServerResequenceDuckZoneColumns();
+            ServerRefillDuckZoneToSix();
+        }
+
+        ServerRemoveDisconnectedPlayerFromTurnOrder(disconnectedNetId, resolvedReason);
+        DuckOwnershipStatusService.Instance?.ServerForceRefreshNow($"Disconnect:{resolvedReason}");
+
+        if (enableTurnLogs)
+        {
+            Debug.Log(
+                $"[TurnManager] DisconnectHandled reason={resolvedReason} netId={disconnectedNetId} " +
+                $"duckKey={duckKey ?? "-"} destroyedCards={destroyedCards} removedFromPool={removedFromPool} " +
+                $"turnCount={TurnOrder.Count} currentTurnNetId={currentTurnNetId}"
+            );
+        }
+    }
+
+    [Server]
     public void ServerAdvanceTurn(string reason = null)
     {
         if (isMatchEnded)
@@ -791,6 +832,108 @@ public class TurnManager : NetworkBehaviour
             NetworkServer.Spawn(card);
             col++;
         }
+    }
+
+    [Server]
+    private int ServerDestroyDisconnectedPlayerCards(uint disconnectedNetId, string duckKey)
+    {
+        var targets = new List<DuckCard>();
+        var seen = new HashSet<uint>();
+
+        foreach (NetworkIdentity ni in NetworkServer.spawned.Values)
+        {
+            if (ni == null || !ni.TryGetComponent(out DuckCard dc))
+                continue;
+
+            bool byOwner = dc.ownerNetId != 0 && dc.ownerNetId == disconnectedNetId;
+            bool byDuckColor =
+                !string.IsNullOrWhiteSpace(duckKey) &&
+                duckKey != "-" &&
+                string.Equals(DuckKeyFromCardName(dc.name), duckKey, StringComparison.OrdinalIgnoreCase);
+
+            if (!byOwner && !byDuckColor)
+                continue;
+
+            if (seen.Add(dc.netId))
+                targets.Add(dc);
+        }
+
+        int destroyed = 0;
+        foreach (DuckCard dc in targets)
+        {
+            if (dc == null || dc.gameObject == null)
+                continue;
+
+            ServerDestroyTargetsForDuck(dc.netId);
+            NetworkServer.Destroy(dc.gameObject);
+            destroyed++;
+        }
+
+        return destroyed;
+    }
+
+    [Server]
+    private static int ServerConsumeAllDuckCardsFromPool(string duckKey)
+    {
+        if (string.IsNullOrWhiteSpace(duckKey) || duckKey == "-")
+            return 0;
+
+        int removed = 0;
+        int remaining = Mathf.Max(0, CardPoolManager.GetRemainingCount(duckKey));
+        for (int i = 0; i < remaining; i++)
+        {
+            if (!CardPoolManager.TryConsumeCard(duckKey))
+                break;
+            removed++;
+        }
+
+        return removed;
+    }
+
+    [Server]
+    private void ServerRemoveDisconnectedPlayerFromTurnOrder(uint disconnectedNetId, string reason)
+    {
+        int removedIndex = TurnOrder.IndexOf(disconnectedNetId);
+        if (removedIndex < 0)
+        {
+            // Fallback when order was not initialized yet or already changed elsewhere.
+            ServerRebuildTurnOrder($"DisconnectFallback:{reason}");
+            return;
+        }
+
+        bool wasCurrent = currentTurnNetId == disconnectedNetId;
+        TurnOrder.RemoveAt(removedIndex);
+
+        if (TurnOrder.Count == 0)
+        {
+            currentTurnIndex = -1;
+            currentTurnNetId = 0;
+            _turnClockArmed = false;
+            ServerStopTurnTimer();
+            ServerRequestClientLayoutRefresh($"Disconnect:{reason}");
+            return;
+        }
+
+        if (wasCurrent)
+        {
+            currentTurnIndex = removedIndex % TurnOrder.Count;
+            currentTurnNetId = TurnOrder[currentTurnIndex];
+
+            if (_turnClockArmed)
+                ServerStartCurrentTurnTimer($"DisconnectAdvance:{reason}");
+        }
+        else
+        {
+            int keepIndex = TurnOrder.IndexOf(currentTurnNetId);
+            if (keepIndex < 0)
+                keepIndex = Mathf.Clamp(removedIndex - 1, 0, TurnOrder.Count - 1);
+
+            currentTurnIndex = keepIndex;
+            currentTurnNetId = TurnOrder[currentTurnIndex];
+        }
+
+        ServerLogTurnOrder($"Disconnect:{reason}");
+        ServerRequestClientLayoutRefresh($"Disconnect:{reason}");
     }
 
     [Server]
