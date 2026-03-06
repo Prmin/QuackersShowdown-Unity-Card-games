@@ -26,6 +26,8 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
     [SerializeField] private string clickHint = "Click anywhere to return to lobby";
     [SerializeField] private string drawTitle = "Draw";
     [SerializeField] private string drawSubtitle = "All action cards are exhausted";
+    [SerializeField] private string hostDisconnectedTitle = "Match Ended";
+    [SerializeField] private string hostDisconnectedSubtitle = "Host left the match";
 
     private static readonly string[] DuckKeysByIndex =
     {
@@ -43,14 +45,38 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
         clickHint = "Click anywhere to return to lobby";
         drawTitle = "Draw";
         drawSubtitle = "All action cards are exhausted";
+        hostDisconnectedTitle = "Match Ended";
+        hostDisconnectedSubtitle = "Host left the match";
     }
 
     public void Initialize(string winnerDuckKey, int remainingCount, string reason)
     {
-        TryRecordLocalMatchStats(winnerDuckKey);
+        bool hostDisconnected = !string.IsNullOrWhiteSpace(reason) &&
+                                reason.IndexOf("HostDisconnected", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        if (!hostDisconnected)
+            TryRecordLocalMatchStats(winnerDuckKey);
 
         bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
         int colorIndex = DuckKeyToColorIndex(winnerDuckKey);
+
+        if (hostDisconnected)
+        {
+            if (winnerDuckImage != null)
+                winnerDuckImage.enabled = false;
+
+            if (winnerNameText != null)
+                winnerNameText.text = hostDisconnectedTitle;
+
+            if (winnerCountText != null)
+                winnerCountText.text = hostDisconnectedSubtitle;
+
+            if (clickHintText != null)
+                clickHintText.text = clickHint;
+
+            Debug.Log($"[MatchEndOverlayUI] Show host disconnect reason={reason}");
+            return;
+        }
 
         if (winnerDuckImage != null)
         {

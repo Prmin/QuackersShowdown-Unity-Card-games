@@ -13,6 +13,7 @@ public class LobbyNetworkManager : NetworkRoomManager
 
     [Header("UI Flow")]
     [SerializeField] private string lobbySceneName = "LobbyTutorial_Done";
+    private bool _disconnectOverlayShownInGameplay;
 
     public override void OnStartHost()
     {
@@ -72,6 +73,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         string activePath = SceneManager.GetActiveScene().path;
         if (!string.IsNullOrEmpty(GameplayScene) && activePath == GameplayScene)
         {
+            _disconnectOverlayShownInGameplay = false;
             HideAllMenuUI();
             ;
         }
@@ -191,9 +193,24 @@ public class LobbyNetworkManager : NetworkRoomManager
         {
             // Keep lobby UI hidden while gameplay scene is still active.
             flow.HideAllForGameplay();
+
+            if (!NetworkServer.active && !_disconnectOverlayShownInGameplay)
+            {
+                if (FindObjectOfType<MatchEndOverlayUI>() != null)
+                    return;
+
+                _disconnectOverlayShownInGameplay = true;
+
+                TurnManager tm = TurnManager.Instance;
+                if (tm != null)
+                    tm.ClientShowMatchCancelledOverlay("HostDisconnected");
+                else
+                    flow.ShowLobbyList();
+            }
             return;
         }
 
+        _disconnectOverlayShownInGameplay = false;
         flow.ShowLobbyList();
     }
 

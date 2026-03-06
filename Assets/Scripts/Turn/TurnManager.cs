@@ -1011,6 +1011,18 @@ public class TurnManager : NetworkBehaviour
         if (!NetworkClient.active)
             return;
 
+        ClientShowMatchEndOverlayLocal(winnerKey, remainingCount, reason);
+    }
+
+    [Client]
+    public void ClientShowMatchCancelledOverlay(string reason)
+    {
+        ClientShowMatchEndOverlayLocal("Draw", 0, reason);
+    }
+
+    [Client]
+    private void ClientShowMatchEndOverlayLocal(string winnerKey, int remainingCount, string reason)
+    {
         if (_localMatchEndOverlayShown)
             return;
 

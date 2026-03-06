@@ -36,14 +36,14 @@ public class DiscoveryBridge : MonoBehaviour
 
     public void StartClientScan()
     {
-        if (!discovery || !listUI)
+        if (!discovery)
         {
-            Debug.LogWarning("[DiscoveryBridge] Missing refs: discovery or listUI.");
+            Debug.LogWarning("[DiscoveryBridge] Missing ref: discovery.");
             return;
         }
 
         seen.Clear();
-        listUI.ClearList();
+        ResolveListUI()?.ClearList();
 
         discovery.StopDiscovery();
         discovery.StartDiscovery();
@@ -88,16 +88,31 @@ public class DiscoveryBridge : MonoBehaviour
     {
         string ip = resp.EndPoint.Address.ToString();
         string addr = $"{ip}:{resp.port}"; // ✅ ใช้ ip:port
+        string serverKey = resp.serverId != 0 ? $"server:{resp.serverId}" : addr;
+
+        seen.Add(serverKey);
 
         string modeLabel = LobbyManager.Instance ? LobbyManager.Instance.CurrentGameMode.ToString() : "-";
 
         // LobbyListSingleUI.Set(name, address, cur, max, mode, isPrivate)
-        LobbyListUI.Instance?.AddOrUpdate(
-            resp.lobbyName, addr,
-            resp.curPlayers, resp.maxPlayers,
-            modeLabel, resp.isPrivate
-        );
+        LobbyListUI ui = ResolveListUI();
+        if (ui)
+            ui.AddOrUpdate(serverKey, resp.lobbyName, addr, resp.curPlayers, resp.maxPlayers, modeLabel, resp.isPrivate);
     }
 
+    LobbyListUI ResolveListUI()
+    {
+        if (listUI)
+            return listUI;
+
+        if (LobbyListUI.Instance)
+        {
+            listUI = LobbyListUI.Instance;
+            return listUI;
+        }
+
+        listUI = FindObjectOfType<LobbyListUI>(true);
+        return listUI;
+    }
 }
 

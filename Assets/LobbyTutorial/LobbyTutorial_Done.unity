@@ -4381,13 +4381,15 @@ MonoBehaviour:
   enableActiveDiscovery: 1
   BroadcastAddress: 
   serverBroadcastListenPort: 47777
-  ActiveDiscoveryInterval: 3
+  ActiveDiscoveryInterval: 1
   transport: {fileID: 1051633780}
   OnServerFound:
     m_PersistentCalls:
       m_Calls: []
   secretHandshake: -2554124272680950038
   lobbyManager: {fileID: 0}
+  useDirectedBroadcast: 1
+  directedBroadcastInterval: 1
 --- !u!1 &1070921692
 GameObject:
   m_ObjectHideFlags: 0
