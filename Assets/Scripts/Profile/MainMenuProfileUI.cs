@@ -32,10 +32,31 @@ public class MainMenuProfileUI : MonoBehaviour
     private void Awake()
     {
         if (editNameButton != null)
-            editNameButton.onClick.AddListener(OpenNameInput);
+            editNameButton.onClick.AddListener(OnEditNameClicked);
 
         if (avatarButton != null)
-            avatarButton.onClick.AddListener(OpenAvatarPicker);
+            avatarButton.onClick.AddListener(OnAvatarClicked);
+    }
+
+    private void OnDestroy()
+    {
+        if (editNameButton != null)
+            editNameButton.onClick.RemoveListener(OnEditNameClicked);
+
+        if (avatarButton != null)
+            avatarButton.onClick.RemoveListener(OnAvatarClicked);
+    }
+
+    private void OnEditNameClicked()
+    {
+        UIAudioSfx.PlayButtonClick();
+        OpenNameInput();
+    }
+
+    private void OnAvatarClicked()
+    {
+        UIAudioSfx.PlayButtonClick();
+        OpenAvatarPicker();
     }
 
     private void OnEnable()

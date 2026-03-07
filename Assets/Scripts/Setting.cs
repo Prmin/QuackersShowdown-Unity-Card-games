@@ -1,107 +1,152 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using System.Collections.Generic;
 using TMPro;
+using UnityEngine;
+using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using UnityEngine.Audio;  // สำหรับจัดการ AudioMixer
-using UnityEngine.SceneManagement;  // สำหรับจัดการฉาก
 
 public class Setting : MonoBehaviour
 {
-    public Slider musicSlider;  // สไลด์บาร์สำหรับปรับระดับเสียงดนตรี
-    public Slider sfxSlider;  // สไลด์บาร์สำหรับปรับระดับเสียงเอฟเฟกต์
-    public TMP_Dropdown backgroundDropdown;  // Dropdown สำหรับเลือกภาพพื้นหลัง
-    public Button backButton;  // ปุ่มย้อนกลับ
+    private const float MinLinearVolume = 0.0001f;
 
-    public AudioMixer audioMixer;  // ตัวจัดการเสียงด้วย AudioMixer
-    public AudioSource musicSource;  // แหล่งเสียงสำหรับเล่นเพลงพื้นหลัง
-    public Image backgroundImage;  // ตัวแสดงภาพสำหรับเปลี่ยนภาพพื้นหลัง
-    public List<Sprite> backgroundSprites;  // ลิสต์เก็บ Sprite ของภาพพื้นหลัง
+    public Slider musicSlider;
+    public Slider sfxSlider;
+    public TMP_Dropdown backgroundDropdown;
+    public Button backButton;
 
-    void Start()
+    public AudioMixer audioMixer;
+    public AudioSource musicSource;
+    public Image backgroundImage;
+    public List<Sprite> backgroundSprites;
+
+    [Header("Popup Mode")]
+    [SerializeField] private bool usePopupMode = false;
+    [SerializeField] private GameObject popupRoot;
+    [SerializeField] private string backSceneName = "First_Sceme";
+
+    private bool listenersBound;
+
+    private void Start()
     {
-        // ตั้งค่า Dropdown สำหรับ Background
-        if (backgroundDropdown != null)
-        {
-            backgroundDropdown.ClearOptions();
-            List<string> options = new List<string>() { "Background 1", "Background 2", "Background 3" };
-            backgroundDropdown.AddOptions(options);
-            backgroundDropdown.onValueChanged.AddListener(delegate { SetBackground(); }); 
-        }
-        // ตั้งค่า Music Slider
-        if (musicSlider != null)
-        {
-            musicSlider.value = PlayerPrefs.GetFloat("MusicVolume", 1.0f);
-            audioMixer.SetFloat("MusicVolume", Mathf.Log10(musicSlider.value) * 20);
-            musicSlider.onValueChanged.AddListener(delegate { SetMusicVolume(); });
-            if (musicSource != null)
-            {
-                musicSource.volume = musicSlider.value;
-                musicSource.Play();
-            }
-        }
-
-        // ตั้งค่า SFX Slider
-        if (sfxSlider != null)
-        {
-            sfxSlider.value = PlayerPrefs.GetFloat("SFXVolume", 1.0f);
-            audioMixer.SetFloat("SFXVolume", Mathf.Log10(sfxSlider.value) * 20);
-
-            sfxSlider.onValueChanged.AddListener(delegate { SetSFXVolume(); });
-        }
-
+        BindEventsOnce();
+        SetupBackgroundDropdown();
+        RefreshControlsFromPrefs();
         ApplyBackground();
-        if (backButton != null)
-        {
-            backButton.onClick.AddListener(GoBack);
-        }
     }
-    // ฟังก์ชันสำหรับปรับระดับเสียงดนตรี
+
+    private void OnEnable()
+    {
+        // Avoid invoking slider callbacks while merely opening the popup.
+        RefreshControlsFromPrefs();
+        ApplyBackground();
+    }
+
     public void SetMusicVolume()
     {
-        if (musicSlider != null)
-        {
-            float volume = Mathf.Log10(musicSlider.value) * 20;
-            audioMixer.SetFloat("MusicVolume", volume);
-            PlayerPrefs.SetFloat("MusicVolume", musicSlider.value);
-            
-            if (musicSource != null)
-            {
-                musicSource.volume = musicSlider.value;
-            }
-        }
+        if (musicSlider == null)
+            return;
+
+        float linear = Mathf.Clamp01(musicSlider.value);
+        float safeValue = Mathf.Max(MinLinearVolume, linear);
+
+        if (audioMixer != null)
+            audioMixer.SetFloat("MusicVolume", Mathf.Log10(safeValue) * 20f);
+
+        if (musicSource != null)
+            musicSource.volume = linear;
+
+        PlayerPrefs.SetFloat("MusicVolume", linear);
     }
-    // ฟังก์ชันสำหรับปรับระดับเสียงเอฟเฟกต์
+
     public void SetSFXVolume()
     {
-        if (sfxSlider != null)
-        {
-            float volume = Mathf.Log10(sfxSlider.value) * 20;
-            audioMixer.SetFloat("SFXVolume", volume);
-            PlayerPrefs.SetFloat("SFXVolume", sfxSlider.value);
-        }
+        if (sfxSlider == null)
+            return;
+
+        float linear = Mathf.Clamp01(sfxSlider.value);
+        float safeValue = Mathf.Max(MinLinearVolume, linear);
+
+        if (audioMixer != null)
+            audioMixer.SetFloat("SFXVolume", Mathf.Log10(safeValue) * 20f);
+
+        PlayerPrefs.SetFloat("SFXVolume", linear);
     }
-    // ฟังก์ชันสำหรับการตั้งค่าภาพพื้นหลังจากการเลือกใน Dropdown
+
     public void SetBackground()
     {
+        if (backgroundDropdown == null)
+            return;
+
         PlayerPrefs.SetInt("BackgroundChoice", backgroundDropdown.value);
         ApplyBackground();
     }
-    // ฟังก์ชันสำหรับเปลี่ยนภาพพื้นหลังตามตัวเลือกที่ผู้ใช้เลือก
-    void ApplyBackground()
+
+    private void ApplyBackground()
     {
+        if (backgroundImage == null)
+            return;
+
+        if (backgroundSprites == null || backgroundSprites.Count == 0)
+            return;
+
         int backgroundChoice = PlayerPrefs.GetInt("BackgroundChoice", 0);
-
-        if (backgroundChoice >= 0 && backgroundChoice < backgroundSprites.Count)
-        {
-            backgroundImage.sprite = backgroundSprites[backgroundChoice];
-        }
+        backgroundChoice = Mathf.Clamp(backgroundChoice, 0, backgroundSprites.Count - 1);
+        backgroundImage.sprite = backgroundSprites[backgroundChoice];
     }
-    // ฟังก์ชันสำหรับย้อนกลับไปยังหน้าก่อนหน้า
-    void GoBack()
-    {
-        // โหลดฉากใหม่และให้การตั้งค่าที่ทำไว้มีผล
-       SceneManager.LoadScene("First_Sceme");
 
+    private void GoBack()
+    {
+        UIAudioSfx.PlayButtonClick();
+
+        if (usePopupMode)
+        {
+            GameObject root = popupRoot != null ? popupRoot : gameObject;
+            root.SetActive(false);
+            return;
+        }
+
+        SceneManager.LoadScene(backSceneName);
+    }
+
+    private void BindEventsOnce()
+    {
+        if (listenersBound)
+            return;
+
+        if (musicSlider != null)
+            musicSlider.onValueChanged.AddListener(delegate { SetMusicVolume(); });
+
+        if (sfxSlider != null)
+            sfxSlider.onValueChanged.AddListener(delegate { SetSFXVolume(); });
+
+        if (backgroundDropdown != null)
+            backgroundDropdown.onValueChanged.AddListener(delegate { SetBackground(); });
+
+        if (backButton != null)
+            backButton.onClick.AddListener(GoBack);
+
+        listenersBound = true;
+    }
+
+    private void SetupBackgroundDropdown()
+    {
+        if (backgroundDropdown == null)
+            return;
+
+        backgroundDropdown.ClearOptions();
+        var options = new List<string> { "Background 1", "Background 2", "Background 3" };
+        backgroundDropdown.AddOptions(options);
+
+        int savedBg = Mathf.Clamp(PlayerPrefs.GetInt("BackgroundChoice", 0), 0, Mathf.Max(0, options.Count - 1));
+        backgroundDropdown.SetValueWithoutNotify(savedBg);
+    }
+
+    private void RefreshControlsFromPrefs()
+    {
+        if (musicSlider != null)
+            musicSlider.SetValueWithoutNotify(Mathf.Clamp01(PlayerPrefs.GetFloat("MusicVolume", 1f)));
+
+        if (sfxSlider != null)
+            sfxSlider.SetValueWithoutNotify(Mathf.Clamp01(PlayerPrefs.GetFloat("SFXVolume", 1f)));
     }
 }
