@@ -27,6 +27,10 @@ public class UI_InputWindow : MonoBehaviour
     private Button_UI cancelBtn;
     private TextMeshProUGUI titleText;
     private TMP_InputField inputField;
+    private RectTransform windowRectTransform;
+    private Canvas parentCanvas;
+    private Action cancelAction;
+    private Action<string> okAction;
 
     private void Awake()
     {
@@ -36,19 +40,31 @@ public class UI_InputWindow : MonoBehaviour
         cancelBtn = transform.Find("cancelBtn").GetComponent<Button_UI>();
         titleText = transform.Find("titleText").GetComponent<TextMeshProUGUI>();
         inputField = transform.Find("inputField").GetComponent<TMP_InputField>();
+        windowRectTransform = transform as RectTransform;
+        parentCanvas = GetComponentInParent<Canvas>();
 
         Hide();
     }
 
     private void Update()
     {
+        if (!gameObject.activeSelf)
+        {
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
-            okBtn.ClickFunc();
+            Confirm();
         }
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            cancelBtn.ClickFunc();
+            Cancel();
+        }
+
+        if (TryGetPointerDownPosition(out Vector2 screenPosition) && !IsInsideWindow(screenPosition))
+        {
+            Cancel();
         }
     }
 
@@ -76,22 +92,74 @@ public class UI_InputWindow : MonoBehaviour
         inputField.Select();
         inputField.ActivateInputField();
 
-        okBtn.ClickFunc = () =>
-        {
-            Hide();
-            onOk(inputField.text);
-        };
+        cancelAction = onCancel;
+        okAction = onOk;
 
-        cancelBtn.ClickFunc = () =>
-        {
-            Hide();
-            onCancel();
-        };
+        okBtn.ClickFunc = Confirm;
+        cancelBtn.ClickFunc = Cancel;
     }
 
     private void Hide()
     {
+        cancelAction = null;
+        okAction = null;
         gameObject.SetActive(false);
+    }
+
+    private void Confirm()
+    {
+        string value = inputField != null ? inputField.text : string.Empty;
+        Action<string> callback = okAction;
+        Hide();
+        callback?.Invoke(value);
+    }
+
+    private void Cancel()
+    {
+        Action callback = cancelAction;
+        Hide();
+        callback?.Invoke();
+    }
+
+    private bool TryGetPointerDownPosition(out Vector2 screenPosition)
+    {
+        if (Input.touchCount > 0)
+        {
+            for (int i = 0; i < Input.touchCount; i++)
+            {
+                Touch touch = Input.GetTouch(i);
+                if (touch.phase == TouchPhase.Began)
+                {
+                    screenPosition = touch.position;
+                    return true;
+                }
+            }
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            screenPosition = Input.mousePosition;
+            return true;
+        }
+
+        screenPosition = Vector2.zero;
+        return false;
+    }
+
+    private bool IsInsideWindow(Vector2 screenPosition)
+    {
+        if (windowRectTransform == null)
+        {
+            return false;
+        }
+
+        Camera eventCamera = null;
+        if (parentCanvas != null && parentCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+        {
+            eventCamera = parentCanvas.worldCamera;
+        }
+
+        return RectTransformUtility.RectangleContainsScreenPoint(windowRectTransform, screenPosition, eventCamera);
     }
 
     private char ValidateChar(string validCharacters, char addedChar)
