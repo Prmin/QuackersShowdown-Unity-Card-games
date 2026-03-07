@@ -3482,6 +3482,8 @@ MonoBehaviour:
   createLobbyButton: {fileID: 1159625182}
   backToMainMenuButton: {fileID: 2147125308}
   mainMenuSceneName: MainMenu
+  staleTimeoutSeconds: 4
+  stalePruneIntervalSeconds: 1
 --- !u!1 &787872276
 GameObject:
   m_ObjectHideFlags: 0
