@@ -290,6 +290,17 @@ public partial class PlayerManager : NetworkBehaviour
 
         activeSkillMode = newMode;
 
+        if (IsAimSkillMode(newMode))
+        {
+            ServerBroadcastAimSkillActivatedSfx();
+        }
+
+        if (IsInstantDropResolveSkillMode(newMode))
+        {
+            // These abilities resolve immediately when the card is played to DropZone.
+            ServerBroadcastInstantAbilitySfx(newMode);
+        }
+
         bool modeShouldClose = false;
         if (newMode == SkillMode.LineForward)
         {
@@ -377,6 +388,9 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (clickedCard == null || clickedCard.zone != ZoneKind.DuckZone)
             return;
+
+        if (IsShootingSkillMode(activeSkillMode))
+            ShootActionSfx.NotifyTargetSelected();
 
         switch (activeSkillMode)
         {
@@ -1380,19 +1394,19 @@ public partial class PlayerManager : NetworkBehaviour
     private void InitializeActionCardPool()
     {
         actionCardPool.Clear();
-        actionCardPool.Add("Shoot", 10);
-        actionCardPool.Add("QuickShot", 10);
+        // actionCardPool.Add("Shoot", 10);
+        // actionCardPool.Add("QuickShot", 10);
         actionCardPool.Add("TekeAim", 10);
-        actionCardPool.Add("DoubleBarrel", 10);
-        actionCardPool.Add("Misfire", 10);
-        actionCardPool.Add("TwoBirds", 10);
-        actionCardPool.Add("BumpLeft", 10);
-        actionCardPool.Add("BumpRight", 10);
-        actionCardPool.Add("LineForward", 10);
-        actionCardPool.Add("MoveAhead", 10);
-        actionCardPool.Add("HangBack", 10);
-        actionCardPool.Add("FastForward", 10);
-        actionCardPool.Add("DisorderlyConduckt", 10);
+        // actionCardPool.Add("DoubleBarrel", 10);
+        // actionCardPool.Add("Misfire", 10);
+        // actionCardPool.Add("TwoBirds", 10);
+        // actionCardPool.Add("BumpLeft", 10);
+        // actionCardPool.Add("BumpRight", 10);
+        // actionCardPool.Add("LineForward", 10);
+        // actionCardPool.Add("MoveAhead", 10);
+        // actionCardPool.Add("HangBack", 10);
+        // actionCardPool.Add("FastForward", 10);
+        // actionCardPool.Add("DisorderlyConduckt", 10);
         actionCardPool.Add("DuckShuffle", 10);
         actionCardPool.Add("GivePeaceAChance", 10);
         actionCardPool.Add("Resurrection", 10);
