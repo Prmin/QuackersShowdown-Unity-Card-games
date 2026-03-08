@@ -38,6 +38,21 @@ public class Setting : MonoBehaviour
         ApplyBackground();
     }
 
+    public static void ApplySavedBackgroundToActiveScene()
+    {
+        Image sceneBackground = FindBestSceneBackgroundImage();
+        if (sceneBackground == null)
+            return;
+
+        List<Sprite> sprites = ResolveBackgroundSpriteList();
+        if (sprites == null || sprites.Count == 0)
+            return;
+
+        int index = ResolveSavedBackgroundIndex(sprites, 0);
+        index = Mathf.Clamp(index, 0, sprites.Count - 1);
+        sceneBackground.sprite = sprites[index];
+    }
+
     private void OnEnable()
     {
         // Avoid invoking slider callbacks while merely opening the popup.
@@ -169,12 +184,19 @@ public class Setting : MonoBehaviour
 
     private void TryResolveBackgroundImageIfMissing()
     {
-        if (backgroundImage != null)
+        Scene activeScene = SceneManager.GetActiveScene();
+        bool hasValidAssignedImage =
+            backgroundImage != null &&
+            backgroundImage.gameObject.scene.IsValid() &&
+            backgroundImage.gameObject.scene == activeScene &&
+            backgroundImage.GetComponentInParent<Setting>(true) == null &&
+            backgroundImage.GetComponentInParent<TMP_Dropdown>(true) == null &&
+            backgroundImage.GetComponentInParent<Dropdown>(true) == null;
+
+        if (hasValidAssignedImage)
             return;
 
-        GameObject byName = GameObject.Find("Background");
-        if (byName != null)
-            backgroundImage = byName.GetComponent<Image>();
+        backgroundImage = FindBestSceneBackgroundImage();
     }
 
     private static int ResolveSavedBackgroundIndex(List<Sprite> sprites, int defaultIndex)
@@ -193,6 +215,75 @@ public class Setting : MonoBehaviour
         }
 
         return indexFromPrefs;
+    }
+
+    public static Image FindBestSceneBackgroundImage()
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+        Image[] images = Resources.FindObjectsOfTypeAll<Image>();
+
+        Image best = null;
+        float bestArea = -1f;
+
+        for (int i = 0; i < images.Length; i++)
+        {
+            Image img = images[i];
+            if (img == null || !img.gameObject.activeInHierarchy)
+                continue;
+
+            GameObject go = img.gameObject;
+            if (!go.scene.IsValid() || go.scene != activeScene)
+                continue;
+            if (go.name != "Background")
+                continue;
+            if (go.GetComponentInParent<Setting>(true) != null)
+                continue;
+            if (go.GetComponentInParent<TMP_Dropdown>(true) != null)
+                continue;
+            if (go.GetComponentInParent<Dropdown>(true) != null)
+                continue;
+
+            RectTransform rt = go.transform as RectTransform;
+            float area = rt != null ? Mathf.Abs(rt.rect.width * rt.rect.height) : 0f;
+            if (best == null || area > bestArea)
+            {
+                best = img;
+                bestArea = area;
+            }
+        }
+
+        return best;
+    }
+
+    private static List<Sprite> ResolveBackgroundSpriteList()
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+
+        Setting[] settings = Resources.FindObjectsOfTypeAll<Setting>();
+        for (int i = 0; i < settings.Length; i++)
+        {
+            Setting s = settings[i];
+            if (s == null)
+                continue;
+            if (!s.gameObject.scene.IsValid() || s.gameObject.scene != activeScene)
+                continue;
+            if (s.backgroundSprites != null && s.backgroundSprites.Count > 0)
+                return s.backgroundSprites;
+        }
+
+        Settings_Manager[] managers = Resources.FindObjectsOfTypeAll<Settings_Manager>();
+        for (int i = 0; i < managers.Length; i++)
+        {
+            Settings_Manager m = managers[i];
+            if (m == null)
+                continue;
+            if (!m.gameObject.scene.IsValid() || m.gameObject.scene != activeScene)
+                continue;
+            if (m.backgroundSprites != null && m.backgroundSprites.Count > 0)
+                return m.backgroundSprites;
+        }
+
+        return null;
     }
 
     private void DisableLocalPopupMusicSource()

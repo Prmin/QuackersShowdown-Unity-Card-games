@@ -21,6 +21,8 @@ public class MainMenuScene : MonoBehaviour
             training_modeButton.onClick.AddListener(OnTrainingClicked);
         if (settingsButton != null)
             settingsButton.onClick.AddListener(OnSettingsClicked);
+
+        Setting.ApplySavedBackgroundToActiveScene();
     }
 
     void OnDestroy()

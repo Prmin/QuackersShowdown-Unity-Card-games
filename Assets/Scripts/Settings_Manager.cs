@@ -97,6 +97,7 @@ public class Settings_Manager : MonoBehaviour
         backgroundImage = null;
         TryResolveBackgroundImageInActiveScene();
         ApplyBackground(backgroundImage);
+        Setting.ApplySavedBackgroundToActiveScene();
 
         UIAudioSfx.RefreshMusicStateFromPrefs();
     }
@@ -115,12 +116,7 @@ public class Settings_Manager : MonoBehaviour
 
     private void TryResolveBackgroundImageInActiveScene()
     {
-        if (backgroundImage != null)
-            return;
-
-        GameObject byName = GameObject.Find("Background");
-        if (byName != null)
-            backgroundImage = byName.GetComponent<Image>();
+        backgroundImage = Setting.FindBestSceneBackgroundImage();
     }
 
     private static float LinearToDb(float linear)
