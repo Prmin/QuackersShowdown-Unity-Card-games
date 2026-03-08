@@ -76,10 +76,6 @@ public class Setting : MonoBehaviour
             return;
 
         float linear = Mathf.Clamp01(musicSlider.value);
-        float safeValue = Mathf.Max(MinLinearVolume, linear);
-
-        if (audioMixer != null)
-            audioMixer.SetFloat("MusicVolume", Mathf.Log10(safeValue) * 20f);
 
         if (musicSource != null && musicSource.enabled)
             musicSource.volume = linear;
@@ -328,9 +324,6 @@ public class Setting : MonoBehaviour
     private void ApplySavedAudioLocally()
     {
         float musicLinear = Mathf.Clamp01(PlayerPrefs.GetFloat("MusicVolume", 1f));
-        float musicSafe = Mathf.Max(MinLinearVolume, musicLinear);
-        if (audioMixer != null)
-            audioMixer.SetFloat("MusicVolume", Mathf.Log10(musicSafe) * 20f);
 
         if (musicSource != null && musicSource.enabled)
             musicSource.volume = musicLinear;
