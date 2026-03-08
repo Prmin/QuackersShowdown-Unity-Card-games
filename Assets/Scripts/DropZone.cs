@@ -18,6 +18,7 @@ public class DropZone : MonoBehaviour, IDropHandler
         // ตั้งการ์ดใหม่
         currentCard = newCard;
         currentCard.transform.SetParent(transform, false);
+        CardZoneMoveSfx.NotifyDropZonePlaced();
     }
 
     // -------------------------------------------

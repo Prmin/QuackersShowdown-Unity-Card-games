@@ -842,14 +842,25 @@ public partial class PlayerManager : NetworkBehaviour
                     targetParent = forcedActive;
             }
 
+            bool movedInPlayerArea = false;
             if (dc.transform.parent != targetParent)
+            {
                 dc.transform.SetParent(targetParent, false);
+                movedInPlayerArea = true;
+            }
 
             if (targetParent.childCount > 0)
             {
                 int sibling = Mathf.Clamp(dc.zoneIndex, 0, targetParent.childCount - 1);
-                dc.transform.SetSiblingIndex(sibling);
+                if (dc.transform.GetSiblingIndex() != sibling)
+                {
+                    dc.transform.SetSiblingIndex(sibling);
+                    movedInPlayerArea = true;
+                }
             }
+
+            if (movedInPlayerArea)
+                CardZoneMoveSfx.NotifyPlayerAreaMove();
         }
     }
 
@@ -1272,7 +1283,7 @@ public partial class PlayerManager : NetworkBehaviour
         var selectedPrefabs = duckPrefabs
             .Where(kv => selected.Contains(kv.Key) && kv.Value != null)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
-        CardPoolManager.Initialize(selectedPrefabs, initialCount: 1);
+        CardPoolManager.Initialize(selectedPrefabs, initialCount: 5); //จำนวนการ์ดในpool
         // 2) Ensure the shared DuckZone is filled before we begin
         host.RefillDuckZoneIfNeeded();
         // 3) Build/rotate authoritative TurnOrder from DuckZone front card

@@ -128,6 +128,25 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         DuckZoneMoveSfx.NotifyDuckMovedInZone();
     }
 
+    private void TryNotifyPlayerAreaMoveSfx(Transform oldParent, int oldSibling)
+    {
+        if (!NetworkClient.active)
+            return;
+
+        if (zone != ZoneKind.PlayerArea)
+            return;
+
+        if (Time.unscaledTime < _duckZoneMoveSfxEnableAt)
+            return;
+
+        bool parentChanged = oldParent != transform.parent;
+        bool siblingChanged = oldSibling != transform.GetSiblingIndex();
+        if (!parentChanged && !siblingChanged)
+            return;
+
+        CardZoneMoveSfx.NotifyPlayerAreaMove();
+    }
+
     private void HandleStateChanged(string reason)
     {
         if (!NetworkClient.active) return;
@@ -168,6 +187,8 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         if (rect == null) return false;
 
         DisableTransformSyncIfPresent();
+        Transform oldParent = rect.parent;
+        int oldSibling = transform.GetSiblingIndex();
 
         var parent = ResolveZoneParent();
         if (!IsSceneTransform(parent))
@@ -211,6 +232,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         if (targetIndex < 0 || targetIndex > parent.childCount)
             targetIndex = parent.childCount;
         transform.SetSiblingIndex(targetIndex);
+        TryNotifyPlayerAreaMoveSfx(oldParent, oldSibling);
 
         EnsureVisibleState();
         LogLayout(reason, parent, rect);
