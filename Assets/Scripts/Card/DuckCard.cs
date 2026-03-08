@@ -17,6 +17,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     private Coroutine _layoutCoroutine;
     private const float ManualSpacingX = 150f;
     private bool _transformSyncDisabled;
+    private float _duckZoneMoveSfxEnableAt;
 
     private PlayerManager GetOwnerPlayerManager()
     {
@@ -37,6 +38,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         base.OnStartClient();
 
         DisableTransformSyncIfPresent();
+        _duckZoneMoveSfxEnableAt = Time.unscaledTime + 0.35f;
         TryApplyLayout("OnStartClient");
 
         if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
@@ -91,6 +93,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     private void OnZoneIndexChanged(int oldIndex, int newIndex)
     {
 
+        TryNotifyDuckZoneMoveSfx(oldIndex, newIndex);
         HandleStateChanged("ZoneIndexChanged");
     }
 
@@ -103,7 +106,26 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     {
         if (isServer && zoneIndex != newCol)
             zoneIndex = newCol; // keep logical order in sync with column updates
+
+        TryNotifyDuckZoneMoveSfx(oldCol, newCol);
         HandleStateChanged("ColChanged");
+    }
+
+    private void TryNotifyDuckZoneMoveSfx(int oldValue, int newValue)
+    {
+        if (!NetworkClient.active)
+            return;
+
+        if (oldValue == newValue)
+            return;
+
+        if (zone != ZoneKind.DuckZone)
+            return;
+
+        if (Time.unscaledTime < _duckZoneMoveSfxEnableAt)
+            return;
+
+        DuckZoneMoveSfx.NotifyDuckMovedInZone();
     }
 
     private void HandleStateChanged(string reason)
