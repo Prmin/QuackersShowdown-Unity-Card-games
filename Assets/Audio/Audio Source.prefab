@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5023030937537477726}
   - component: {fileID: 7898781471020387337}
-  - component: {fileID: 5969264839420011830}
+  - component: {fileID: 4393931837706725004}
   m_Layer: 0
   m_Name: Audio Source
   m_TagString: Untagged
@@ -129,7 +129,7 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &5969264839420011830
+--- !u!114 &4393931837706725004
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
