@@ -17,6 +17,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using CodeMonkey.Utils;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class UI_InputWindow : MonoBehaviour
 {
@@ -34,6 +35,7 @@ public class UI_InputWindow : MonoBehaviour
 
     private void Awake()
     {
+        // Keep scene-local behavior: whichever scene instance wakes last becomes active.
         instance = this;
 
         okBtn = transform.Find("okBtn").GetComponent<Button_UI>();
@@ -44,6 +46,12 @@ public class UI_InputWindow : MonoBehaviour
         parentCanvas = GetComponentInParent<Canvas>();
 
         Hide();
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this)
+            instance = null;
     }
 
     private void Update()
@@ -212,12 +220,28 @@ public class UI_InputWindow : MonoBehaviour
 
     public static void Show_Static(string titleString, string inputString, string validCharacters, int characterLimit, Action onCancel, Action<string> onOk)
     {
-        instance.Show(titleString, inputString, validCharacters, characterLimit, onCancel, onOk);
+        UI_InputWindow target = ResolveInstance();
+        if (target == null)
+        {
+            Debug.LogError("[UI_InputWindow] No active instance found in scene.");
+            onCancel?.Invoke();
+            return;
+        }
+
+        target.Show(titleString, inputString, validCharacters, characterLimit, onCancel, onOk);
     }
 
     public static void Show_Static(string titleString, int defaultInt, Action onCancel, Action<int> onOk)
     {
-        instance.Show(titleString, defaultInt.ToString(), "0123456789-", 20, onCancel,
+        UI_InputWindow target = ResolveInstance();
+        if (target == null)
+        {
+            Debug.LogError("[UI_InputWindow] No active instance found in scene.");
+            onCancel?.Invoke();
+            return;
+        }
+
+        target.Show(titleString, defaultInt.ToString(), "0123456789-", 20, onCancel,
             (string inputText) =>
             {
                 // Try to Parse input string
@@ -231,5 +255,51 @@ public class UI_InputWindow : MonoBehaviour
                 }
             }
         );
+    }
+
+    private static UI_InputWindow ResolveInstance()
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+
+        if (instance != null)
+        {
+            if (instance.gameObject.scene.IsValid() && instance.gameObject.scene == activeScene)
+                return instance;
+        }
+
+        UI_InputWindow[] all = Resources.FindObjectsOfTypeAll<UI_InputWindow>();
+
+        // 1) Prefer an instance that belongs to the active scene.
+        for (int i = 0; i < all.Length; i++)
+        {
+            UI_InputWindow candidate = all[i];
+            if (candidate == null)
+                continue;
+
+            if (!candidate.gameObject.scene.IsValid())
+                continue;
+
+            if (candidate.gameObject.scene == activeScene)
+            {
+                instance = candidate;
+                break;
+            }
+        }
+
+        if (instance != null)
+            return instance;
+
+        // 2) Fallback to any valid scene object (including DontDestroyOnLoad).
+        for (int i = 0; i < all.Length; i++)
+        {
+            UI_InputWindow candidate = all[i];
+            if (candidate != null && candidate.gameObject.scene.IsValid())
+            {
+                instance = candidate;
+                break;
+            }
+        }
+
+        return instance;
     }
 }

@@ -22,6 +22,8 @@ public class EditPlayerName : MonoBehaviour
 
         GetComponent<Button>().onClick.AddListener(() =>
         {
+            UIAudioSfx.PlayButtonClick();
+
             UI_InputWindow.Show_Static("Player Name", playerName,
                 "", 20,
                 () => { /* Cancel */ },

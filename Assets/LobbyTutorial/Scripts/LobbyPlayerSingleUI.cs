@@ -105,6 +105,8 @@ public class LobbyPlayerSingleUI : MonoBehaviour
         if (targetNetId == 0)
             return;
 
+        UIAudioSfx.PlayButtonClick();
+
         LobbyRoomPlayer me = LobbyRoomPlayer.Local;
         if (me != null)
             me.CmdKickPlayer(targetNetId);

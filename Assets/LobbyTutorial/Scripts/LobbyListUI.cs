@@ -25,7 +25,9 @@ public class LobbyListUI : MonoBehaviour
     [SerializeField] private Button refreshButton;
     [SerializeField] private Button createLobbyButton;
     [SerializeField] private Button backToMainMenuButton;
+    [SerializeField] private Button settingsButton;
     [SerializeField] private string mainMenuSceneName = "MainMenu";
+    [SerializeField] private GameObject settingsPopup;
     [SerializeField, Min(1f)] private float staleTimeoutSeconds = 4f;
     [SerializeField, Min(0.25f)] private float stalePruneIntervalSeconds = 1f;
 
@@ -48,6 +50,9 @@ public class LobbyListUI : MonoBehaviour
 
         if (backToMainMenuButton != null)
             backToMainMenuButton.onClick.AddListener(GoToMainMenu);
+
+        if (settingsButton != null)
+            settingsButton.onClick.AddListener(OpenSettings);
     }
 
     private void OnDestroy()
@@ -63,6 +68,9 @@ public class LobbyListUI : MonoBehaviour
 
         if (backToMainMenuButton != null)
             backToMainMenuButton.onClick.RemoveListener(GoToMainMenu);
+
+        if (settingsButton != null)
+            settingsButton.onClick.RemoveListener(OpenSettings);
     }
 
     public void ClearList()
@@ -142,19 +150,37 @@ public class LobbyListUI : MonoBehaviour
 
     private void RefreshRequested()
     {
+        UIAudioSfx.PlayButtonClick();
         ClearList();
         DiscoveryBridge.I?.StartClientScan();
     }
 
     private void ShowLobbyCreate()
     {
+        UIAudioSfx.PlayButtonClick();
         UIFlow.I?.ShowLobbyCreate();
     }
 
     private void GoToMainMenu()
     {
+        UIAudioSfx.PlayButtonClick();
         DiscoveryBridge.I?.StopClientScan();
         SceneManager.LoadScene(mainMenuSceneName);
+    }
+
+    private void OpenSettings()
+    {
+        UIAudioSfx.PlayButtonClick();
+
+        GameObject popup = ResolveSettingsPopupObject();
+        if (popup == null)
+        {
+            Debug.LogWarning("[LobbyListUI] Settings popup object not found in scene.");
+            return;
+        }
+
+        popup.SetActive(true);
+        BringToFront(popup);
     }
 
     private void PruneStaleRows(float now)
@@ -225,5 +251,34 @@ public class LobbyListUI : MonoBehaviour
             return 100;
 
         return 10;
+    }
+
+    private GameObject ResolveSettingsPopupObject()
+    {
+        if (settingsPopup != null && settingsPopup.scene.IsValid())
+            return settingsPopup;
+
+        if (settingsPopup != null)
+        {
+            GameObject byName = GameObject.Find(settingsPopup.name);
+            if (byName != null)
+            {
+                settingsPopup = byName;
+                return settingsPopup;
+            }
+        }
+
+        settingsPopup = GameObject.Find("SettingsPopup");
+        return settingsPopup;
+    }
+
+    private static void BringToFront(GameObject popup)
+    {
+        if (popup == null)
+            return;
+
+        RectTransform rect = popup.transform as RectTransform;
+        if (rect != null)
+            rect.SetAsLastSibling();
     }
 }

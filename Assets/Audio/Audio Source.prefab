@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5023030937537477726}
   - component: {fileID: 7898781471020387337}
+  - component: {fileID: 5969264839420011830}
   m_Layer: 0
   m_Name: Audio Source
   m_TagString: Untagged
@@ -41,7 +42,7 @@ AudioSource:
   m_GameObject: {fileID: 2100617656658866263}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: 24300002, guid: 887add3d4bca36846ab9258dea68514a, type: 2}
   m_audioClip: {fileID: 8300000, guid: 56c29a6dae0af3a40828d5cc7df5eab8, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 0.40571418
@@ -128,3 +129,19 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &5969264839420011830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100617656658866263}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9b84a2f43774f64a8f0ff8f9497651f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  buttonClickClip: {fileID: 8300000, guid: e85de0eb3dc616247bad5e2c58cd7725, type: 3}
+  buttonClickBaseVolume: 1
+  dontDestroyOnLoad: 1
+  createFallbackClickIfMissing: 1

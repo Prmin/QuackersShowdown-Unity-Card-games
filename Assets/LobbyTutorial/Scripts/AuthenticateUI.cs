@@ -9,6 +9,8 @@ public class AuthenticateUI : MonoBehaviour
     {
         authenticateButton.onClick.AddListener(() =>
         {
+            UIAudioSfx.PlayButtonClick();
+
             string name = LocalProfileData.GetPlayerName("Player");
             LocalProfileData.SetPlayerName(name);
 

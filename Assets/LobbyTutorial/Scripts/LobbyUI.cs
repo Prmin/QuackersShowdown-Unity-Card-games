@@ -30,6 +30,8 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI startReadyLabelText;  // ← ข้อความบนปุ่ม
 
     [SerializeField] private Button leaveLobbyButton;
+    [SerializeField] private Button settingsButton;
+    [SerializeField] private GameObject settingsPopup;
 
     LobbyNetworkManager manager;
     Button[] _colorBtns;
@@ -42,17 +44,18 @@ public class LobbyUI : MonoBehaviour
         if (playerSingleTemplate) playerSingleTemplate.gameObject.SetActive(false);
 
         // ผูกปุ่มเลือกสี
-        if (duckBlueBtn) duckBlueBtn.onClick.AddListener(() => LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Blue));
-        if (duckOrangeBtn) duckOrangeBtn.onClick.AddListener(() => LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Orange));
-        if (duckPinkBtn) duckPinkBtn.onClick.AddListener(() => LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Pink));
-        if (duckGreenBtn) duckGreenBtn.onClick.AddListener(() => LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Green));
-        if (duckYellowBtn) duckYellowBtn.onClick.AddListener(() => LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Yellow));
-        if (duckPurpleBtn) duckPurpleBtn.onClick.AddListener(() => LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Purple));
+        if (duckBlueBtn) duckBlueBtn.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Blue); });
+        if (duckOrangeBtn) duckOrangeBtn.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Orange); });
+        if (duckPinkBtn) duckPinkBtn.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Pink); });
+        if (duckGreenBtn) duckGreenBtn.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Green); });
+        if (duckYellowBtn) duckYellowBtn.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Yellow); });
+        if (duckPurpleBtn) duckPurpleBtn.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.UpdateDuckColor(LobbyManager.DuckColor.Purple); });
 
-        if (leaveLobbyButton) leaveLobbyButton.onClick.AddListener(() => LobbyManager.Instance.LeaveLobby());
+        if (leaveLobbyButton) leaveLobbyButton.onClick.AddListener(() => { UIAudioSfx.PlayButtonClick(); LobbyManager.Instance.LeaveLobby(); });
 
         // ปุ่มหลัก: เปลี่ยนบทบาทตาม host/client
         if (startReadyButton) startReadyButton.onClick.AddListener(OnClickPrimaryAction);
+        if (settingsButton) settingsButton.onClick.AddListener(OnClickSettings);
 
         _colorBtns = new Button[6] { duckBlueBtn, duckOrangeBtn, duckPinkBtn, duckGreenBtn, duckYellowBtn, duckPurpleBtn };
     }
@@ -130,6 +133,8 @@ public class LobbyUI : MonoBehaviour
 
     void OnClickPrimaryAction()
     {
+        UIAudioSfx.PlayButtonClick();
+
         bool isHost = LobbyManager.Instance && LobbyManager.Instance.IsLobbyHost();
 
         if (isHost)
@@ -149,6 +154,21 @@ public class LobbyUI : MonoBehaviour
                 Debug.LogWarning("[Lobby] Local RoomPlayer ยังไม่เป็นเจ้าของ (isOwned=false) หรือยังไม่พร้อมใช้งาน");
         }
 
+    }
+
+    private void OnClickSettings()
+    {
+        UIAudioSfx.PlayButtonClick();
+
+        GameObject popup = ResolveSettingsPopupObject();
+        if (popup == null)
+        {
+            Debug.LogWarning("[LobbyUI] Settings popup object not found in scene.");
+            return;
+        }
+
+        popup.SetActive(true);
+        BringToFront(popup);
     }
 
 
@@ -206,6 +226,35 @@ public class LobbyUI : MonoBehaviour
             // ถ้ากด Ready แล้ว ให้ปิดปุ่มเลือกสีทั้งหมดจนกว่าจะ Unready
             btn.interactable = !isReady && !takenByOther && i != myIdx;
         }
+    }
+
+    private GameObject ResolveSettingsPopupObject()
+    {
+        if (settingsPopup != null && settingsPopup.scene.IsValid())
+            return settingsPopup;
+
+        if (settingsPopup != null)
+        {
+            GameObject byName = GameObject.Find(settingsPopup.name);
+            if (byName != null)
+            {
+                settingsPopup = byName;
+                return settingsPopup;
+            }
+        }
+
+        settingsPopup = GameObject.Find("SettingsPopup");
+        return settingsPopup;
+    }
+
+    private static void BringToFront(GameObject popup)
+    {
+        if (popup == null)
+            return;
+
+        RectTransform rect = popup.transform as RectTransform;
+        if (rect != null)
+            rect.SetAsLastSibling();
     }
 }
 

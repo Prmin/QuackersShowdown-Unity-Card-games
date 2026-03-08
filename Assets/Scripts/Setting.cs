@@ -26,14 +26,20 @@ public class Setting : MonoBehaviour
     [SerializeField] private GameObject popupRoot;
     [SerializeField] private string backSceneName = "First_Sceme";
 
+    [Header("Background Setting")]
+    [SerializeField] private bool enableBackgroundSetting = true;
+    [SerializeField] private string disableBackgroundInScene = "LobbyTutorial_Done";
+
     private bool listenersBound;
 
     private void Start()
     {
         BindEventsOnce();
         DisableLocalPopupMusicSource();
+        RefreshBackgroundSettingState();
         SetupBackgroundDropdown();
         RefreshControlsFromPrefs();
+        ApplySavedAudioLocally();
         UIAudioSfx.RefreshMusicStateFromPrefs();
         ApplyBackground();
     }
@@ -57,7 +63,9 @@ public class Setting : MonoBehaviour
     {
         // Avoid invoking slider callbacks while merely opening the popup.
         DisableLocalPopupMusicSource();
+        RefreshBackgroundSettingState();
         RefreshControlsFromPrefs();
+        ApplySavedAudioLocally();
         SetupBackgroundDropdown();
         ApplyBackground();
     }
@@ -68,6 +76,13 @@ public class Setting : MonoBehaviour
             return;
 
         float linear = Mathf.Clamp01(musicSlider.value);
+        float safeValue = Mathf.Max(MinLinearVolume, linear);
+
+        if (audioMixer != null)
+            audioMixer.SetFloat("MusicVolume", Mathf.Log10(safeValue) * 20f);
+
+        if (musicSource != null && musicSource.enabled)
+            musicSource.volume = linear;
 
         PlayerPrefs.SetFloat("MusicVolume", linear);
         PlayerPrefs.Save();
@@ -91,6 +106,9 @@ public class Setting : MonoBehaviour
 
     public void SetBackground()
     {
+        if (!IsBackgroundSettingEnabled())
+            return;
+
         if (backgroundDropdown == null)
             return;
 
@@ -110,6 +128,9 @@ public class Setting : MonoBehaviour
 
     private void ApplyBackground()
     {
+        if (!IsBackgroundSettingEnabled())
+            return;
+
         TryResolveBackgroundImageIfMissing();
 
         if (backgroundImage == null)
@@ -162,6 +183,9 @@ public class Setting : MonoBehaviour
 
     private void SetupBackgroundDropdown()
     {
+        if (!IsBackgroundSettingEnabled())
+            return;
+
         if (backgroundDropdown == null)
             return;
 
@@ -299,5 +323,48 @@ public class Setting : MonoBehaviour
                 musicSource.Stop();
             musicSource.enabled = false;
         }
+    }
+
+    private void ApplySavedAudioLocally()
+    {
+        float musicLinear = Mathf.Clamp01(PlayerPrefs.GetFloat("MusicVolume", 1f));
+        float musicSafe = Mathf.Max(MinLinearVolume, musicLinear);
+        if (audioMixer != null)
+            audioMixer.SetFloat("MusicVolume", Mathf.Log10(musicSafe) * 20f);
+
+        if (musicSource != null && musicSource.enabled)
+            musicSource.volume = musicLinear;
+
+        float sfxLinear = Mathf.Clamp01(PlayerPrefs.GetFloat("SFXVolume", 1f));
+        float sfxSafe = Mathf.Max(MinLinearVolume, sfxLinear);
+        if (audioMixer != null)
+            audioMixer.SetFloat("SFXVolume", Mathf.Log10(sfxSafe) * 20f);
+    }
+
+    private void RefreshBackgroundSettingState()
+    {
+        if (backgroundDropdown == null)
+            return;
+
+        backgroundDropdown.gameObject.SetActive(IsBackgroundSettingEnabled());
+    }
+
+    private bool IsBackgroundSettingEnabled()
+    {
+        if (!enableBackgroundSetting)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(disableBackgroundInScene))
+            return true;
+
+        Scene activeScene = SceneManager.GetActiveScene();
+        if (!activeScene.IsValid())
+            return true;
+
+        return !string.Equals(
+            activeScene.name,
+            disableBackgroundInScene,
+            System.StringComparison.OrdinalIgnoreCase
+        );
     }
 }

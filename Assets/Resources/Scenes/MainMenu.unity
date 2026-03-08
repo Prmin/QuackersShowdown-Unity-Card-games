@@ -1664,17 +1664,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7898781471020387337, guid: fbf892b86ff582844b17e55384d14b64, type: 3}
-      propertyPath: OutputAudioMixerGroup
-      value: 
-      objectReference: {fileID: 24300002, guid: 887add3d4bca36846ab9258dea68514a, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 2100617656658866263, guid: fbf892b86ff582844b17e55384d14b64, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1336050235}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: fbf892b86ff582844b17e55384d14b64, type: 3}
 --- !u!4 &1013941016 stripped
 Transform:
@@ -2146,27 +2139,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1284126942}
   m_CullTransparentMesh: 1
---- !u!1 &1336050234 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2100617656658866263, guid: fbf892b86ff582844b17e55384d14b64, type: 3}
-  m_PrefabInstance: {fileID: 1013941015}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1336050235
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1336050234}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b9b84a2f43774f64a8f0ff8f9497651f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  buttonClickClip: {fileID: 8300000, guid: e85de0eb3dc616247bad5e2c58cd7725, type: 3}
-  buttonClickBaseVolume: 1
-  dontDestroyOnLoad: 1
-  createFallbackClickIfMissing: 1
 --- !u!224 &1422566996 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 4413757208317072827, guid: a6987f38d1d13ef42ad56059c6cf772a, type: 3}
