@@ -15,6 +15,13 @@ public class BackgroundUpdater : MonoBehaviour
 
     public void UpdateBackground()
     {
+        if (settingsManager == null)
+        {
+            settingsManager = Settings_Manager.instance;
+            if (settingsManager == null)
+                settingsManager = FindObjectOfType<Settings_Manager>();
+        }
+
         if (settingsManager != null)
         {
             settingsManager.ApplyBackground(backgroundImage);

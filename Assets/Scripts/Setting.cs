@@ -8,6 +8,8 @@ using UnityEngine.UI;
 public class Setting : MonoBehaviour
 {
     private const float MinLinearVolume = 0.0001f;
+    private const string BackgroundChoiceKey = "BackgroundChoice";
+    private const string BackgroundSpriteNameKey = "BackgroundSpriteName";
 
     public Slider musicSlider;
     public Slider sfxSlider;
@@ -29,15 +31,19 @@ public class Setting : MonoBehaviour
     private void Start()
     {
         BindEventsOnce();
+        DisableLocalPopupMusicSource();
         SetupBackgroundDropdown();
         RefreshControlsFromPrefs();
+        UIAudioSfx.RefreshMusicStateFromPrefs();
         ApplyBackground();
     }
 
     private void OnEnable()
     {
         // Avoid invoking slider callbacks while merely opening the popup.
+        DisableLocalPopupMusicSource();
         RefreshControlsFromPrefs();
+        SetupBackgroundDropdown();
         ApplyBackground();
     }
 
@@ -47,15 +53,10 @@ public class Setting : MonoBehaviour
             return;
 
         float linear = Mathf.Clamp01(musicSlider.value);
-        float safeValue = Mathf.Max(MinLinearVolume, linear);
-
-        if (audioMixer != null)
-            audioMixer.SetFloat("MusicVolume", Mathf.Log10(safeValue) * 20f);
-
-        if (musicSource != null)
-            musicSource.volume = linear;
 
         PlayerPrefs.SetFloat("MusicVolume", linear);
+        PlayerPrefs.Save();
+        UIAudioSfx.RefreshMusicStateFromPrefs();
     }
 
     public void SetSFXVolume()
@@ -70,6 +71,7 @@ public class Setting : MonoBehaviour
             audioMixer.SetFloat("SFXVolume", Mathf.Log10(safeValue) * 20f);
 
         PlayerPrefs.SetFloat("SFXVolume", linear);
+        PlayerPrefs.Save();
     }
 
     public void SetBackground()
@@ -77,21 +79,36 @@ public class Setting : MonoBehaviour
         if (backgroundDropdown == null)
             return;
 
-        PlayerPrefs.SetInt("BackgroundChoice", backgroundDropdown.value);
+        int index = Mathf.Max(0, backgroundDropdown.value);
+        PlayerPrefs.SetInt(BackgroundChoiceKey, index);
+        if (backgroundSprites != null && backgroundSprites.Count > 0)
+        {
+            int clamped = Mathf.Clamp(index, 0, backgroundSprites.Count - 1);
+            Sprite sprite = backgroundSprites[clamped];
+            PlayerPrefs.SetString(BackgroundSpriteNameKey, sprite != null ? sprite.name : string.Empty);
+        }
+        PlayerPrefs.Save();
+        if (Settings_Manager.instance != null)
+            Settings_Manager.instance.SetBackground(index);
         ApplyBackground();
     }
 
     private void ApplyBackground()
     {
+        TryResolveBackgroundImageIfMissing();
+
         if (backgroundImage == null)
             return;
 
         if (backgroundSprites == null || backgroundSprites.Count == 0)
             return;
 
-        int backgroundChoice = PlayerPrefs.GetInt("BackgroundChoice", 0);
+        int backgroundChoice = ResolveSavedBackgroundIndex(backgroundSprites, 0);
         backgroundChoice = Mathf.Clamp(backgroundChoice, 0, backgroundSprites.Count - 1);
         backgroundImage.sprite = backgroundSprites[backgroundChoice];
+
+        if (backgroundDropdown != null && backgroundDropdown.options.Count > 0)
+            backgroundDropdown.SetValueWithoutNotify(backgroundChoice);
     }
 
     private void GoBack()
@@ -137,7 +154,7 @@ public class Setting : MonoBehaviour
         var options = new List<string> { "Background 1", "Background 2", "Background 3" };
         backgroundDropdown.AddOptions(options);
 
-        int savedBg = Mathf.Clamp(PlayerPrefs.GetInt("BackgroundChoice", 0), 0, Mathf.Max(0, options.Count - 1));
+        int savedBg = Mathf.Clamp(ResolveSavedBackgroundIndex(backgroundSprites, 0), 0, Mathf.Max(0, options.Count - 1));
         backgroundDropdown.SetValueWithoutNotify(savedBg);
     }
 
@@ -148,5 +165,48 @@ public class Setting : MonoBehaviour
 
         if (sfxSlider != null)
             sfxSlider.SetValueWithoutNotify(Mathf.Clamp01(PlayerPrefs.GetFloat("SFXVolume", 1f)));
+    }
+
+    private void TryResolveBackgroundImageIfMissing()
+    {
+        if (backgroundImage != null)
+            return;
+
+        GameObject byName = GameObject.Find("Background");
+        if (byName != null)
+            backgroundImage = byName.GetComponent<Image>();
+    }
+
+    private static int ResolveSavedBackgroundIndex(List<Sprite> sprites, int defaultIndex)
+    {
+        int indexFromPrefs = Mathf.Max(0, PlayerPrefs.GetInt(BackgroundChoiceKey, defaultIndex));
+        string spriteName = PlayerPrefs.GetString(BackgroundSpriteNameKey, string.Empty);
+
+        if (sprites != null && sprites.Count > 0 && !string.IsNullOrEmpty(spriteName))
+        {
+            for (int i = 0; i < sprites.Count; i++)
+            {
+                Sprite s = sprites[i];
+                if (s != null && s.name == spriteName)
+                    return i;
+            }
+        }
+
+        return indexFromPrefs;
+    }
+
+    private void DisableLocalPopupMusicSource()
+    {
+        if (musicSource == null)
+            return;
+
+        // This popup-local source is not part of the gameplay BGM system.
+        if (musicSource.transform.IsChildOf(transform))
+        {
+            musicSource.playOnAwake = false;
+            if (musicSource.isPlaying)
+                musicSource.Stop();
+            musicSource.enabled = false;
+        }
     }
 }
