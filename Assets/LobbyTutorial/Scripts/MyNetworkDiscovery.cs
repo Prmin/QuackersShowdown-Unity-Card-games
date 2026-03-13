@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using Mirror;
 using Mirror.Discovery;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public struct LanDiscoveryRequest : NetworkMessage { }
 
@@ -19,6 +20,7 @@ public struct LanDiscoveryResponse : NetworkMessage
     public int curPlayers;
     public int maxPlayers;
     public bool isPrivate;
+    public bool isInGameplay;
     public ushort port;
 }
 
@@ -190,6 +192,10 @@ public class MyNetworkDiscovery : NetworkDiscoveryBase<LanDiscoveryRequest, LanD
         kcp2k.KcpTransport kcp = nm ? nm.transport as kcp2k.KcpTransport : null;
 
         GetCounts(out int cur, out int max);
+        bool isInGameplay = false;
+        LobbyNetworkManager lm = lobbyManager ? lobbyManager : nm as LobbyNetworkManager;
+        if (lm != null)
+            isInGameplay = IsSceneMatch(SceneManager.GetActiveScene(), lm.GameplayScene);
 
         return new LanDiscoveryResponse
         {
@@ -198,6 +204,7 @@ public class MyNetworkDiscovery : NetworkDiscoveryBase<LanDiscoveryRequest, LanD
             curPlayers = cur,
             maxPlayers = max,
             isPrivate = LobbyManager.Instance ? LobbyManager.Instance.CurrentIsPrivate : false,
+            isInGameplay = isInGameplay,
             port = (ushort)(kcp != null ? kcp.Port : 7777)
         };
     }
@@ -206,5 +213,20 @@ public class MyNetworkDiscovery : NetworkDiscoveryBase<LanDiscoveryRequest, LanD
     {
         response.EndPoint = endpoint;
         OnServerFound.Invoke(response);
+    }
+
+    private static bool IsSceneMatch(Scene scene, string configuredPathOrName)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPathOrName))
+            return false;
+
+        if (string.Equals(scene.path, configuredPathOrName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        string expectedName = System.IO.Path.GetFileNameWithoutExtension(configuredPathOrName);
+        if (string.IsNullOrWhiteSpace(expectedName))
+            expectedName = configuredPathOrName;
+
+        return string.Equals(scene.name, expectedName, StringComparison.OrdinalIgnoreCase);
     }
 }

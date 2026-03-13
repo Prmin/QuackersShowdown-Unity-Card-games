@@ -89,6 +89,49 @@ public class LobbyNetworkManager : NetworkRoomManager
         base.OnStopHost();
     }
 
+    public override void OnServerDisconnect(NetworkConnectionToClient conn)
+    {
+        bool isGameplayScene = IsSceneMatch(SceneManager.GetActiveScene(), GameplayScene);
+        bool isHostConnection = conn == NetworkServer.localConnection;
+
+        uint departingNetId = 0;
+        int departingDuckColorIndex = -1;
+        uint preferredCurrentTurnNetId = 0;
+
+        TurnManager tm = TurnManager.Instance;
+        if (isGameplayScene &&
+            !isHostConnection &&
+            conn?.identity != null &&
+            conn.identity.TryGetComponent(out PlayerManager pm))
+        {
+            departingNetId = pm.netId;
+            departingDuckColorIndex = pm.duckColorIndex;
+
+            if (tm != null)
+                preferredCurrentTurnNetId = tm.ServerGetPreferredCurrentTurnNetIdAfterDisconnect(departingNetId);
+        }
+
+        base.OnServerDisconnect(conn);
+
+        if (isGameplayScene && !isHostConnection && departingNetId != 0)
+        {
+            if (tm != null)
+            {
+                tm.ServerHandlePlayerDisconnect(
+                    departingNetId,
+                    departingDuckColorIndex,
+                    preferredCurrentTurnNetId,
+                    "ClientDisconnected");
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"[LobbyNetworkManager] TurnManager missing during client disconnect cleanup. netId={departingNetId}"
+                );
+            }
+        }
+    }
+
     public override void Awake()
     {
         base.Awake();

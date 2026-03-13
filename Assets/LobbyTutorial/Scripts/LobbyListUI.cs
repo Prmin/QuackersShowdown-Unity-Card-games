@@ -135,6 +135,20 @@ public class LobbyListUI : MonoBehaviour
         };
     }
 
+    public void Remove(string serverKey)
+    {
+        if (string.IsNullOrWhiteSpace(serverKey))
+            return;
+
+        if (!rows.TryGetValue(serverKey, out LobbyRowState state))
+            return;
+
+        if (state != null && state.ui != null)
+            Destroy(state.ui.gameObject);
+
+        rows.Remove(serverKey);
+    }
+
     private void Update()
     {
         if (rows.Count == 0)
