@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/Resources/Scenes/LobbSceneNew.unity
     guid: 85d1063f2be531a4397e937eed266e4f
   - enabled: 1
+    path: Assets/Resources/Scenes/MainMenu.unity
+    guid: 0259304a939ac104fadf0071643af84b
+  - enabled: 1
     path: Assets/LobbyTutorial/LobbyTutorial_Done.unity
     guid: be8200a558cfff84b8ce074fa6e33558
   - enabled: 1

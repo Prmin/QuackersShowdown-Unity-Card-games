@@ -66,6 +66,8 @@ public class ActionHandUI : MonoBehaviour
             cardObj.transform.SetParent(handRoot, false);
             if (localHandRoot != handRoot)
                 localHandRoot = handRoot;
+
+            CardZoneMoveSfx.NotifyPlayerAreaMove();
         }
 
         // ผูกสคริปต์ LocalHandCard เพื่อส่ง CmdPlayActionCard เมื่อเล่นใบนี้

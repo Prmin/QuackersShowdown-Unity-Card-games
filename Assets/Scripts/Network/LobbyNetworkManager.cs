@@ -1,6 +1,5 @@
 using Mirror;
 using UnityEngine;
-using System.Reflection;
 using Mirror.Discovery;
 using UnityEngine.SceneManagement;
 
@@ -14,6 +13,7 @@ public class LobbyNetworkManager : NetworkRoomManager
 
     [Header("UI Flow")]
     [SerializeField] private string lobbySceneName = "LobbyTutorial_Done";
+    private bool _disconnectOverlayShownInGameplay;
 
     public override void OnStartHost()
     {
@@ -45,8 +45,9 @@ public class LobbyNetworkManager : NetworkRoomManager
         if (rp != null && pm != null)
         {
             pm.duckColorIndex = rp.duckColorIndex;
+            pm.SetDisplayName(rp.displayName);
+            pm.SetProfileAvatarIndex(rp.profileAvatarIndex);
             // ถ้าต้องการก๊อปชื่อด้วยก็ทำที่นี่ เช่น:
-            // pm.displayName = rp.displayName;
         }
 
         return gamePlayer; // Mirror จะ spawn และ sync vars ให้เอง
@@ -55,12 +56,13 @@ public class LobbyNetworkManager : NetworkRoomManager
     // ====== เพิ่ม helper ปิด UI ทั้งหมดของเมนู ======
     void HideAllMenuUI()
     {
-        if (UIFlow.I == null) return;
-        UIFlow.I.authenticatePanel?.SetActive(false);
-        UIFlow.I.lobbyListPanel?.SetActive(false);
-        UIFlow.I.lobbyCreatePanel?.SetActive(false);
-        UIFlow.I.lobbyPanel?.SetActive(false);
-        UIFlow.I.editPlayerNamePanel?.SetActive(false);
+        UIFlow flow = UIFlow.I;
+        if (flow == null)
+            return;
+
+        // Use UIFlow internal safe path (EnsureRefs + null-safe checks)
+        // instead of touching serialized panel refs directly from here.
+        flow.HideAllForGameplay();
     }
 
     public override void OnClientSceneChanged()
@@ -71,6 +73,7 @@ public class LobbyNetworkManager : NetworkRoomManager
         string activePath = SceneManager.GetActiveScene().path;
         if (!string.IsNullOrEmpty(GameplayScene) && activePath == GameplayScene)
         {
+            _disconnectOverlayShownInGameplay = false;
             HideAllMenuUI();
             ;
         }
@@ -84,6 +87,49 @@ public class LobbyNetworkManager : NetworkRoomManager
             ;
         }
         base.OnStopHost();
+    }
+
+    public override void OnServerDisconnect(NetworkConnectionToClient conn)
+    {
+        bool isGameplayScene = IsSceneMatch(SceneManager.GetActiveScene(), GameplayScene);
+        bool isHostConnection = conn == NetworkServer.localConnection;
+
+        uint departingNetId = 0;
+        int departingDuckColorIndex = -1;
+        uint preferredCurrentTurnNetId = 0;
+
+        TurnManager tm = TurnManager.Instance;
+        if (isGameplayScene &&
+            !isHostConnection &&
+            conn?.identity != null &&
+            conn.identity.TryGetComponent(out PlayerManager pm))
+        {
+            departingNetId = pm.netId;
+            departingDuckColorIndex = pm.duckColorIndex;
+
+            if (tm != null)
+                preferredCurrentTurnNetId = tm.ServerGetPreferredCurrentTurnNetIdAfterDisconnect(departingNetId);
+        }
+
+        base.OnServerDisconnect(conn);
+
+        if (isGameplayScene && !isHostConnection && departingNetId != 0)
+        {
+            if (tm != null)
+            {
+                tm.ServerHandlePlayerDisconnect(
+                    departingNetId,
+                    departingDuckColorIndex,
+                    preferredCurrentTurnNetId,
+                    "ClientDisconnected");
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"[LobbyNetworkManager] TurnManager missing during client disconnect cleanup. netId={departingNetId}"
+                );
+            }
+        }
     }
 
     public override void Awake()
@@ -155,21 +201,10 @@ public class LobbyNetworkManager : NetworkRoomManager
         var lp = roomPlayer ? roomPlayer.GetComponent<LobbyRoomPlayer>() : null;
         var pm = gamePlayer ? gamePlayer.GetComponent<PlayerManager>() : null;
 
-        if (lp != null && pm != null && !string.IsNullOrWhiteSpace(lp.displayName))
+        if (lp != null && pm != null)
         {
-            var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-            var field = pm.GetType().GetField("displayName", flags);
-            if (field != null && field.FieldType == typeof(string))
-                field.SetValue(pm, lp.displayName);
-
-            var prop = pm.GetType().GetProperty("DisplayName", flags);
-            if (prop != null && prop.PropertyType == typeof(string) && prop.CanWrite)
-                prop.SetValue(pm, lp.displayName);
-
-            var method = pm.GetType().GetMethod("SetDisplayName", flags, null, new[] { typeof(string) }, null);
-            if (method != null)
-                method.Invoke(pm, new object[] { lp.displayName });
+            pm.SetDisplayName(lp.displayName);
+            pm.SetProfileAvatarIndex(lp.profileAvatarIndex);
         }
 
         return result;
@@ -201,9 +236,24 @@ public class LobbyNetworkManager : NetworkRoomManager
         {
             // Keep lobby UI hidden while gameplay scene is still active.
             flow.HideAllForGameplay();
+
+            if (!NetworkServer.active && !_disconnectOverlayShownInGameplay)
+            {
+                if (FindObjectOfType<MatchEndOverlayUI>() != null)
+                    return;
+
+                _disconnectOverlayShownInGameplay = true;
+
+                TurnManager tm = TurnManager.Instance;
+                if (tm != null)
+                    tm.ClientShowMatchCancelledOverlay("HostDisconnected");
+                else
+                    flow.ShowLobbyList();
+            }
             return;
         }
 
+        _disconnectOverlayShownInGameplay = false;
         flow.ShowLobbyList();
     }
 

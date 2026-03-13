@@ -24,6 +24,7 @@ public class LobbyListSingleUI : MonoBehaviour
         btn.onClick.AddListener(() =>
         {
             if (string.IsNullOrWhiteSpace(address)) return;
+            UIAudioSfx.PlayButtonClick();
 
             // ✅ อัปเดตพรีวิวให้ฝั่ง Client เห็นหัวล็อบบี้ทันที
             LobbyManager.Instance.SetClientPreview(cachedName, cachedMax, cachedModeLabel);

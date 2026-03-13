@@ -11,6 +11,7 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
 
     // 0=Blue,1=Orange,2=Pink,3=Green,4=Yellow,5=Purple
     [SyncVar(hook = nameof(OnDuckColorChanged))] public int duckColorIndex;
+    [SyncVar] public int profileAvatarIndex;
 
     // Shared in lobby for everyone to see.
     [SyncVar] public int statsPlayed;
@@ -25,6 +26,9 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
 
         if (duckColorIndex < 0 || duckColorIndex > 5 || !IsColorAvailable(duckColorIndex, this))
             duckColorIndex = PickFreeColor();
+
+        if (profileAvatarIndex < 0)
+            profileAvatarIndex = 0;
 
         isHost = (connectionToClient == NetworkServer.localConnection);
     }
@@ -108,11 +112,12 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
         base.OnStartLocalPlayer();
         Local = this;
 
-        string playerName = PlayerPrefs.GetString(LobbyManager.KEY_PLAYER_NAME, $"Player {Random.Range(100, 999)}");
+        string playerName = LocalProfileData.GetPlayerName($"Player {Random.Range(100, 999)}");
         CmdSetName(playerName);
 
         int savedColor = PlayerPrefs.GetInt(LobbyManager.KEY_DUCK_COLOR, 0);
         CmdSetDuckColor(savedColor);
+        CmdSetProfileAvatar(LocalProfileData.GetAvatarIndexRaw(0));
 
         SubmitLocalStatsToServer();
     }
@@ -129,6 +134,12 @@ public class LobbyRoomPlayer : NetworkRoomPlayer
     public void CmdSetName(string name)
     {
         displayName = string.IsNullOrWhiteSpace(name) ? $"Player {Random.Range(100, 999)}" : name.Trim();
+    }
+
+    [Command]
+    public void CmdSetProfileAvatar(int index)
+    {
+        profileAvatarIndex = Mathf.Max(0, index);
     }
 
     [Client]

@@ -59,6 +59,7 @@ public class DragDrop : NetworkBehaviour
 
         isDragging = true;
         startParent = transform.parent;
+        CardZoneMoveSfx.NotifyPlayerAreaMove();
         NotifyLocalDragState(true);
     }
 
@@ -102,6 +103,7 @@ public class DragDrop : NetworkBehaviour
                 }
 
                 ForceParentLayout(dropZone.transform);
+                CardZoneMoveSfx.NotifyDropZonePlaced();
                 _localHandCard.OnPlayedFromHand();
                 return;
             }

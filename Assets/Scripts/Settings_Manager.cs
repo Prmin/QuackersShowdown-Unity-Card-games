@@ -1,12 +1,18 @@
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UI;
 
 public class Settings_Manager : MonoBehaviour
 {
+    private const float MinLinearVolume = 0.0001f;
+    private const string MusicVolumeKey = "MusicVolume";
+    private const string SfxVolumeKey = "SFXVolume";
+    private const string BackgroundChoiceKey = "BackgroundChoice";
+    private const string BackgroundSpriteNameKey = "BackgroundSpriteName";
+
     public static Settings_Manager instance = null;
+
     public AudioMixer audioMixer;
     public AudioSource musicSource;
     public float musicVolume = 1.0f;
@@ -15,105 +21,124 @@ public class Settings_Manager : MonoBehaviour
     public Image backgroundImage;
     public List<Sprite> backgroundSprites;
 
-    void Awake()
+    private void Awake()
     {
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
+        if (instance != null && instance != this)
         {
             Destroy(gameObject);
+            return;
         }
-    }
-    void Start()
-    {
+
+        instance = this;
         LoadSettings();
-        ApplySettings();
-         if (musicSource != null)
-    {
-        musicSource.enabled = true; 
-        musicSource.volume = musicVolume; 
-        musicSource.Play();
     }
+
+    private void Start()
+    {
+        ApplySettings();
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this)
+            instance = null;
     }
 
     public void SetMusicVolume(float volume)
     {
-        musicVolume = volume;
-        audioMixer.SetFloat("MusicVolume", Mathf.Log10(volume) * 20);
-        PlayerPrefs.SetFloat("MusicVolume", volume);
+        musicVolume = Mathf.Clamp01(volume);
+        PlayerPrefs.SetFloat(MusicVolumeKey, musicVolume);
+        PlayerPrefs.Save();
 
-        if (musicSource != null)
-        {
-            musicSource.volume = volume;
-        }
+        UIAudioSfx.RefreshMusicStateFromPrefs();
     }
 
     public void SetSFXVolume(float volume)
     {
-        sfxVolume = volume;
-        audioMixer.SetFloat("SFXVolume", Mathf.Log10(volume) * 20);
-        PlayerPrefs.SetFloat("SFXVolume", volume);
+        sfxVolume = Mathf.Clamp01(volume);
+
+        if (audioMixer != null)
+            audioMixer.SetFloat("SFXVolume", LinearToDb(sfxVolume));
+
+        PlayerPrefs.SetFloat(SfxVolumeKey, sfxVolume);
+        PlayerPrefs.Save();
     }
 
     public void SetBackground(int choice)
     {
-        backgroundChoice = choice;
-        PlayerPrefs.SetInt("BackgroundChoice", choice);
+        backgroundChoice = Mathf.Max(0, choice);
+        PlayerPrefs.SetInt(BackgroundChoiceKey, backgroundChoice);
+        if (backgroundSprites != null && backgroundSprites.Count > 0)
+        {
+            int clamped = Mathf.Clamp(backgroundChoice, 0, backgroundSprites.Count - 1);
+            Sprite sprite = backgroundSprites[clamped];
+            PlayerPrefs.SetString(BackgroundSpriteNameKey, sprite != null ? sprite.name : string.Empty);
+        }
+        PlayerPrefs.Save();
+
+        TryResolveBackgroundImageInActiveScene();
         ApplyBackground(backgroundImage);
     }
 
-    void LoadSettings()
+    private void LoadSettings()
     {
-        musicVolume = PlayerPrefs.GetFloat("MusicVolume", 1.0f);
-        sfxVolume = PlayerPrefs.GetFloat("SFXVolume", 1.0f);
-        backgroundChoice = PlayerPrefs.GetInt("BackgroundChoice", 0);
-
-        ;
-        ;
+        musicVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(MusicVolumeKey, 1.0f));
+        sfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(SfxVolumeKey, 1.0f));
+        backgroundChoice = ResolveSavedBackgroundIndex(backgroundSprites, 0);
     }
 
     public void ApplySettings()
     {
-        audioMixer.SetFloat("MusicVolume", Mathf.Log10(musicVolume) * 20);
-        audioMixer.SetFloat("SFXVolume", Mathf.Log10(sfxVolume) * 20);
+        LoadSettings();
 
-       if (musicSource != null)
-        {
-            musicSource.enabled = true; 
-            musicSource.volume = musicVolume;
-            musicSource.Play();
-            ;
-        }
+        if (audioMixer != null)
+            audioMixer.SetFloat("SFXVolume", LinearToDb(sfxVolume));
+
+        backgroundImage = null;
+        TryResolveBackgroundImageInActiveScene();
         ApplyBackground(backgroundImage);
+        Setting.ApplySavedBackgroundToActiveScene();
+
+        UIAudioSfx.RefreshMusicStateFromPrefs();
     }
 
-    void UpdateBackground()
-    {
-        if (backgroundSprites.Count == 0)
-        {
-            Debug.LogError("No background sprites assigned!");
-            return;
-        }
-        backgroundChoice = Mathf.Clamp(backgroundChoice, 0, backgroundSprites.Count - 1);
-        ApplyBackground(backgroundImage);
-    }
     public void ApplyBackground(Image image)
     {
         if (image == null)
-        {
-            Debug.LogError("Image component is null.");
             return;
-        }
-        if (backgroundChoice < 0 || backgroundChoice >= backgroundSprites.Count)
-        {
-            Debug.LogError($"Background choice index is out of range: {backgroundChoice}. Total backgrounds available: {backgroundSprites.Count}");
+
+        if (backgroundSprites == null || backgroundSprites.Count == 0)
             return;
+
+        int index = Mathf.Clamp(backgroundChoice, 0, backgroundSprites.Count - 1);
+        image.sprite = backgroundSprites[index];
+    }
+
+    private void TryResolveBackgroundImageInActiveScene()
+    {
+        backgroundImage = Setting.FindBestSceneBackgroundImage();
+    }
+
+    private static float LinearToDb(float linear)
+    {
+        return Mathf.Log10(Mathf.Max(MinLinearVolume, linear)) * 20f;
+    }
+
+    private static int ResolveSavedBackgroundIndex(List<Sprite> sprites, int defaultIndex)
+    {
+        int indexFromPrefs = Mathf.Max(0, PlayerPrefs.GetInt(BackgroundChoiceKey, defaultIndex));
+        string spriteName = PlayerPrefs.GetString(BackgroundSpriteNameKey, string.Empty);
+
+        if (sprites != null && sprites.Count > 0 && !string.IsNullOrEmpty(spriteName))
+        {
+            for (int i = 0; i < sprites.Count; i++)
+            {
+                Sprite s = sprites[i];
+                if (s != null && s.name == spriteName)
+                    return i;
+            }
         }
-        image.sprite = backgroundSprites[backgroundChoice];
-        ;
+
+        return indexFromPrefs;
     }
 }
-

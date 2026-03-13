@@ -38,6 +38,8 @@ public class UIFlow : MonoBehaviour
 
     void Start()
     {
+        UIAudioSfx.RefreshMusicStateFromPrefs();
+
         bool hasName = !string.IsNullOrWhiteSpace(
             PlayerPrefs.GetString(LobbyManager.KEY_PLAYER_NAME, "")
         );
@@ -145,6 +147,8 @@ public class UIFlow : MonoBehaviour
     {
         if (!IsLobbyScene(scene))
             return;
+
+        UIAudioSfx.RefreshMusicStateFromPrefs();
 
         ClearDestroyedRefs();
         EnsureRefs();

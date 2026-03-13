@@ -81,6 +81,8 @@ public partial class PlayerManager
         int shotRow = shotDuck.RowNet;
         int shotCol = shotDuck.ColNet;
         ServerRecordDuckShotCount(1);
+        bool isMarshShot = IsMarshShotTarget(shotDuck.gameObject);
+        ServerBroadcastShotResolvedSfx(isMarshShot ? 0 : 1, isMarshShot ? 1 : 0);
         NetworkServer.Destroy(duckCardIdentity.gameObject);
 
         TargetFollow[] allTargets = FindObjectsOfType<TargetFollow>();

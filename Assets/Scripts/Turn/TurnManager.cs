@@ -218,8 +218,18 @@ public class TurnManager : NetworkBehaviour
     [Server]
     public void ServerRebuildTurnOrder(string reason = null)
     {
-        uint keepNetId = ServerGetCurrentTurnNetId_Internal();
+        ServerRebuildTurnOrderInternal(ServerGetCurrentTurnNetId_Internal(), reason);
+    }
 
+    [Server]
+    public void ServerRebuildTurnOrderKeepingNetId(uint keepNetId, string reason = null)
+    {
+        ServerRebuildTurnOrderInternal(keepNetId, reason);
+    }
+
+    [Server]
+    private void ServerRebuildTurnOrderInternal(uint keepNetId, string reason = null)
+    {
         var players = new List<PlayerManager>();
         foreach (var kv in NetworkServer.connections)
         {
@@ -273,6 +283,92 @@ public class TurnManager : NetworkBehaviour
 
         ServerLogTurnOrder(reason);
         ServerRequestClientLayoutRefresh($"Rebuild:{reason ?? "-"}");
+    }
+
+    [Server]
+    public uint ServerGetPreferredCurrentTurnNetIdAfterDisconnect(uint departingNetId)
+    {
+        uint currentNetId = ServerGetCurrentTurnNetId_Internal();
+        if (departingNetId == 0 || TurnOrder.Count <= 0)
+            return currentNetId;
+
+        if (currentNetId != departingNetId)
+            return currentNetId;
+
+        int departingIndex = TurnOrder.IndexOf(departingNetId);
+        if (departingIndex < 0)
+            return 0;
+
+        for (int offset = 1; offset < TurnOrder.Count; offset++)
+        {
+            uint candidate = TurnOrder[(departingIndex + offset) % TurnOrder.Count];
+            if (candidate != 0 && candidate != departingNetId)
+                return candidate;
+        }
+
+        return 0;
+    }
+
+    [Server]
+    public void ServerHandlePlayerDisconnect(uint departingNetId, int departingDuckColorIndex, uint preferredCurrentTurnNetId, string reason = null)
+    {
+        if (departingNetId == 0)
+            return;
+
+        string duckKey = DuckKeyFromIndex(departingDuckColorIndex);
+        int removedFromPool = ServerRemoveAllDuckCardsFromPool(duckKey);
+
+        int removedCards = 0;
+        int removedDuckZoneCards = 0;
+        var cardsToDestroy = new List<DuckCard>();
+
+        foreach (NetworkIdentity ni in NetworkServer.spawned.Values)
+        {
+            if (ni == null || !ni.TryGetComponent(out DuckCard dc))
+                continue;
+
+            bool ownsCard = dc.ownerNetId != 0 && dc.ownerNetId == departingNetId;
+            bool isOwnedDuckInZone = dc.zone == ZoneKind.DuckZone &&
+                                     (ownsCard ||
+                                      (!string.IsNullOrWhiteSpace(duckKey) &&
+                                       string.Equals(DuckKeyFromCardName(dc.name), duckKey, StringComparison.OrdinalIgnoreCase)));
+
+            bool isOwnedNonDuckZoneCard = dc.zone != ZoneKind.DuckZone && ownsCard;
+            if (!isOwnedDuckInZone && !isOwnedNonDuckZoneCard)
+                continue;
+
+            cardsToDestroy.Add(dc);
+        }
+
+        foreach (DuckCard dc in cardsToDestroy)
+        {
+            if (dc == null)
+                continue;
+
+            if (dc.zone == ZoneKind.DuckZone)
+            {
+                ServerDestroyTargetsForDuck(dc.netId);
+                removedDuckZoneCards++;
+            }
+
+            NetworkServer.Destroy(dc.gameObject);
+            removedCards++;
+        }
+
+        if (removedDuckZoneCards > 0)
+        {
+            ServerResequenceDuckZoneColumns();
+            ServerRefillDuckZoneToSix();
+        }
+
+        ServerRebuildTurnOrderKeepingNetId(preferredCurrentTurnNetId, $"Disconnect:{reason ?? "-"}");
+        DuckOwnershipStatusService.Instance?.ServerForceRefreshNow($"Disconnect:{reason ?? "-"}");
+
+        Debug.Log(
+            $"[TurnManager] PlayerDisconnectCleanup reason={reason ?? "-"} netId={departingNetId} duckKey={duckKey ?? "-"} " +
+            $"removedCards={removedCards} removedDuckZoneCards={removedDuckZoneCards} removedPoolCards={removedFromPool} " +
+            $"preferredCurrentTurnNetId={preferredCurrentTurnNetId}"
+        );
     }
 
     [Server]
@@ -1011,6 +1107,31 @@ public class TurnManager : NetworkBehaviour
         if (!NetworkClient.active)
             return;
 
+        ClientShowMatchEndOverlayLocal(winnerKey, remainingCount, reason);
+    }
+
+    [Server]
+    private static int ServerRemoveAllDuckCardsFromPool(string duckKey)
+    {
+        if (string.IsNullOrWhiteSpace(duckKey) || duckKey == "-")
+            return 0;
+
+        int removed = 0;
+        while (CardPoolManager.TryConsumeCard(duckKey))
+            removed++;
+
+        return removed;
+    }
+
+    [Client]
+    public void ClientShowMatchCancelledOverlay(string reason)
+    {
+        ClientShowMatchEndOverlayLocal("Draw", 0, reason);
+    }
+
+    [Client]
+    private void ClientShowMatchEndOverlayLocal(string winnerKey, int remainingCount, string reason)
+    {
         if (_localMatchEndOverlayShown)
             return;
 

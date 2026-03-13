@@ -44,6 +44,14 @@ public partial class PlayerManager : NetworkBehaviour
     [SyncVar(hook = nameof(OnOwnedDuckCountChanged))]
     [SerializeField] private int ownedDuckCount = 0;
     public int OwnedDuckCount => ownedDuckCount;
+
+    [SyncVar]
+    [SerializeField] private string displayName = "Player";
+    public string DisplayName => string.IsNullOrWhiteSpace(displayName) ? "Player" : displayName;
+
+    [SyncVar]
+    [SerializeField] private int profileAvatarIndex = 0;
+    public int ProfileAvatarIndex => Mathf.Max(0, profileAvatarIndex);
     // --- PATCH: Barrier Hooks ---
     private static bool s_barrierHooksBoundServer = false;
     private static bool s_barrierHooksBoundClient = false;
@@ -53,6 +61,13 @@ public partial class PlayerManager : NetworkBehaviour
     // ???????????????????? ????? BarrierGoServer ???????????????
     private static bool s_matchStarted = false;
     private static uint s_actionPoolOwnerNetId = 0;
+
+    [Server]
+    public static void ServerResetMatchRuntimeState()
+    {
+        s_matchStarted = false;
+        s_actionPoolOwnerNetId = 0;
+    }
     // ============= GameObject References =============
     // ????? ???????
     public GameObject Shoot;
@@ -275,6 +290,17 @@ public partial class PlayerManager : NetworkBehaviour
 
         activeSkillMode = newMode;
 
+        if (IsAimSkillMode(newMode))
+        {
+            ServerBroadcastAimSkillActivatedSfx();
+        }
+
+        if (IsInstantDropResolveSkillMode(newMode))
+        {
+            // These abilities resolve immediately when the card is played to DropZone.
+            ServerBroadcastInstantAbilitySfx(newMode);
+        }
+
         bool modeShouldClose = false;
         if (newMode == SkillMode.LineForward)
         {
@@ -343,6 +369,18 @@ public partial class PlayerManager : NetworkBehaviour
         ownedDuckCount = safeValue;
     }
 
+    [Server]
+    public void SetDisplayName(string value)
+    {
+        displayName = string.IsNullOrWhiteSpace(value) ? "Player" : value.Trim();
+    }
+
+    [Server]
+    public void SetProfileAvatarIndex(int value)
+    {
+        profileAvatarIndex = Mathf.Max(0, value);
+    }
+
 
     public void HandleDuckCardClick(DuckCard clickedCard)
     {
@@ -350,6 +388,9 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (clickedCard == null || clickedCard.zone != ZoneKind.DuckZone)
             return;
+
+        if (IsShootingSkillMode(activeSkillMode))
+            ShootActionSfx.NotifyTargetSelected();
 
         switch (activeSkillMode)
         {
@@ -815,14 +856,25 @@ public partial class PlayerManager : NetworkBehaviour
                     targetParent = forcedActive;
             }
 
+            bool movedInPlayerArea = false;
             if (dc.transform.parent != targetParent)
+            {
                 dc.transform.SetParent(targetParent, false);
+                movedInPlayerArea = true;
+            }
 
             if (targetParent.childCount > 0)
             {
                 int sibling = Mathf.Clamp(dc.zoneIndex, 0, targetParent.childCount - 1);
-                dc.transform.SetSiblingIndex(sibling);
+                if (dc.transform.GetSiblingIndex() != sibling)
+                {
+                    dc.transform.SetSiblingIndex(sibling);
+                    movedInPlayerArea = true;
+                }
             }
+
+            if (movedInPlayerArea)
+                CardZoneMoveSfx.NotifyPlayerAreaMove();
         }
     }
 
@@ -1245,7 +1297,7 @@ public partial class PlayerManager : NetworkBehaviour
         var selectedPrefabs = duckPrefabs
             .Where(kv => selected.Contains(kv.Key) && kv.Value != null)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
-        CardPoolManager.Initialize(selectedPrefabs, initialCount: 1);
+        CardPoolManager.Initialize(selectedPrefabs, initialCount: 1); //จำนวนการ์ดในpool
         // 2) Ensure the shared DuckZone is filled before we begin
         host.RefillDuckZoneIfNeeded();
         // 3) Build/rotate authoritative TurnOrder from DuckZone front card
@@ -1342,22 +1394,22 @@ public partial class PlayerManager : NetworkBehaviour
     private void InitializeActionCardPool()
     {
         actionCardPool.Clear();
-        actionCardPool.Add("Shoot", 10);
-        actionCardPool.Add("QuickShot", 10);
-        actionCardPool.Add("TekeAim", 10);
-        actionCardPool.Add("DoubleBarrel", 10);
-        actionCardPool.Add("Misfire", 10);
-        actionCardPool.Add("TwoBirds", 10);
-        actionCardPool.Add("BumpLeft", 10);
-        actionCardPool.Add("BumpRight", 10);
-        actionCardPool.Add("LineForward", 10);
-        actionCardPool.Add("MoveAhead", 10);
-        actionCardPool.Add("HangBack", 10);
-        actionCardPool.Add("FastForward", 10);
-        actionCardPool.Add("DisorderlyConduckt", 10);
-        actionCardPool.Add("DuckShuffle", 10);
-        actionCardPool.Add("GivePeaceAChance", 10);
-        actionCardPool.Add("Resurrection", 10);
+        // actionCardPool.Add("Shoot", 10);
+        actionCardPool.Add("QuickShot", 100);
+        // actionCardPool.Add("TekeAim", 10);
+        // actionCardPool.Add("DoubleBarrel", 10);
+        // actionCardPool.Add("Misfire", 10);
+        // actionCardPool.Add("TwoBirds", 10);
+        // actionCardPool.Add("BumpLeft", 10);
+        // actionCardPool.Add("BumpRight", 10);
+        // actionCardPool.Add("LineForward", 10);
+        // actionCardPool.Add("MoveAhead", 10);
+        // actionCardPool.Add("HangBack", 10);
+        // actionCardPool.Add("FastForward", 10);
+        // actionCardPool.Add("DisorderlyConduckt", 10);
+        // actionCardPool.Add("DuckShuffle", 10);
+        // actionCardPool.Add("GivePeaceAChance", 10);
+        // actionCardPool.Add("Resurrection", 10);
     }
     private int GetDuckCardCountInDuckZone()
     {

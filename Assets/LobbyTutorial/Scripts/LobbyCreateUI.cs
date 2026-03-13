@@ -36,6 +36,8 @@ public class LobbyCreateUI : MonoBehaviour
         // ปุ่มสร้าง
         createButton.onClick.AddListener(() =>
         {
+            UIAudioSfx.PlayButtonClick();
+
             // ตั้ง privacy ก่อน
             LobbyManager.Instance.SetLobbyPrivacy(isPrivate, isPrivate ? lobbyPassword : "");
 
@@ -64,6 +66,7 @@ public class LobbyCreateUI : MonoBehaviour
         // ตั้งชื่อห้อง
         lobbyNameButton.onClick.AddListener(() =>
         {
+            UIAudioSfx.PlayButtonClick();
             UI_InputWindow.Show_Static("Lobby Name", lobbyName,
                 "abcdefghijklmnopqrstuvxywzABCDEFGHIJKLMNOPQRSTUVXYWZ .-", 20,
                 () => { },
@@ -73,6 +76,7 @@ public class LobbyCreateUI : MonoBehaviour
         // Public / Private
         publicPrivateButton.onClick.AddListener(() =>
         {
+            UIAudioSfx.PlayButtonClick();
             isPrivate = !isPrivate;
             UpdateText();
 
@@ -95,6 +99,7 @@ public class LobbyCreateUI : MonoBehaviour
         {
             leaveLobbyButton.onClick.AddListener(() =>
             {
+                UIAudioSfx.PlayButtonClick();
                 if (NetworkServer.active || NetworkClient.active)
                     LobbyManager.Instance.LeaveLobby();
                 else
