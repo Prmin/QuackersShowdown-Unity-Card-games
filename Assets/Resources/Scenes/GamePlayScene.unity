@@ -4133,6 +4133,10 @@ PrefabInstance:
       propertyPath: m_PresetInfoIsWorld
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2661386954210447912, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
+      propertyPath: m_MatchWidthOrHeight
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3233560040291743003, guid: 6c969c087c412514591389c61ac1af0e, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0

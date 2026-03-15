@@ -32,6 +32,7 @@ public class UI_InputWindow : MonoBehaviour
     private Canvas parentCanvas;
     private Action cancelAction;
     private Action<string> okAction;
+    private int ignoreOutsideClickUntilFrame = -1;
 
     private void Awake()
     {
@@ -44,8 +45,9 @@ public class UI_InputWindow : MonoBehaviour
         inputField = transform.Find("inputField").GetComponent<TMP_InputField>();
         windowRectTransform = transform as RectTransform;
         parentCanvas = GetComponentInParent<Canvas>();
-
-        Hide();
+        cancelAction = null;
+        okAction = null;
+        ignoreOutsideClickUntilFrame = -1;
     }
 
     private void OnDestroy()
@@ -68,6 +70,11 @@ public class UI_InputWindow : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Cancel();
+        }
+
+        if (Time.frameCount <= ignoreOutsideClickUntilFrame)
+        {
+            return;
         }
 
         if (TryGetPointerDownPosition(out Vector2 screenPosition) && !IsInsideWindow(screenPosition))
@@ -99,6 +106,7 @@ public class UI_InputWindow : MonoBehaviour
         inputField.text = inputString;
         inputField.Select();
         inputField.ActivateInputField();
+        ignoreOutsideClickUntilFrame = Time.frameCount + 1;
 
         cancelAction = onCancel;
         okAction = onOk;
@@ -111,6 +119,7 @@ public class UI_InputWindow : MonoBehaviour
     {
         cancelAction = null;
         okAction = null;
+        ignoreOutsideClickUntilFrame = -1;
         gameObject.SetActive(false);
     }
 

@@ -1,6 +1,8 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.Collections;
 
 public class MainMenuProfileUI : MonoBehaviour
 {
@@ -28,6 +30,7 @@ public class MainMenuProfileUI : MonoBehaviour
     [SerializeField] private int nameMaxLength = 20;
 
     private ProfileAvatarPickerUI _pickerInstance;
+    private Coroutine _openNameInputRoutine;
 
     private void Awake()
     {
@@ -50,7 +53,13 @@ public class MainMenuProfileUI : MonoBehaviour
     private void OnEditNameClicked()
     {
         UIAudioSfx.PlayButtonClick();
-        OpenNameInput();
+
+        if (_openNameInputRoutine != null)
+        {
+            StopCoroutine(_openNameInputRoutine);
+        }
+
+        _openNameInputRoutine = StartCoroutine(OpenNameInputNextFrame());
     }
 
     private void OnAvatarClicked()
@@ -98,11 +107,11 @@ public class MainMenuProfileUI : MonoBehaviour
     private void RefreshStats()
     {
         LocalMatchStats.Snapshot snap = LocalMatchStats.Get();
-        if (playedText != null) playedText.text = $"P:{Mathf.Max(0, snap.played)}";
-        if (winText != null) winText.text = $"W:{Mathf.Max(0, snap.win)}";
-        if (lossText != null) lossText.text = $"L:{Mathf.Max(0, snap.loss)}";
-        if (drawText != null) drawText.text = $"D:{Mathf.Max(0, snap.draw)}";
-        if (duckShotText != null) duckShotText.text = $"S:{Mathf.Max(0, snap.duckShots)}";
+        if (playedText != null) playedText.text = $"{Mathf.Max(0, snap.played)}";
+        if (winText != null) winText.text = $"{Mathf.Max(0, snap.win)}";
+        if (lossText != null) lossText.text = $"{Mathf.Max(0, snap.loss)}";
+        if (drawText != null) drawText.text = $"{Mathf.Max(0, snap.draw)}";
+        if (duckShotText != null) duckShotText.text = $"{Mathf.Max(0, snap.duckShots)}";
     }
 
     private void OpenNameInput()
@@ -129,6 +138,18 @@ public class MainMenuProfileUI : MonoBehaviour
                 if (me != null)
                     me.CmdSetName(LocalProfileData.GetPlayerName("Player"));
             });
+    }
+
+    private IEnumerator OpenNameInputNextFrame()
+    {
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        yield return null;
+        _openNameInputRoutine = null;
+        OpenNameInput();
     }
 
     private void OpenAvatarPicker()
