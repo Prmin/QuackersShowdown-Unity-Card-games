@@ -11,8 +11,8 @@ public class LobbyCreateUI : MonoBehaviour
     [SerializeField] private Button lobbyNameButton;
     [SerializeField] private Button publicPrivateButton;
 
-    // ⬇️ Dropdown เลือกจำนวนผู้เล่น 2..6
-    [Header("Max Players (2..6)")]
+    // ⬇️ Dropdown เลือกจำนวนผู้เล่น 3..6
+    [Header("Max Players (3..6)")]
     [SerializeField] private TMP_Dropdown maxPlayersDropdown;
 
     [SerializeField] private TextMeshProUGUI lobbyNameText;
@@ -91,7 +91,7 @@ public class LobbyCreateUI : MonoBehaviour
             }
         });
 
-        // เตรียม Dropdown เลข 2..6
+        // เตรียม Dropdown เลข 3..6
         SetupMaxPlayersDropdown();
 
         // ✅ ปุ่ม Leave: ถ้าอยู่ในเซสชันให้ LeaveLobby(), ถ้าไม่ได้อยู่ให้กลับ LobbyList
@@ -116,7 +116,7 @@ public class LobbyCreateUI : MonoBehaviour
         // sync ค่าเริ่มต้นไปยัง dropdown
         if (maxPlayersDropdown)
         {
-            int idx = Mathf.Clamp(maxPlayers - 2, 0, 4); // 2..6 -> index 0..4
+            int idx = Mathf.Clamp(maxPlayers - 3, 0, 4); // 3..6 -> index 0..4
             maxPlayersDropdown.SetValueWithoutNotify(idx);
         }
 
@@ -129,14 +129,14 @@ public class LobbyCreateUI : MonoBehaviour
 
         maxPlayersDropdown.ClearOptions();
         var opts = new System.Collections.Generic.List<string>();
-        for (int p = 2; p <= 6; p++) opts.Add(p.ToString());
+        for (int p = 3; p <= 6; p++) opts.Add(p.ToString());
         maxPlayersDropdown.AddOptions(opts);
 
         // ค่าเปลี่ยน → อัปเดต maxPlayers + ข้อความ
         maxPlayersDropdown.onValueChanged.RemoveAllListeners();
         maxPlayersDropdown.onValueChanged.AddListener(idx =>
         {
-            maxPlayers = Mathf.Clamp(idx + 2, 2, 6);
+            maxPlayers = Mathf.Clamp(idx + 3, 3, 6);
             UpdateText();
         });
     }
@@ -157,7 +157,7 @@ public class LobbyCreateUI : MonoBehaviour
         // sync ค่า dropdown เมื่อเปิดผ่าน Show()
         if (maxPlayersDropdown)
         {
-            int idx = Mathf.Clamp(maxPlayers - 2, 0, 4);
+            int idx = Mathf.Clamp(maxPlayers - 3, 0, 4);
             maxPlayersDropdown.SetValueWithoutNotify(idx);
         }
 

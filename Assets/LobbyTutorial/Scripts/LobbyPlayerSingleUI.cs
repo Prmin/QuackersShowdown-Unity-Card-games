@@ -93,11 +93,11 @@ public class LobbyPlayerSingleUI : MonoBehaviour
 
     private void ApplyStatsVisual(int played, int win, int loss, int draw, int duckShots)
     {
-        if (playedText != null) playedText.text = $"P:{Mathf.Max(0, played)}";
-        if (winText != null) winText.text = $"W:{Mathf.Max(0, win)}";
-        if (lossText != null) lossText.text = $"L:{Mathf.Max(0, loss)}";
-        if (drawText != null) drawText.text = $"D:{Mathf.Max(0, draw)}";
-        if (duckShotText != null) duckShotText.text = $"S:{Mathf.Max(0, duckShots)}";
+        if (playedText != null) playedText.text = $"{Mathf.Max(0, played)}";
+        if (winText != null) winText.text = $"{Mathf.Max(0, win)}";
+        if (lossText != null) lossText.text = $"{Mathf.Max(0, loss)}";
+        if (drawText != null) drawText.text = $"{Mathf.Max(0, draw)}";
+        if (duckShotText != null) duckShotText.text = $"{Mathf.Max(0, duckShots)}";
     }
 
     private void KickPlayer()
