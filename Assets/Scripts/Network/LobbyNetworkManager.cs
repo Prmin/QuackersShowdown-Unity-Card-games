@@ -35,11 +35,11 @@ public class LobbyNetworkManager : NetworkRoomManager
         Vector3 pos = start ? start.position : Vector3.zero;
         Quaternion rot = start ? start.rotation : Quaternion.identity;
 
-        // ✅ ใช้ playerPrefab (รองรับทุกเวอร์ชันของ Mirror)
-        // ตั้งใน Inspector ของ LobbyNetworkManager: Player Prefab = Gameplay Player (มี PlayerManager)
+        // âœ… à¹ƒà¸Šà¹‰ playerPrefab (à¸£à¸­à¸‡à¸£à¸±à¸šà¸—à¸¸à¸à¹€à¸§à¸­à¸£à¹Œà¸Šà¸±à¸™à¸‚à¸­à¸‡ Mirror)
+        // à¸•à¸±à¹‰à¸‡à¹ƒà¸™ Inspector à¸‚à¸­à¸‡ LobbyNetworkManager: Player Prefab = Gameplay Player (à¸¡à¸µ PlayerManager)
         GameObject gamePlayer = Instantiate(this.playerPrefab, pos, rot);
 
-        // คัดลอก "สี" จาก RoomPlayer → GamePlayer
+        // à¸„à¸±à¸”à¸¥à¸­à¸ "à¸ªà¸µ" à¸ˆà¸²à¸ RoomPlayer â†’ GamePlayer
         var rp = roomPlayer.GetComponent<LobbyRoomPlayer>();
         var pm = gamePlayer.GetComponent<PlayerManager>();
         if (rp != null && pm != null)
@@ -47,13 +47,13 @@ public class LobbyNetworkManager : NetworkRoomManager
             pm.duckColorIndex = rp.duckColorIndex;
             pm.SetDisplayName(rp.displayName);
             pm.SetProfileAvatarIndex(rp.profileAvatarIndex);
-            // ถ้าต้องการก๊อปชื่อด้วยก็ทำที่นี่ เช่น:
+            // à¸–à¹‰à¸²à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸à¹Šà¸­à¸›à¸Šà¸·à¹ˆà¸­à¸”à¹‰à¸§à¸¢à¸à¹‡à¸—à¸³à¸—à¸µà¹ˆà¸™à¸µà¹ˆ à¹€à¸Šà¹ˆà¸™:
         }
 
-        return gamePlayer; // Mirror จะ spawn และ sync vars ให้เอง
+        return gamePlayer; // Mirror à¸ˆà¸° spawn à¹à¸¥à¸° sync vars à¹ƒà¸«à¹‰à¹€à¸­à¸‡
     }
 
-    // ====== เพิ่ม helper ปิด UI ทั้งหมดของเมนู ======
+    // ====== à¹€à¸žà¸´à¹ˆà¸¡ helper à¸›à¸´à¸” UI à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”à¸‚à¸­à¸‡à¹€à¸¡à¸™à¸¹ ======
     void HideAllMenuUI()
     {
         UIFlow flow = UIFlow.I;
@@ -69,7 +69,7 @@ public class LobbyNetworkManager : NetworkRoomManager
     {
         base.OnClientSceneChanged();
 
-        // ซีนปัจจุบันชื่ออะไร
+        // à¸‹à¸µà¸™à¸›à¸±à¸ˆà¸ˆà¸¸à¸šà¸±à¸™à¸Šà¸·à¹ˆà¸­à¸­à¸°à¹„à¸£
         string activePath = SceneManager.GetActiveScene().path;
         if (!string.IsNullOrEmpty(GameplayScene) && activePath == GameplayScene)
         {
@@ -149,9 +149,11 @@ public class LobbyNetworkManager : NetworkRoomManager
 
     public bool CanStartGameNow(out string reason)
     {
-        if (numPlayers < minPlayers)
+        int requiredPlayers = GetRequiredPlayersToStart();
+
+        if (numPlayers < requiredPlayers)
         {
-            reason = $"ต้องการอย่างน้อย {minPlayers} คน (ปัจจุบัน {numPlayers})";
+            reason = $"ต้องรอผู้เล่นให้ครบ {requiredPlayers} คน (ปัจจุบัน {numPlayers})";
             return false;
         }
 
@@ -174,7 +176,18 @@ public class LobbyNetworkManager : NetworkRoomManager
         return true;
     }
 
+    private int GetRequiredPlayersToStart()
+    {
+        int configured = Mathf.Clamp(maxConnections, 3, maxPlayersAllowed);
+
+        if (minPlayers != configured)
+            minPlayers = configured;
+
+        return configured;
+    }
+
     public bool CanStartGameNow() => CanStartGameNow(out _);
+
 
 
     [Server]
@@ -182,7 +195,7 @@ public class LobbyNetworkManager : NetworkRoomManager
     {
         if (CanStartGameNow(out var reason))
         {
-            // ✅ ปิด Lobby UI สำหรับทุกเครื่องไว้ก่อน (โฮสต์เครื่องตัวเองเห็นผลทันที)
+            // âœ… à¸›à¸´à¸” Lobby UI à¸ªà¸³à¸«à¸£à¸±à¸šà¸—à¸¸à¸à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¹„à¸§à¹‰à¸à¹ˆà¸­à¸™ (à¹‚à¸®à¸ªà¸•à¹Œà¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸•à¸±à¸§à¹€à¸­à¸‡à¹€à¸«à¹‡à¸™à¸œà¸¥à¸—à¸±à¸™à¸—à¸µ)
             HideAllMenuUI();
 
             ServerChangeScene(GameplayScene);
@@ -213,7 +226,7 @@ public class LobbyNetworkManager : NetworkRoomManager
     public override void OnStopClient()
     {
         base.OnStopClient();
-        // กลับหน้า LobbyList แล้วเริ่มสแกนใหม่
+        // à¸à¸¥à¸±à¸šà¸«à¸™à¹‰à¸² LobbyList à¹à¸¥à¹‰à¸§à¹€à¸£à¸´à¹ˆà¸¡à¸ªà¹à¸à¸™à¹ƒà¸«à¸¡à¹ˆ
         HandleDisconnectedClientUIFlow();
         // ;
     }

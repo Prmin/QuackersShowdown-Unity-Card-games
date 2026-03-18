@@ -1,5 +1,6 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(AudioSource))]
@@ -8,6 +9,10 @@ public class UIAudioSfx : MonoBehaviour
     private const float MinLinearVolume = 0.0001f;
 
     private static UIAudioSfx instance;
+    private static bool hasPersistedMusicState;
+    private static string persistedMusicClipName;
+    private static float persistedMusicTimeSeconds;
+    private static bool persistedMusicWasPlaying;
 
     [Header("Button Click")]
     [SerializeField] private AudioClip buttonClickClip;
@@ -34,8 +39,10 @@ public class UIAudioSfx : MonoBehaviour
         if (musicAudioSource != null)
         {
             musicAudioSource.spatialBlend = 0f;
+            musicAudioSource.loop = true;
             shouldAutoPlay = musicAudioSource.playOnAwake;
             musicAudioSource.playOnAwake = false;
+            RestorePersistedMusicState();
         }
 
         EnsureClickAudioSource();
@@ -46,6 +53,24 @@ public class UIAudioSfx : MonoBehaviour
 
         if (dontDestroyOnLoad)
             DontDestroyOnLoad(gameObject);
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        CacheMusicState();
+
+        if (instance == this)
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            instance = null;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        CacheMusicState();
     }
 
     public static void PlayButtonClick()
@@ -116,10 +141,16 @@ public class UIAudioSfx : MonoBehaviour
 
         if (!musicAudioSource.isPlaying)
         {
+            RestorePersistedMusicState();
             musicAudioSource.UnPause();
             if (!musicAudioSource.isPlaying)
                 musicAudioSource.Play();
         }
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        SyncBackgroundPlaybackWithSavedMusicVolume(startIfNeeded: true);
     }
 
     private void ApplySavedSfxMixerVolume()
@@ -170,6 +201,36 @@ public class UIAudioSfx : MonoBehaviour
             return sfxGroups[0];
 
         return currentGroup;
+    }
+
+    private void CacheMusicState()
+    {
+        if (musicAudioSource == null || musicAudioSource.clip == null)
+            return;
+
+        hasPersistedMusicState = true;
+        persistedMusicClipName = musicAudioSource.clip.name;
+        persistedMusicTimeSeconds = Mathf.Clamp(musicAudioSource.time, 0f, musicAudioSource.clip.length);
+        persistedMusicWasPlaying = musicAudioSource.isPlaying;
+    }
+
+    private void RestorePersistedMusicState()
+    {
+        if (!hasPersistedMusicState || musicAudioSource == null || musicAudioSource.clip == null)
+            return;
+
+        if (!string.Equals(musicAudioSource.clip.name, persistedMusicClipName, System.StringComparison.Ordinal))
+            return;
+
+        if (musicAudioSource.clip.length <= 0f)
+            return;
+
+        float clampedTime = Mathf.Clamp(persistedMusicTimeSeconds, 0f, Mathf.Max(0f, musicAudioSource.clip.length - 0.01f));
+        if (Mathf.Abs(musicAudioSource.time - clampedTime) > 0.05f)
+            musicAudioSource.time = clampedTime;
+
+        if (persistedMusicWasPlaying && !musicAudioSource.isPlaying)
+            musicAudioSource.UnPause();
     }
 
     private static float LinearToDb(float linear)

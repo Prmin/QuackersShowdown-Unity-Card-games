@@ -1297,7 +1297,7 @@ public partial class PlayerManager : NetworkBehaviour
         var selectedPrefabs = duckPrefabs
             .Where(kv => selected.Contains(kv.Key) && kv.Value != null)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
-        CardPoolManager.Initialize(selectedPrefabs, initialCount: 1); //จำนวนการ์ดในpool
+        CardPoolManager.Initialize(selectedPrefabs, initialCount: 5); //จำนวนการ์ดในpool
         // 2) Ensure the shared DuckZone is filled before we begin
         host.RefillDuckZoneIfNeeded();
         // 3) Build/rotate authoritative TurnOrder from DuckZone front card
@@ -1394,22 +1394,22 @@ public partial class PlayerManager : NetworkBehaviour
     private void InitializeActionCardPool()
     {
         actionCardPool.Clear();
-        // actionCardPool.Add("Shoot", 10);
-        actionCardPool.Add("QuickShot", 100);
-        // actionCardPool.Add("TekeAim", 10);
-        // actionCardPool.Add("DoubleBarrel", 10);
-        // actionCardPool.Add("Misfire", 10);
-        // actionCardPool.Add("TwoBirds", 10);
-        // actionCardPool.Add("BumpLeft", 10);
-        // actionCardPool.Add("BumpRight", 10);
-        // actionCardPool.Add("LineForward", 10);
-        // actionCardPool.Add("MoveAhead", 10);
-        // actionCardPool.Add("HangBack", 10);
-        // actionCardPool.Add("FastForward", 10);
-        // actionCardPool.Add("DisorderlyConduckt", 10);
-        // actionCardPool.Add("DuckShuffle", 10);
-        // actionCardPool.Add("GivePeaceAChance", 10);
-        // actionCardPool.Add("Resurrection", 10);
+        actionCardPool.Add("Shoot", 13);
+        actionCardPool.Add("QuickShot", 1);
+        actionCardPool.Add("TekeAim", 11);
+        actionCardPool.Add("DoubleBarrel", 1);
+        actionCardPool.Add("Misfire", 1);
+        actionCardPool.Add("TwoBirds", 1);
+        actionCardPool.Add("BumpLeft", 2);
+        actionCardPool.Add("BumpRight", 2);
+        actionCardPool.Add("LineForward", 6);
+        actionCardPool.Add("MoveAhead", 3);
+        actionCardPool.Add("HangBack", 3);
+        actionCardPool.Add("FastForward", 1);
+        actionCardPool.Add("DisorderlyConduckt", 1);
+        actionCardPool.Add("DuckShuffle", 1);
+        actionCardPool.Add("GivePeaceAChance", 1);
+        actionCardPool.Add("Resurrection", 1);
     }
     private int GetDuckCardCountInDuckZone()
     {

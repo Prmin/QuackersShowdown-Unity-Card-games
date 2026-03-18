@@ -14,6 +14,11 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
     [SerializeField] private TMP_Text winnerCountText;
     [SerializeField] private TMP_Text clickHintText;
 
+    [Header("State Images")]
+    [SerializeField] private Image[] normalStateImages = new Image[2];
+    [SerializeField] private Image[] drawStateImages = new Image[2];
+    [SerializeField] private Image[] problemStateImages = new Image[2];
+
     [Header("Duck Sprites (index 0..5)")]
     [SerializeField] private Sprite[] duckColorSprites = new Sprite[6];
 
@@ -34,6 +39,13 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
         "DuckBlue", "DuckOrange", "DuckPink", "DuckGreen", "DuckYellow", "DuckPurple"
     };
 
+    private enum MatchEndVisualState
+    {
+        Normal,
+        Draw,
+        Problem
+    }
+
     private bool _isReturning;
     private bool _statsRecorded;
     private bool _sceneLoadHooked;
@@ -53,11 +65,12 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
     public void Initialize(string winnerDuckKey, int remainingCount, string reason)
     {
         bool matchProblem = IsProblemReason(reason);
+        bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
+        ApplyStateImages(matchProblem ? MatchEndVisualState.Problem : (isDraw ? MatchEndVisualState.Draw : MatchEndVisualState.Normal));
 
         if (!matchProblem)
             TryRecordLocalMatchStats(winnerDuckKey);
 
-        bool isDraw = string.Equals(winnerDuckKey, "Draw", System.StringComparison.OrdinalIgnoreCase);
         int colorIndex = DuckKeyToColorIndex(winnerDuckKey);
 
         if (matchProblem)
@@ -105,6 +118,28 @@ public class MatchEndOverlayUI : MonoBehaviour, IPointerClickHandler
 
         TryPlayEndSfx(ResolveOutcomeSfx(winnerDuckKey));
         Debug.Log($"[MatchEndOverlayUI] Show winner={winnerDuckKey} remaining={remainingCount} reason={reason}");
+    }
+
+    private void ApplyStateImages(MatchEndVisualState state)
+    {
+        SetImageGroupVisible(normalStateImages, state == MatchEndVisualState.Normal);
+        SetImageGroupVisible(drawStateImages, state == MatchEndVisualState.Draw);
+        SetImageGroupVisible(problemStateImages, state == MatchEndVisualState.Problem);
+    }
+
+    private static void SetImageGroupVisible(Image[] images, bool isVisible)
+    {
+        if (images == null)
+            return;
+
+        for (int i = 0; i < images.Length; i++)
+        {
+            Image image = images[i];
+            if (image == null)
+                continue;
+
+            image.gameObject.SetActive(isVisible);
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)

@@ -2917,8 +2917,8 @@ MonoBehaviour:
   showRoomGUI: 0
   minPlayers: 2
   roomPlayerPrefab: {fileID: 6462019493260019791, guid: a08e0233cd9109340afd2e7c1ffa6f5c, type: 3}
-  RoomScene: Assets/Resources/Scenes/LobbSceneNew.unity
-  GameplayScene: Assets/Resources/Scenes/GamePlayScene.unity
+  RoomScene: Assets/Prefabs/Resources/Scenes/LobbSceneNew.unity
+  GameplayScene: Assets/Prefabs/Resources/Scenes/GamePlayScene.unity
   _allPlayersReady: 0
   clientIndex: 0
   maxPlayersAllowed: 6
