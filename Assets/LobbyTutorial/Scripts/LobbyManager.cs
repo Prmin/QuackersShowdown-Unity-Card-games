@@ -16,14 +16,14 @@ public class LobbyManager : MonoBehaviour
     public string CurrentLobbyName { get; private set; } = "Lobby";
     public GameMode CurrentGameMode { get; private set; } = GameMode.CaptureTheFlag;
 
-    // ★ เพิ่มสถานะความเป็น Private + รหัสผ่าน (ประกาศ/เช็คตอนเข้าห้อง)
+    // Ã¢Ëœâ€¦ Ã Â¹â‚¬Ã Â¸Å¾Ã Â¸Â´Ã Â¹Ë†Ã Â¸Â¡Ã Â¸ÂªÃ Â¸â€“Ã Â¸Â²Ã Â¸â„¢Ã Â¸Â°Ã Â¸â€žÃ Â¸Â§Ã Â¸Â²Ã Â¸Â¡Ã Â¹â‚¬Ã Â¸â€ºÃ Â¹â€¡Ã Â¸â„¢ Private + Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸ÂªÃ Â¸Å“Ã Â¹Ë†Ã Â¸Â²Ã Â¸â„¢ (Ã Â¸â€ºÃ Â¸Â£Ã Â¸Â°Ã Â¸ÂÃ Â¸Â²Ã Â¸Â¨/Ã Â¹â‚¬Ã Â¸Å Ã Â¹â€¡Ã Â¸â€žÃ Â¸â€¢Ã Â¸Â­Ã Â¸â„¢Ã Â¹â‚¬Ã Â¸â€šÃ Â¹â€°Ã Â¸Â²Ã Â¸Â«Ã Â¹â€°Ã Â¸Â­Ã Â¸â€¡)
     public bool CurrentIsPrivate { get; private set; } = false;
     public string CurrentLobbyPassword { get; private set; } = "";
 
-    // ★ รหัสที่ client จะส่งตอน Join (ตั้งจาก UI ก่อนเริ่มเชื่อมต่อ)
+    // Ã¢Ëœâ€¦ Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸ÂªÃ Â¸â€”Ã Â¸ÂµÃ Â¹Ë† client Ã Â¸Ë†Ã Â¸Â°Ã Â¸ÂªÃ Â¹Ë†Ã Â¸â€¡Ã Â¸â€¢Ã Â¸Â­Ã Â¸â„¢ Join (Ã Â¸â€¢Ã Â¸Â±Ã Â¹â€°Ã Â¸â€¡Ã Â¸Ë†Ã Â¸Â²Ã Â¸Â UI Ã Â¸ÂÃ Â¹Ë†Ã Â¸Â­Ã Â¸â„¢Ã Â¹â‚¬Ã Â¸Â£Ã Â¸Â´Ã Â¹Ë†Ã Â¸Â¡Ã Â¹â‚¬Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¸â€¢Ã Â¹Ë†Ã Â¸Â­)
     public static string PendingJoinPassword = "";
 
-    // ★ ข้อความใช้สื่อสารระหว่าง client/server เพื่อเช็ครหัสผ่าน
+    // Ã¢Ëœâ€¦ Ã Â¸â€šÃ Â¹â€°Ã Â¸Â­Ã Â¸â€žÃ Â¸Â§Ã Â¸Â²Ã Â¸Â¡Ã Â¹Æ’Ã Â¸Å Ã Â¹â€°Ã Â¸ÂªÃ Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸ÂªÃ Â¸Â²Ã Â¸Â£Ã Â¸Â£Ã Â¸Â°Ã Â¸Â«Ã Â¸Â§Ã Â¹Ë†Ã Â¸Â²Ã Â¸â€¡ client/server Ã Â¹â‚¬Ã Â¸Å¾Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¹â‚¬Ã Â¸Å Ã Â¹â€¡Ã Â¸â€žÃ Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸ÂªÃ Â¸Å“Ã Â¹Ë†Ã Â¸Â²Ã Â¸â„¢
     public struct JoinPasswordMsg : NetworkMessage { public string password; }
     public struct JoinPasswordResultMsg : NetworkMessage { public bool ok; public string reason; }
 
@@ -49,7 +49,7 @@ public class LobbyManager : MonoBehaviour
 
     void AutoAssignHostPortIfUnset()
     {
-        // ใช้ค่าพอร์ตจาก Transport เป็นฐาน (เช่น 7777), แล้วกระจายด้วย PID
+        // Ã Â¹Æ’Ã Â¸Å Ã Â¹â€°Ã Â¸â€žÃ Â¹Ë†Ã Â¸Â²Ã Â¸Å¾Ã Â¸Â­Ã Â¸Â£Ã Â¹Å’Ã Â¸â€¢Ã Â¸Ë†Ã Â¸Â²Ã Â¸Â Transport Ã Â¹â‚¬Ã Â¸â€ºÃ Â¹â€¡Ã Â¸â„¢Ã Â¸ÂÃ Â¸Â²Ã Â¸â„¢ (Ã Â¹â‚¬Ã Â¸Å Ã Â¹Ë†Ã Â¸â„¢ 7777), Ã Â¹ÂÃ Â¸Â¥Ã Â¹â€°Ã Â¸Â§Ã Â¸ÂÃ Â¸Â£Ã Â¸Â°Ã Â¸Ë†Ã Â¸Â²Ã Â¸Â¢Ã Â¸â€Ã Â¹â€°Ã Â¸Â§Ã Â¸Â¢ PID
         int basePort = 7777;
         var kcp = NetworkManager.singleton ? NetworkManager.singleton.transport as kcp2k.KcpTransport : null;
         if (kcp != null) basePort = kcp.Port;
@@ -57,14 +57,14 @@ public class LobbyManager : MonoBehaviour
         if (!PlayerPrefs.HasKey("HostPort"))
         {
             int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-            int port = Mathf.Clamp(basePort + (pid % 16), 1024, 65535); // กระจาย 16 ช่อง
+            int port = Mathf.Clamp(basePort + (pid % 16), 1024, 65535); // Ã Â¸ÂÃ Â¸Â£Ã Â¸Â°Ã Â¸Ë†Ã Â¸Â²Ã Â¸Â¢ 16 Ã Â¸Å Ã Â¹Ë†Ã Â¸Â­Ã Â¸â€¡
             PlayerPrefs.SetInt("HostPort", port);
             PlayerPrefs.Save();
             ;
         }
     }
 
-    // ★ ให้ UI เรียกก่อนสร้างห้อง (หรือจะพึ่งพา param isPrivate ของ CreateLobby ก็ได้)
+    // Ã¢Ëœâ€¦ Ã Â¹Æ’Ã Â¸Â«Ã Â¹â€° UI Ã Â¹â‚¬Ã Â¸Â£Ã Â¸ÂµÃ Â¸Â¢Ã Â¸ÂÃ Â¸ÂÃ Â¹Ë†Ã Â¸Â­Ã Â¸â„¢Ã Â¸ÂªÃ Â¸Â£Ã Â¹â€°Ã Â¸Â²Ã Â¸â€¡Ã Â¸Â«Ã Â¹â€°Ã Â¸Â­Ã Â¸â€¡ (Ã Â¸Â«Ã Â¸Â£Ã Â¸Â·Ã Â¸Â­Ã Â¸Ë†Ã Â¸Â°Ã Â¸Å¾Ã Â¸Â¶Ã Â¹Ë†Ã Â¸â€¡Ã Â¸Å¾Ã Â¸Â² param isPrivate Ã Â¸â€šÃ Â¸Â­Ã Â¸â€¡ CreateLobby Ã Â¸ÂÃ Â¹â€¡Ã Â¹â€žÃ Â¸â€Ã Â¹â€°)
     public void SetLobbyPrivacy(bool isPrivate, string password)
     {
         CurrentIsPrivate = isPrivate;
@@ -74,7 +74,7 @@ public class LobbyManager : MonoBehaviour
     // ===== Helpers =====
     kcp2k.KcpTransport GetKcp()
     {
-        // ใช้ Transport บน NetworkManager โดยตรง (ตัวจริงที่จะถูกใช้ตอน StartHost/Client)
+        // Ã Â¹Æ’Ã Â¸Å Ã Â¹â€° Transport Ã Â¸Å¡Ã Â¸â„¢ NetworkManager Ã Â¹â€šÃ Â¸â€Ã Â¸Â¢Ã Â¸â€¢Ã Â¸Â£Ã Â¸â€¡ (Ã Â¸â€¢Ã Â¸Â±Ã Â¸Â§Ã Â¸Ë†Ã Â¸Â£Ã Â¸Â´Ã Â¸â€¡Ã Â¸â€”Ã Â¸ÂµÃ Â¹Ë†Ã Â¸Ë†Ã Â¸Â°Ã Â¸â€“Ã Â¸Â¹Ã Â¸ÂÃ Â¹Æ’Ã Â¸Å Ã Â¹â€°Ã Â¸â€¢Ã Â¸Â­Ã Â¸â„¢ StartHost/Client)
         return NetworkManager.singleton
             ? NetworkManager.singleton.transport as kcp2k.KcpTransport
             : null;
@@ -99,10 +99,10 @@ public class LobbyManager : MonoBehaviour
     }
 
     // --- Host / Join / Leave ---
-    // ===== CreateLobby: ตั้งพอร์ตบน KcpTransport ของ NetworkManager แล้วค่อย StartHost =====
+    // ===== CreateLobby: Ã Â¸â€¢Ã Â¸Â±Ã Â¹â€°Ã Â¸â€¡Ã Â¸Å¾Ã Â¸Â­Ã Â¸Â£Ã Â¹Å’Ã Â¸â€¢Ã Â¸Å¡Ã Â¸â„¢ KcpTransport Ã Â¸â€šÃ Â¸Â­Ã Â¸â€¡ NetworkManager Ã Â¹ÂÃ Â¸Â¥Ã Â¹â€°Ã Â¸Â§Ã Â¸â€žÃ Â¹Ë†Ã Â¸Â­Ã Â¸Â¢ StartHost =====
     public void CreateLobby(string lobbyName, int maxPlayers, bool isPrivate, GameMode mode)
     {
-        // โปรเซสเดียว “โฮสต์ได้ทีละห้อง” เท่านั้น
+        // Ã Â¹â€šÃ Â¸â€ºÃ Â¸Â£Ã Â¹â‚¬Ã Â¸â€¹Ã Â¸ÂªÃ Â¹â‚¬Ã Â¸â€Ã Â¸ÂµÃ Â¸Â¢Ã Â¸Â§ Ã¢â‚¬Å“Ã Â¹â€šÃ Â¸Â®Ã Â¸ÂªÃ Â¸â€¢Ã Â¹Å’Ã Â¹â€žÃ Â¸â€Ã Â¹â€°Ã Â¸â€”Ã Â¸ÂµÃ Â¸Â¥Ã Â¸Â°Ã Â¸Â«Ã Â¹â€°Ã Â¸Â­Ã Â¸â€¡Ã¢â‚¬Â Ã Â¹â‚¬Ã Â¸â€”Ã Â¹Ë†Ã Â¸Â²Ã Â¸â„¢Ã Â¸Â±Ã Â¹â€°Ã Â¸â„¢
         if (NetworkServer.active)
         {
             Debug.LogWarning("[Lobby] This process is already hosting. Run another app instance for a second room (or StopHost first).");
@@ -115,7 +115,8 @@ public class LobbyManager : MonoBehaviour
 
         if (!M) { Debug.LogError("[Lobby] NetworkManager missing"); return; }
 
-        M.maxConnections = Mathf.Clamp(maxPlayers, 2, 6);
+        M.maxConnections = Mathf.Clamp(maxPlayers, 3, 6);
+        M.minPlayers = M.maxConnections;
         LastKnownMaxPlayers = M.maxConnections;
 
         var kcp = GetKcp();
@@ -126,7 +127,7 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
-        // เริ่มจากพอร์ตฐาน (PlayerPrefs หรือค่าปัจจุบัน) แล้วลองเลื่อนขึ้นไปเรื่อยๆ
+        // Ã Â¹â‚¬Ã Â¸Â£Ã Â¸Â´Ã Â¹Ë†Ã Â¸Â¡Ã Â¸Ë†Ã Â¸Â²Ã Â¸ÂÃ Â¸Å¾Ã Â¸Â­Ã Â¸Â£Ã Â¹Å’Ã Â¸â€¢Ã Â¸ÂÃ Â¸Â²Ã Â¸â„¢ (PlayerPrefs Ã Â¸Â«Ã Â¸Â£Ã Â¸Â·Ã Â¸Â­Ã Â¸â€žÃ Â¹Ë†Ã Â¸Â²Ã Â¸â€ºÃ Â¸Â±Ã Â¸Ë†Ã Â¸Ë†Ã Â¸Â¸Ã Â¸Å¡Ã Â¸Â±Ã Â¸â„¢) Ã Â¹ÂÃ Â¸Â¥Ã Â¹â€°Ã Â¸Â§Ã Â¸Â¥Ã Â¸Â­Ã Â¸â€¡Ã Â¹â‚¬Ã Â¸Â¥Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸â„¢Ã Â¸â€šÃ Â¸Â¶Ã Â¹â€°Ã Â¸â„¢Ã Â¹â€žÃ Â¸â€ºÃ Â¹â‚¬Ã Â¸Â£Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¢Ã Â¹â€ 
         int basePort = PlayerPrefs.GetInt("HostPort", kcp.Port);
         const int MAX_TRIES = 24;
         bool started = false;
@@ -144,7 +145,7 @@ public class LobbyManager : MonoBehaviour
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[KCP] Port {candidate} busy → {ex.Message}");
+                Debug.LogWarning($"[KCP] Port {candidate} busy Ã¢â€ â€™ {ex.Message}");
                 if (NetworkServer.active || NetworkClient.active)
                 {
                     try { NetworkManager.singleton.StopHost(); } catch { }
@@ -154,35 +155,35 @@ public class LobbyManager : MonoBehaviour
         if (!started) { Debug.LogError("[KCP] No free UDP port found for hosting."); UIFlow.I?.ShowLobbyList(); return; }
 
 
-        // ---- มาถึงนี่คือโฮสต์ขึ้นแล้ว ----
+        // ---- Ã Â¸Â¡Ã Â¸Â²Ã Â¸â€“Ã Â¸Â¶Ã Â¸â€¡Ã Â¸â„¢Ã Â¸ÂµÃ Â¹Ë†Ã Â¸â€žÃ Â¸Â·Ã Â¸Â­Ã Â¹â€šÃ Â¸Â®Ã Â¸ÂªÃ Â¸â€¢Ã Â¹Å’Ã Â¸â€šÃ Â¸Â¶Ã Â¹â€°Ã Â¸â„¢Ã Â¹ÂÃ Â¸Â¥Ã Â¹â€°Ã Â¸Â§ ----
 
-        // handler ตรวจรหัส (ห้อง Private)
+        // handler Ã Â¸â€¢Ã Â¸Â£Ã Â¸Â§Ã Â¸Ë†Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸Âª (Ã Â¸Â«Ã Â¹â€°Ã Â¸Â­Ã Â¸â€¡ Private)
         NetworkServer.RegisterHandler<JoinPasswordMsg>(OnJoinPasswordMsg, false);
 
-        // ตั้งชื่อ/สีจากค่าที่บันทึกไว้
+        // Ã Â¸â€¢Ã Â¸Â±Ã Â¹â€°Ã Â¸â€¡Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­/Ã Â¸ÂªÃ Â¸ÂµÃ Â¸Ë†Ã Â¸Â²Ã Â¸ÂÃ Â¸â€žÃ Â¹Ë†Ã Â¸Â²Ã Â¸â€”Ã Â¸ÂµÃ Â¹Ë†Ã Â¸Å¡Ã Â¸Â±Ã Â¸â„¢Ã Â¸â€”Ã Â¸Â¶Ã Â¸ÂÃ Â¹â€žÃ Â¸Â§Ã Â¹â€°
         var nm = PlayerPrefs.GetString(KEY_PLAYER_NAME, "Player");
         if (LobbyRoomPlayer.Local) LobbyRoomPlayer.Local.CmdSetName(nm);
         int saved = PlayerPrefs.GetInt(KEY_DUCK_COLOR, 0);
         if (LobbyRoomPlayer.Local) LobbyRoomPlayer.Local.CmdSetDuckColor(saved);
 
-        // โฆษณา IP:Port จริง
+        // Ã Â¹â€šÃ Â¸â€ Ã Â¸Â©Ã Â¸â€œÃ Â¸Â² IP:Port Ã Â¸Ë†Ã Â¸Â£Ã Â¸Â´Ã Â¸â€¡
         DiscoveryBridge.I?.AdvertiseIfHost();
 
-        // ไปหน้า Lobby
+        // Ã Â¹â€žÃ Â¸â€ºÃ Â¸Â«Ã Â¸â„¢Ã Â¹â€°Ã Â¸Â² Lobby
         UIFlow.I?.ShowLobby();
     }
     public void SetClientPreview(string lobbyName, int maxPlayers, string modeLabel)
     {
-        // ชื่อ
+        // Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­
         CurrentLobbyName = string.IsNullOrWhiteSpace(lobbyName) ? "Lobby" : lobbyName.Trim();
 
-        // Max players ที่ประกาศจาก discovery (เช่น 2..6)
+        // Max players Ã Â¸â€”Ã Â¸ÂµÃ Â¹Ë†Ã Â¸â€ºÃ Â¸Â£Ã Â¸Â°Ã Â¸ÂÃ Â¸Â²Ã Â¸Â¨Ã Â¸Ë†Ã Â¸Â²Ã Â¸Â discovery (Ã Â¹â‚¬Ã Â¸Å Ã Â¹Ë†Ã Â¸â„¢ 2..6)
         LastKnownMaxPlayers = Mathf.Clamp(maxPlayers, 1, 100);
 
-        // โหมดเกมพยายาม parse จาก label (ถ้าไม่ตรง enum ก็ปล่อยค่าเดิม)
+        // Ã Â¹â€šÃ Â¸Â«Ã Â¸Â¡Ã Â¸â€Ã Â¹â‚¬Ã Â¸ÂÃ Â¸Â¡Ã Â¸Å¾Ã Â¸Â¢Ã Â¸Â²Ã Â¸Â¢Ã Â¸Â²Ã Â¸Â¡ parse Ã Â¸Ë†Ã Â¸Â²Ã Â¸Â label (Ã Â¸â€“Ã Â¹â€°Ã Â¸Â²Ã Â¹â€žÃ Â¸Â¡Ã Â¹Ë†Ã Â¸â€¢Ã Â¸Â£Ã Â¸â€¡ enum Ã Â¸ÂÃ Â¹â€¡Ã Â¸â€ºÃ Â¸Â¥Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¢Ã Â¸â€žÃ Â¹Ë†Ã Â¸Â²Ã Â¹â‚¬Ã Â¸â€Ã Â¸Â´Ã Â¸Â¡)
         if (!string.IsNullOrWhiteSpace(modeLabel))
         {
-            // เผื่อมี prefix อย่าง 🔒 (ถ้าใช้ภายหลัง)
+            // Ã Â¹â‚¬Ã Â¸Å“Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¸Âµ prefix Ã Â¸Â­Ã Â¸Â¢Ã Â¹Ë†Ã Â¸Â²Ã Â¸â€¡ Ã°Å¸â€â€™ (Ã Â¸â€“Ã Â¹â€°Ã Â¸Â²Ã Â¹Æ’Ã Â¸Å Ã Â¹â€°Ã Â¸Â Ã Â¸Â²Ã Â¸Â¢Ã Â¸Â«Ã Â¸Â¥Ã Â¸Â±Ã Â¸â€¡)
             var pure = (modeLabel ?? "").Replace("\U0001F512", "").Trim();
             if (System.Enum.TryParse(pure, out GameMode parsed))
                 CurrentGameMode = parsed;
@@ -215,17 +216,17 @@ public class LobbyManager : MonoBehaviour
         if (LobbyRoomPlayer.Local) LobbyRoomPlayer.Local.CmdSetDuckColor((int)color);
     }
 
-    // --- Game mode (local only label; sync จริงค่อยเพิ่ม RoomState) ---
+    // --- Game mode (local only label; sync Ã Â¸Ë†Ã Â¸Â£Ã Â¸Â´Ã Â¸â€¡Ã Â¸â€žÃ Â¹Ë†Ã Â¸Â­Ã Â¸Â¢Ã Â¹â‚¬Ã Â¸Å¾Ã Â¸Â´Ã Â¹Ë†Ã Â¸Â¡ RoomState) ---
     public void ChangeGameMode()
     {
         CurrentGameMode = CurrentGameMode == GameMode.CaptureTheFlag ? GameMode.Conquest : GameMode.CaptureTheFlag;
     }
 
-    // ★ ฝั่ง client: สมัคร handler รับผลลัพธ์ และส่งรหัสหลังเชื่อมต่อสำเร็จ
-    // ===== JoinLobbyByAddress: รองรับ "ip:port" และตั้งพอร์ตบน KcpTransport ก่อน StartClient =====
+    // Ã¢Ëœâ€¦ Ã Â¸ÂÃ Â¸Â±Ã Â¹Ë†Ã Â¸â€¡ client: Ã Â¸ÂªÃ Â¸Â¡Ã Â¸Â±Ã Â¸â€žÃ Â¸Â£ handler Ã Â¸Â£Ã Â¸Â±Ã Â¸Å¡Ã Â¸Å“Ã Â¸Â¥Ã Â¸Â¥Ã Â¸Â±Ã Â¸Å¾Ã Â¸ËœÃ Â¹Å’ Ã Â¹ÂÃ Â¸Â¥Ã Â¸Â°Ã Â¸ÂªÃ Â¹Ë†Ã Â¸â€¡Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸ÂªÃ Â¸Â«Ã Â¸Â¥Ã Â¸Â±Ã Â¸â€¡Ã Â¹â‚¬Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¸â€¢Ã Â¹Ë†Ã Â¸Â­Ã Â¸ÂªÃ Â¸Â³Ã Â¹â‚¬Ã Â¸Â£Ã Â¹â€¡Ã Â¸Ë†
+    // ===== JoinLobbyByAddress: Ã Â¸Â£Ã Â¸Â­Ã Â¸â€¡Ã Â¸Â£Ã Â¸Â±Ã Â¸Å¡ "ip:port" Ã Â¹ÂÃ Â¸Â¥Ã Â¸Â°Ã Â¸â€¢Ã Â¸Â±Ã Â¹â€°Ã Â¸â€¡Ã Â¸Å¾Ã Â¸Â­Ã Â¸Â£Ã Â¹Å’Ã Â¸â€¢Ã Â¸Å¡Ã Â¸â„¢ KcpTransport Ã Â¸ÂÃ Â¹Ë†Ã Â¸Â­Ã Â¸â„¢ StartClient =====
     public void JoinLobbyByAddress(string address)
     {
-        // ถ้ากำลังโฮสต์/ต่ออยู่ ให้ปิดก่อน
+        // Ã Â¸â€“Ã Â¹â€°Ã Â¸Â²Ã Â¸ÂÃ Â¸Â³Ã Â¸Â¥Ã Â¸Â±Ã Â¸â€¡Ã Â¹â€šÃ Â¸Â®Ã Â¸ÂªÃ Â¸â€¢Ã Â¹Å’/Ã Â¸â€¢Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â­Ã Â¸Â¢Ã Â¸Â¹Ã Â¹Ë† Ã Â¹Æ’Ã Â¸Â«Ã Â¹â€°Ã Â¸â€ºÃ Â¸Â´Ã Â¸â€Ã Â¸ÂÃ Â¹Ë†Ã Â¸Â­Ã Â¸â„¢
         if (NetworkServer.active && NetworkClient.active) NetworkManager.singleton.StopHost();
         else if (NetworkClient.active) NetworkManager.singleton.StopClient();
         else if (NetworkServer.active) NetworkManager.singleton.StopServer();
@@ -242,7 +243,7 @@ public class LobbyManager : MonoBehaviour
                 ip = ip.Substring(0, colon);
             }
 
-            // ✅ ตั้งพอร์ตให้ kcp เพื่อเชื่อมไปยังปลายทาง
+            // Ã¢Å“â€¦ Ã Â¸â€¢Ã Â¸Â±Ã Â¹â€°Ã Â¸â€¡Ã Â¸Å¾Ã Â¸Â­Ã Â¸Â£Ã Â¹Å’Ã Â¸â€¢Ã Â¹Æ’Ã Â¸Â«Ã Â¹â€° kcp Ã Â¹â‚¬Ã Â¸Å¾Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¹â‚¬Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¹â€žÃ Â¸â€ºÃ Â¸Â¢Ã Â¸Â±Ã Â¸â€¡Ã Â¸â€ºÃ Â¸Â¥Ã Â¸Â²Ã Â¸Â¢Ã Â¸â€”Ã Â¸Â²Ã Â¸â€¡
             var nm = NetworkManager.singleton;
             var kcp = nm ? nm.transport as kcp2k.KcpTransport : null;
             if (kcp != null && port > 0) kcp.Port = (ushort)Mathf.Clamp(port, 1024, 65535);
@@ -250,13 +251,13 @@ public class LobbyManager : MonoBehaviour
             nm.networkAddress = ip;
         }
 
-        // handler ผลตรวจรหัส
+        // handler Ã Â¸Å“Ã Â¸Â¥Ã Â¸â€¢Ã Â¸Â£Ã Â¸Â§Ã Â¸Ë†Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸Âª
         NetworkClient.RegisterHandler<JoinPasswordResultMsg>(OnJoinPasswordResult, false);
 
         if (!NetworkClient.active)
             NetworkManager.singleton.StartClient();
 
-        // ส่งรหัส (กรณีห้อง private) เมื่อเชื่อมสำเร็จ
+        // Ã Â¸ÂªÃ Â¹Ë†Ã Â¸â€¡Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸Âª (Ã Â¸ÂÃ Â¸Â£Ã Â¸â€œÃ Â¸ÂµÃ Â¸Â«Ã Â¹â€°Ã Â¸Â­Ã Â¸â€¡ private) Ã Â¹â‚¬Ã Â¸Â¡Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¹â‚¬Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¸ÂªÃ Â¸Â³Ã Â¹â‚¬Ã Â¸Â£Ã Â¹â€¡Ã Â¸Ë†
         StartCoroutine(SendPasswordWhenConnected());
     }
 
@@ -268,11 +269,11 @@ public class LobbyManager : MonoBehaviour
         var pass = PendingJoinPassword ?? "";
         NetworkClient.Send(new JoinPasswordMsg { password = pass });
 
-        // เคลียร์เพื่อความปลอดภัย
+        // Ã Â¹â‚¬Ã Â¸â€žÃ Â¸Â¥Ã Â¸ÂµÃ Â¸Â¢Ã Â¸Â£Ã Â¹Å’Ã Â¹â‚¬Ã Â¸Å¾Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸â€žÃ Â¸Â§Ã Â¸Â²Ã Â¸Â¡Ã Â¸â€ºÃ Â¸Â¥Ã Â¸Â­Ã Â¸â€Ã Â¸Â Ã Â¸Â±Ã Â¸Â¢
         PendingJoinPassword = "";
     }
 
-    // ★ ฝั่งเซิร์ฟเวอร์: ตรวจรหัส
+    // Ã¢Ëœâ€¦ Ã Â¸ÂÃ Â¸Â±Ã Â¹Ë†Ã Â¸â€¡Ã Â¹â‚¬Ã Â¸â€¹Ã Â¸Â´Ã Â¸Â£Ã Â¹Å’Ã Â¸Å¸Ã Â¹â‚¬Ã Â¸Â§Ã Â¸Â­Ã Â¸Â£Ã Â¹Å’: Ã Â¸â€¢Ã Â¸Â£Ã Â¸Â§Ã Â¸Ë†Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸Âª
     void OnJoinPasswordMsg(NetworkConnectionToClient conn, JoinPasswordMsg msg)
     {
         bool ok = !CurrentIsPrivate || msg.password == CurrentLobbyPassword;
@@ -282,17 +283,17 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
-        // ผิดรหัส → แจ้งผลและตัดการเชื่อมต่อ
+        // Ã Â¸Å“Ã Â¸Â´Ã Â¸â€Ã Â¸Â£Ã Â¸Â«Ã Â¸Â±Ã Â¸Âª Ã¢â€ â€™ Ã Â¹ÂÃ Â¸Ë†Ã Â¹â€°Ã Â¸â€¡Ã Â¸Å“Ã Â¸Â¥Ã Â¹ÂÃ Â¸Â¥Ã Â¸Â°Ã Â¸â€¢Ã Â¸Â±Ã Â¸â€Ã Â¸ÂÃ Â¸Â²Ã Â¸Â£Ã Â¹â‚¬Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¸â€¢Ã Â¹Ë†Ã Â¸Â­
         conn.Send(new JoinPasswordResultMsg { ok = false, reason = "Wrong password" });
         conn.Disconnect();
     }
 
-    // ★ ฝั่งไคลเอนต์: รับผลตรวจ
+    // Ã¢Ëœâ€¦ Ã Â¸ÂÃ Â¸Â±Ã Â¹Ë†Ã Â¸â€¡Ã Â¹â€žÃ Â¸â€žÃ Â¸Â¥Ã Â¹â‚¬Ã Â¸Â­Ã Â¸â„¢Ã Â¸â€¢Ã Â¹Å’: Ã Â¸Â£Ã Â¸Â±Ã Â¸Å¡Ã Â¸Å“Ã Â¸Â¥Ã Â¸â€¢Ã Â¸Â£Ã Â¸Â§Ã Â¸Ë†
     void OnJoinPasswordResult(JoinPasswordResultMsg res)
     {
-        if (res.ok) return; // ผ่านแล้ว อยู่ในห้องต่อ
+        if (res.ok) return; // Ã Â¸Å“Ã Â¹Ë†Ã Â¸Â²Ã Â¸â„¢Ã Â¹ÂÃ Â¸Â¥Ã Â¹â€°Ã Â¸Â§ Ã Â¸Â­Ã Â¸Â¢Ã Â¸Â¹Ã Â¹Ë†Ã Â¹Æ’Ã Â¸â„¢Ã Â¸Â«Ã Â¹â€°Ã Â¸Â­Ã Â¸â€¡Ã Â¸â€¢Ã Â¹Ë†Ã Â¸Â­
 
-        // ไม่ผ่าน → เลิกเชื่อมต่อและย้อนกลับลิสต์
+        // Ã Â¹â€žÃ Â¸Â¡Ã Â¹Ë†Ã Â¸Å“Ã Â¹Ë†Ã Â¸Â²Ã Â¸â„¢ Ã¢â€ â€™ Ã Â¹â‚¬Ã Â¸Â¥Ã Â¸Â´Ã Â¸ÂÃ Â¹â‚¬Ã Â¸Å Ã Â¸Â·Ã Â¹Ë†Ã Â¸Â­Ã Â¸Â¡Ã Â¸â€¢Ã Â¹Ë†Ã Â¸Â­Ã Â¹ÂÃ Â¸Â¥Ã Â¸Â°Ã Â¸Â¢Ã Â¹â€°Ã Â¸Â­Ã Â¸â„¢Ã Â¸ÂÃ Â¸Â¥Ã Â¸Â±Ã Â¸Å¡Ã Â¸Â¥Ã Â¸Â´Ã Â¸ÂªÃ Â¸â€¢Ã Â¹Å’
         if (NetworkClient.isConnected) NetworkManager.singleton.StopClient();
         Debug.LogWarning($"[Lobby] Join rejected: {res.reason}");
 
@@ -300,4 +301,5 @@ public class LobbyManager : MonoBehaviour
         DiscoveryBridge.I?.StartClientScan();
     }
 }
+
 

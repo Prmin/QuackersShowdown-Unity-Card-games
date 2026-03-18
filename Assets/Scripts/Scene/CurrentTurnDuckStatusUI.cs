@@ -12,8 +12,8 @@ public class CurrentTurnDuckStatusUI : MonoBehaviour
     [SerializeField] private string turnTextPrefix = "Turn: ";
     [SerializeField] private string yourTurnText = "Your Turn";
     [SerializeField] private string noTurnText = "-";
-    [SerializeField] private string remainingPrefix = "Time: ";
-    [SerializeField] private string remainingSuffix = "s";
+    [SerializeField] private string remainingPrefix = "";
+    [SerializeField] private string remainingSuffix = "";
 
     [Header("Color Sprites (index 0..5)")]
     [SerializeField] private Sprite[] duckColorSprites = new Sprite[6];
@@ -36,8 +36,8 @@ public class CurrentTurnDuckStatusUI : MonoBehaviour
         turnTextPrefix = "Turn: ";
         yourTurnText = "Your Turn";
         noTurnText = "-";
-        remainingPrefix = "Time: ";
-        remainingSuffix = "s";
+        remainingPrefix = "";
+        remainingSuffix = "";
 
         if (turnDuckBadgeImage != null)
             _defaultBadgeSprite = turnDuckBadgeImage.sprite;

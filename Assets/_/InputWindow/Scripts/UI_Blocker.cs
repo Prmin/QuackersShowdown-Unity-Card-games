@@ -15,14 +15,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class UI_Blocker : MonoBehaviour {
+public class UI_Blocker : MonoBehaviour
+{
 
     private static UI_Blocker instance;
 
-    private void Awake() {
+    private void Awake()
+    {
         // Keep scene-local behavior: whichever scene instance wakes last becomes active.
         instance = this;
-        
+
         GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
         GetComponent<RectTransform>().sizeDelta = Vector2.zero;
 
@@ -35,7 +37,8 @@ public class UI_Blocker : MonoBehaviour {
             instance = null;
     }
 
-    public static void Show_Static() {
+    public static void Show_Static()
+    {
         UI_Blocker target = ResolveInstance();
         if (target == null)
             return;
@@ -44,7 +47,8 @@ public class UI_Blocker : MonoBehaviour {
         target.transform.SetAsLastSibling();
     }
 
-    public static void Hide_Static() {
+    public static void Hide_Static()
+    {
         UI_Blocker target = ResolveInstance();
         if (target == null)
             return;

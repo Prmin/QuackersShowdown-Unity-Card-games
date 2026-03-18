@@ -1446,11 +1446,11 @@ RectTransform:
   - {fileID: 440098440}
   m_Father: {fileID: 1513077881}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.0007324219, y: 0.00021362305}
-  m_SizeDelta: {x: 1199.632, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0.00048828125, y: -0.00017203904}
+  m_SizeDelta: {x: -954.36804, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &249919422
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1468,7 +1468,7 @@ MonoBehaviour:
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 4
+  m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
@@ -2124,7 +2124,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1704754982}
   m_HandleRect: {fileID: 1704754981}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -2734,11 +2734,11 @@ RectTransform:
   - {fileID: 172513781}
   m_Father: {fileID: 1313626706}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0.00048828125}
-  m_SizeDelta: {x: 600, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0.00048828125, y: 0.000037789345}
+  m_SizeDelta: {x: -1558, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &517885539
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2756,7 +2756,7 @@ MonoBehaviour:
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 4
+  m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
@@ -5460,7 +5460,7 @@ MonoBehaviour:
   minPlayers: 2
   roomPlayerPrefab: {fileID: 1059177623676969459, guid: 0ce6045f692eefa45834c7c2753a6819, type: 3}
   RoomScene: Assets/LobbyTutorial/LobbyTutorial_Done.unity
-  GameplayScene: Assets/Resources/Scenes/GamePlayScene.unity
+  GameplayScene: Assets/Prefabs/Resources/Scenes/GamePlayScene.unity
   _allPlayersReady: 0
   clientIndex: 0
   maxPlayersAllowed: 6
@@ -5932,9 +5932,9 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 88c3c6a682acd8041ba0f534bde79a9c, type: 3}
   - {fileID: 21300000, guid: ca8a715be7c9a684e92c7e3fcff4f836, type: 3}
   profileAvatarSprites:
-  - {fileID: 21300000, guid: 810db66ec1481184a8a3b610c5ff15ca, type: 3}
-  - {fileID: 21300000, guid: 21065028e5e8fc64f872042fc01d600b, type: 3}
-  - {fileID: 21300000, guid: 3029105401fc1504ca39fca23c479cdb, type: 3}
+  - {fileID: 21300000, guid: ddea7f8de1b99d24ab45d4e0115433c6, type: 3}
+  - {fileID: 21300000, guid: 96879d45e7b832f438a950c04b105ef9, type: 3}
+  - {fileID: 21300000, guid: 96879d45e7b832f438a950c04b105ef9, type: 3}
 --- !u!1 &1146855260
 GameObject:
   m_ObjectHideFlags: 0

@@ -40,9 +40,7 @@ public class UIFlow : MonoBehaviour
     {
         UIAudioSfx.RefreshMusicStateFromPrefs();
 
-        bool hasName = !string.IsNullOrWhiteSpace(
-            PlayerPrefs.GetString(LobbyManager.KEY_PLAYER_NAME, "")
-        );
+        bool hasName = EnsurePlayerNameReady();
         if (hasName) ShowLobbyList();
         else ShowAuthenticate();
     }
@@ -153,11 +151,20 @@ public class UIFlow : MonoBehaviour
         ClearDestroyedRefs();
         EnsureRefs();
 
-        bool hasName = !string.IsNullOrWhiteSpace(
-            PlayerPrefs.GetString(LobbyManager.KEY_PLAYER_NAME, "")
-        );
+        bool hasName = EnsurePlayerNameReady();
         if (hasName) ShowLobbyList();
         else ShowAuthenticate();
+    }
+
+    private bool EnsurePlayerNameReady()
+    {
+        string playerName = LocalProfileData.GetPlayerName("Player");
+        if (string.IsNullOrWhiteSpace(playerName))
+            return false;
+
+        // Normalize/save both current and legacy keys so all lobby entry points agree.
+        LocalProfileData.SetPlayerName(playerName);
+        return true;
     }
 
     private bool IsLobbyScene(Scene scene)

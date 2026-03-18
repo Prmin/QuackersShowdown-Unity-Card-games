@@ -550,7 +550,6 @@ MonoBehaviour:
   backgroundSprites:
   - {fileID: 21300000, guid: 9e501a401c968944786924b08009418a, type: 3}
   - {fileID: 21300000, guid: a183ac7a01c6b5b46a63bc28cebf9108, type: 3}
-  - {fileID: 21300000, guid: 810db66ec1481184a8a3b610c5ff15ca, type: 3}
   usePopupMode: 1
   popupRoot: {fileID: 694533604692454058}
   backSceneName: First_Sceme
@@ -2455,8 +2454,6 @@ MonoBehaviour:
     - m_Text: ' Background 1'
       m_Image: {fileID: 0}
     - m_Text: ' Background 2'
-      m_Image: {fileID: 0}
-    - m_Text: '  Background 3'
       m_Image: {fileID: 0}
   m_OnValueChanged:
     m_PersistentCalls:

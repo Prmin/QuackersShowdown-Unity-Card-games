@@ -1243,9 +1243,9 @@ MonoBehaviour:
   avatarImage: {fileID: 1284126944}
   avatarButton: {fileID: 1199277429}
   avatarSprites:
-  - {fileID: 21300000, guid: 810db66ec1481184a8a3b610c5ff15ca, type: 3}
-  - {fileID: 21300000, guid: 21065028e5e8fc64f872042fc01d600b, type: 3}
-  - {fileID: 21300000, guid: 3029105401fc1504ca39fca23c479cdb, type: 3}
+  - {fileID: 21300000, guid: ddea7f8de1b99d24ab45d4e0115433c6, type: 3}
+  - {fileID: 21300000, guid: 96879d45e7b832f438a950c04b105ef9, type: 3}
+  - {fileID: 21300000, guid: 38cae6e53f26a284ea9539f0f766ccf4, type: 3}
   avatarPickerPrefab: {fileID: 1718457949263809560, guid: 4a39e3699c2d4d84faf9508c2f2a69c0, type: 3}
   popupParent: {fileID: 0}
   playedText: {fileID: 544871272}
@@ -3478,7 +3478,7 @@ RectTransform:
   m_Father: {fileID: 904096749}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0.73860365, y: 1.1085451}
+  m_AnchorMax: {x: 0.40069464, y: 0.40092593}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}

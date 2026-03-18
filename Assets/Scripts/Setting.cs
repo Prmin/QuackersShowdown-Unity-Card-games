@@ -32,6 +32,12 @@ public class Setting : MonoBehaviour
 
     private bool listenersBound;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void ApplySavedBackgroundAfterSceneLoad()
+    {
+        ApplySavedBackgroundToActiveScene();
+    }
+
     private void Start()
     {
         BindEventsOnce();
@@ -46,7 +52,9 @@ public class Setting : MonoBehaviour
 
     public static void ApplySavedBackgroundToActiveScene()
     {
-        Image sceneBackground = FindBestSceneBackgroundImage();
+        Image sceneBackground = ResolveConfiguredBackgroundImage();
+        if (sceneBackground == null)
+            sceneBackground = FindBestSceneBackgroundImage();
         if (sceneBackground == null)
             return;
 
@@ -216,7 +224,9 @@ public class Setting : MonoBehaviour
         if (hasValidAssignedImage)
             return;
 
-        backgroundImage = FindBestSceneBackgroundImage();
+        backgroundImage = ResolveConfiguredBackgroundImage();
+        if (backgroundImage == null)
+            backgroundImage = FindBestSceneBackgroundImage();
     }
 
     private static int ResolveSavedBackgroundIndex(List<Sprite> sprites, int defaultIndex)
@@ -254,7 +264,7 @@ public class Setting : MonoBehaviour
             GameObject go = img.gameObject;
             if (!go.scene.IsValid() || go.scene != activeScene)
                 continue;
-            if (go.name != "Background")
+            if (!LooksLikeBackgroundName(go.name))
                 continue;
             if (go.GetComponentInParent<Setting>(true) != null)
                 continue;
@@ -273,6 +283,52 @@ public class Setting : MonoBehaviour
         }
 
         return best;
+    }
+
+    private static Image ResolveConfiguredBackgroundImage()
+    {
+        Scene activeScene = SceneManager.GetActiveScene();
+
+        Setting[] settings = Resources.FindObjectsOfTypeAll<Setting>();
+        for (int i = 0; i < settings.Length; i++)
+        {
+            Setting setting = settings[i];
+            if (setting == null)
+                continue;
+            if (!setting.gameObject.scene.IsValid() || setting.gameObject.scene != activeScene)
+                continue;
+            if (IsUsableBackgroundReference(setting.backgroundImage, activeScene))
+                return setting.backgroundImage;
+        }
+
+        Settings_Manager[] managers = Resources.FindObjectsOfTypeAll<Settings_Manager>();
+        for (int i = 0; i < managers.Length; i++)
+        {
+            Settings_Manager manager = managers[i];
+            if (manager == null)
+                continue;
+            if (!manager.gameObject.scene.IsValid() || manager.gameObject.scene != activeScene)
+                continue;
+            if (IsUsableBackgroundReference(manager.backgroundImage, activeScene))
+                return manager.backgroundImage;
+        }
+
+        return null;
+    }
+
+    private static bool IsUsableBackgroundReference(Image image, Scene activeScene)
+    {
+        return
+            image != null &&
+            image.gameObject.scene.IsValid() &&
+            image.gameObject.scene == activeScene;
+    }
+
+    private static bool LooksLikeBackgroundName(string objectName)
+    {
+        return
+            string.Equals(objectName, "Background", System.StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(objectName, "bg", System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<Sprite> ResolveBackgroundSpriteList()
