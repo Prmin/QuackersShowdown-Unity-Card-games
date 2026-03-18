@@ -36,6 +36,7 @@ public class GameplayLoadCoordinator : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
+        PlayerManager.ServerResetMatchRuntimeState();
         // รอ 1 เฟรมให้ LobbyManager (DontDestroyOnLoad) พร้อม แล้วดึงค่าจากล็อบบี้
         StartCoroutine(ServerInitExpectedFromLobby());
     }

@@ -21,6 +21,9 @@ public partial class PlayerManager
         if (selectedHadTarget) RemoveTargetFromCard(selectedDuck.netIdentity);
         if (targetHadTarget) RemoveTargetFromCard(targetDuck.netIdentity);
 
+        // Selection is done; start movement SFX before swap resolves.
+        ServerBroadcastDuckMoveAbilitySfx(1);
+
         selectedDuck.ColNet = targetCol;
         targetDuck.ColNet = curCol;
 
@@ -50,6 +53,9 @@ public partial class PlayerManager
         bool targetHadTarget = IsCardTargeted(targetDuck.netIdentity);
         if (selectedHadTarget) RemoveTargetFromCard(selectedDuck.netIdentity);
         if (targetHadTarget) RemoveTargetFromCard(targetDuck.netIdentity);
+
+        // Selection is done; start movement SFX before swap resolves.
+        ServerBroadcastDuckMoveAbilitySfx(1);
 
         selectedDuck.ColNet = targetCol;
         targetDuck.ColNet = curCol;

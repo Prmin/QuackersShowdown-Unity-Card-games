@@ -11,6 +11,8 @@ public class CardZoom : NetworkBehaviour
 
     private GameObject zoomCard;
     private Sprite zoomSprite;
+    private const float ZoomScale = 2f;
+    private static readonly Vector2 ZoomBaseSize = new Vector2(180f, 258f);
 
     public void Awake()
     {
@@ -41,22 +43,29 @@ public class CardZoom : NetworkBehaviour
         // ตรวจสอบว่าการ์ดซูมถูกสร้างหรือยัง ถ้าถูกสร้างแล้วก็ไม่ต้องสร้างซ้ำ
         if (zoomCard != null) return;
 
-        // สร้างการ์ดซูมขึ้นมา
-        zoomCard = Instantiate(ZoomCard, new Vector2(Input.mousePosition.x, Input.mousePosition.y + 250), Quaternion.identity);
-        zoomCard.GetComponent<Image>().sprite = zoomSprite;
+        if (Canvas == null)
+            Canvas = GameObject.Find("Main Canvas");
+        if (Canvas == null || ZoomCard == null) return;
 
-        // ตั้งการ์ดให้เป็นลูกของ Canvas
-        zoomCard.transform.SetParent(Canvas.transform, true);
+        // Spawn as child immediately so positioning uses canvas-local coordinates.
+        zoomCard = Instantiate(ZoomCard, Canvas.transform, false);
 
-        // ปรับขนาดการ์ดที่ซูมให้ใหญ่ขึ้น
+        Image zoomImage = zoomCard.GetComponent<Image>();
+        if (zoomImage != null)
+            zoomImage.sprite = zoomSprite;
+
+        // Center of screen + larger scale
         RectTransform rect = zoomCard.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(180, 258);
-
-        // ปรับตำแหน่งให้เป็นตามหน้าจอในโหมด Screen Space - Camera
-        rect.anchoredPosition = new Vector2(Input.mousePosition.x - Screen.width / 2, Input.mousePosition.y - Screen.height / 2 + 250);
-
-        // ปรับขนาดโดยใช้ localScale เพื่อให้การ์ดไม่เล็กเกินไป
-        zoomCard.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+        if (rect != null)
+        {
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = ZoomBaseSize;
+            rect.anchoredPosition = Vector2.zero;
+            rect.localRotation = Quaternion.identity;
+            rect.localScale = Vector3.one * ZoomScale;
+        }
     }
 
     // ฟังก์ชันเมื่อเม้าส์เลิกชี้การ์ด

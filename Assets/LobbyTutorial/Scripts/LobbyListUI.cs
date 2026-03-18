@@ -1,79 +1,298 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using TMPro;
 
 /// <summary>
-/// แสดงรายการล็อบบี้ให้ "กดเข้ารายการ" ได้เลย (ไม่มี Manual Join)
-/// ใช้คู่กับ LobbyListSingleUI ซึ่งเป็นปุ่มที่เรียก Join โดย address ภายใน
+/// Shows LAN lobby list entries and allows quick join by clicking each row.
 /// </summary>
 public class LobbyListUI : MonoBehaviour
 {
     public static LobbyListUI Instance { get; private set; }
 
+    private sealed class LobbyRowState
+    {
+        public LobbyListSingleUI ui;
+        public string address;
+        public float lastSeenAt;
+    }
+
     [Header("List")]
-    [SerializeField] private Transform lobbySingleTemplate;  // เทมเพลตแถว (ต้อง setActive(false))
-    [SerializeField] private Transform container;            // พาเรนต์ของรายการ
+    [SerializeField] private Transform lobbySingleTemplate;
+    [SerializeField] private Transform container;
 
     [Header("Top Buttons")]
-    [SerializeField] private Button refreshButton;           // ปุ่มรีเฟรชรายการ
-    [SerializeField] private Button createLobbyButton;       // ปุ่มเปิดหน้า Create
+    [SerializeField] private Button refreshButton;
+    [SerializeField] private Button createLobbyButton;
+    [SerializeField] private Button backToMainMenuButton;
+    [SerializeField] private Button settingsButton;
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
+    [SerializeField] private GameObject settingsPopup;
+    [SerializeField, Min(1f)] private float staleTimeoutSeconds = 4f;
+    [SerializeField, Min(0.25f)] private float stalePruneIntervalSeconds = 1f;
 
-    // เก็บรายการที่ถูกสร้างแล้วเพื่ออัปเดตซ้ำ (คีย์เป็น address)
-    private readonly Dictionary<string, LobbyListSingleUI> rows = new();
+    // Keep created rows keyed by a stable server key (serverId preferred).
+    private readonly Dictionary<string, LobbyRowState> rows = new Dictionary<string, LobbyRowState>();
+    private float nextPruneAt;
 
     private void Awake()
     {
         Instance = this;
 
-        if (lobbySingleTemplate) lobbySingleTemplate.gameObject.SetActive(false);
+        if (lobbySingleTemplate != null)
+            lobbySingleTemplate.gameObject.SetActive(false);
 
-        if (refreshButton) refreshButton.onClick.AddListener(RefreshRequested);
-        if (createLobbyButton) createLobbyButton.onClick.AddListener(() => UIFlow.I?.ShowLobbyCreate());
+        if (refreshButton != null)
+            refreshButton.onClick.AddListener(RefreshRequested);
+
+        if (createLobbyButton != null)
+            createLobbyButton.onClick.AddListener(ShowLobbyCreate);
+
+        if (backToMainMenuButton != null)
+            backToMainMenuButton.onClick.AddListener(GoToMainMenu);
+
+        if (settingsButton != null)
+            settingsButton.onClick.AddListener(OpenSettings);
     }
 
-    /// <summary>ล้างทั้งหมด</summary>
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+
+        if (refreshButton != null)
+            refreshButton.onClick.RemoveListener(RefreshRequested);
+
+        if (createLobbyButton != null)
+            createLobbyButton.onClick.RemoveListener(ShowLobbyCreate);
+
+        if (backToMainMenuButton != null)
+            backToMainMenuButton.onClick.RemoveListener(GoToMainMenu);
+
+        if (settingsButton != null)
+            settingsButton.onClick.RemoveListener(OpenSettings);
+    }
+
     public void ClearList()
     {
+        nextPruneAt = Time.unscaledTime + stalePruneIntervalSeconds;
+
         rows.Clear();
-        if (!container) return;
+        if (container == null)
+            return;
+
         foreach (Transform child in container)
-            if (child != lobbySingleTemplate) Destroy(child.gameObject);
+        {
+            if (child != lobbySingleTemplate)
+                Destroy(child.gameObject);
+        }
     }
 
-    /// <summary>เมธอดเดิม (คงไว้) — จะถือว่าเป็น Public โดยอัตโนมัติ</summary>
     public void AddOrUpdate(string lobbyName, string address, int curPlayers, int maxPlayers, string modeLabel)
         => AddOrUpdate(lobbyName, address, curPlayers, maxPlayers, modeLabel, false);
 
-    /// <summary>เพิ่มหรืออัปเดตรายการล็อบบี้หนึ่งแถว (รองรับ Private)</summary>
     public void AddOrUpdate(string lobbyName, string address, int curPlayers, int maxPlayers, string modeLabel, bool isPrivate)
-    {
-        if (string.IsNullOrWhiteSpace(address) || !container || !lobbySingleTemplate) return;
+        => AddOrUpdate(address, lobbyName, address, curPlayers, maxPlayers, modeLabel, isPrivate);
 
-        if (rows.TryGetValue(address, out var ui))
+    public void AddOrUpdate(string serverKey, string lobbyName, string address, int curPlayers, int maxPlayers, string modeLabel, bool isPrivate)
+    {
+        if (string.IsNullOrWhiteSpace(address) || container == null || lobbySingleTemplate == null)
+            return;
+        if (string.IsNullOrWhiteSpace(serverKey))
+            serverKey = address;
+
+        float now = Time.unscaledTime;
+
+        if (rows.TryGetValue(serverKey, out LobbyRowState state))
         {
-            ui.Set(lobbyName, address, curPlayers, maxPlayers, modeLabel, isPrivate);
+            if (state == null || state.ui == null)
+            {
+                rows.Remove(serverKey);
+            }
+            else
+            {
+                string chosenAddress = ChooseBetterAddress(state.address, address);
+                state.address = chosenAddress;
+                state.lastSeenAt = now;
+                state.ui.Set(lobbyName, chosenAddress, curPlayers, maxPlayers, modeLabel, isPrivate);
+            }
             return;
         }
 
-        // สร้างแถวใหม่
-        var t = Instantiate(lobbySingleTemplate, container);
+        Transform t = Instantiate(lobbySingleTemplate, container);
         t.gameObject.SetActive(true);
 
-        var uiNew = t.GetComponent<LobbyListSingleUI>();
-        if (!uiNew) uiNew = t.gameObject.AddComponent<LobbyListSingleUI>();
+        LobbyListSingleUI uiNew = t.GetComponent<LobbyListSingleUI>();
+        if (uiNew == null)
+            uiNew = t.gameObject.AddComponent<LobbyListSingleUI>();
 
         uiNew.Set(lobbyName, address, curPlayers, maxPlayers, modeLabel, isPrivate);
-        rows[address] = uiNew;
+        rows[serverKey] = new LobbyRowState
+        {
+            ui = uiNew,
+            address = address,
+            lastSeenAt = now
+        };
     }
 
-    /// <summary>ให้ปุ่ม Refresh เรียก—คุณจะไปต่อ Mirror Discovery ที่นี่ได้</summary>
+    public void Remove(string serverKey)
+    {
+        if (string.IsNullOrWhiteSpace(serverKey))
+            return;
+
+        if (!rows.TryGetValue(serverKey, out LobbyRowState state))
+            return;
+
+        if (state != null && state.ui != null)
+            Destroy(state.ui.gameObject);
+
+        rows.Remove(serverKey);
+    }
+
+    private void Update()
+    {
+        if (rows.Count == 0)
+            return;
+
+        float now = Time.unscaledTime;
+        if (now < nextPruneAt)
+            return;
+
+        nextPruneAt = now + stalePruneIntervalSeconds;
+        PruneStaleRows(now);
+    }
+
     private void RefreshRequested()
     {
+        UIAudioSfx.PlayButtonClick();
         ClearList();
-        // เริ่มสแกน LAN ใหม่
         DiscoveryBridge.I?.StartClientScan();
-        ;
+    }
+
+    private void ShowLobbyCreate()
+    {
+        UIAudioSfx.PlayButtonClick();
+        UIFlow.I?.ShowLobbyCreate();
+    }
+
+    private void GoToMainMenu()
+    {
+        UIAudioSfx.PlayButtonClick();
+        DiscoveryBridge.I?.StopClientScan();
+        SceneManager.LoadScene(mainMenuSceneName);
+    }
+
+    private void OpenSettings()
+    {
+        UIAudioSfx.PlayButtonClick();
+
+        GameObject popup = ResolveSettingsPopupObject();
+        if (popup == null)
+        {
+            Debug.LogWarning("[LobbyListUI] Settings popup object not found in scene.");
+            return;
+        }
+
+        popup.SetActive(true);
+        BringToFront(popup);
+    }
+
+    private void PruneStaleRows(float now)
+    {
+        if (rows.Count == 0)
+            return;
+
+        List<string> removeKeys = null;
+        foreach (KeyValuePair<string, LobbyRowState> kv in rows)
+        {
+            LobbyRowState state = kv.Value;
+            if (state == null || state.ui == null || now - state.lastSeenAt > staleTimeoutSeconds)
+            {
+                if (state != null && state.ui != null)
+                    Destroy(state.ui.gameObject);
+
+                removeKeys ??= new List<string>();
+                removeKeys.Add(kv.Key);
+            }
+        }
+
+        if (removeKeys == null)
+            return;
+
+        foreach (string key in removeKeys)
+            rows.Remove(key);
+    }
+
+    private static string ChooseBetterAddress(string current, string incoming)
+    {
+        if (string.IsNullOrWhiteSpace(current))
+            return incoming;
+        if (string.IsNullOrWhiteSpace(incoming))
+            return current;
+
+        int currentScore = ScoreAddress(current);
+        int incomingScore = ScoreAddress(incoming);
+        return incomingScore > currentScore ? incoming : current;
+    }
+
+    private static int ScoreAddress(string address)
+    {
+        int split = address.LastIndexOf(':');
+        if (split <= 0)
+            return 0;
+
+        string ipRaw = address.Substring(0, split);
+        if (!System.Net.IPAddress.TryParse(ipRaw, out var ip))
+            return 0;
+
+        if (System.Net.IPAddress.IsLoopback(ip))
+            return -100;
+
+        byte[] b = ip.GetAddressBytes();
+        if (b.Length != 4)
+            return -10;
+
+        if (b[0] == 169 && b[1] == 254)
+            return -50;
+
+        if (b[0] == 10)
+            return 100;
+
+        if (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
+            return 100;
+
+        if (b[0] == 192 && b[1] == 168)
+            return 100;
+
+        return 10;
+    }
+
+    private GameObject ResolveSettingsPopupObject()
+    {
+        if (settingsPopup != null && settingsPopup.scene.IsValid())
+            return settingsPopup;
+
+        if (settingsPopup != null)
+        {
+            GameObject byName = GameObject.Find(settingsPopup.name);
+            if (byName != null)
+            {
+                settingsPopup = byName;
+                return settingsPopup;
+            }
+        }
+
+        settingsPopup = GameObject.Find("SettingsPopup");
+        return settingsPopup;
+    }
+
+    private static void BringToFront(GameObject popup)
+    {
+        if (popup == null)
+            return;
+
+        RectTransform rect = popup.transform as RectTransform;
+        if (rect != null)
+            rect.SetAsLastSibling();
     }
 }
-

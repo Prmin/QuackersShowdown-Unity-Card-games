@@ -16,6 +16,8 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
 
     private Coroutine _layoutCoroutine;
     private const float ManualSpacingX = 150f;
+    private bool _transformSyncDisabled;
+    private float _duckZoneMoveSfxEnableAt;
 
     private PlayerManager GetOwnerPlayerManager()
     {
@@ -35,7 +37,29 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     {
         base.OnStartClient();
 
+        DisableTransformSyncIfPresent();
+        _duckZoneMoveSfxEnableAt = Time.unscaledTime + 0.35f;
         TryApplyLayout("OnStartClient");
+
+        if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
+            PlayerManager.RequestTurnOrderLayoutRefresh("DuckCard.OnStartClient");
+    }
+
+    private void DisableTransformSyncIfPresent()
+    {
+        if (_transformSyncDisabled)
+            return;
+
+        DisableComponentByName("NetworkTransformUnreliable");
+        DisableComponentByName("NetworkTransform");
+        _transformSyncDisabled = true;
+    }
+
+    private void DisableComponentByName(string typeName)
+    {
+        var behaviour = GetComponent(typeName) as Behaviour;
+        if (behaviour != null && behaviour.enabled)
+            behaviour.enabled = false;
     }
 
     // SyncVar hooks -------------------------------------------------------
@@ -69,6 +93,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     private void OnZoneIndexChanged(int oldIndex, int newIndex)
     {
 
+        TryNotifyDuckZoneMoveSfx(oldIndex, newIndex);
         HandleStateChanged("ZoneIndexChanged");
     }
 
@@ -81,13 +106,54 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
     {
         if (isServer && zoneIndex != newCol)
             zoneIndex = newCol; // keep logical order in sync with column updates
+
+        TryNotifyDuckZoneMoveSfx(oldCol, newCol);
         HandleStateChanged("ColChanged");
+    }
+
+    private void TryNotifyDuckZoneMoveSfx(int oldValue, int newValue)
+    {
+        if (!NetworkClient.active)
+            return;
+
+        if (oldValue == newValue)
+            return;
+
+        if (zone != ZoneKind.DuckZone)
+            return;
+
+        if (Time.unscaledTime < _duckZoneMoveSfxEnableAt)
+            return;
+
+        DuckZoneMoveSfx.NotifyDuckMovedInZone();
+    }
+
+    private void TryNotifyPlayerAreaMoveSfx(Transform oldParent, int oldSibling)
+    {
+        if (!NetworkClient.active)
+            return;
+
+        if (zone != ZoneKind.PlayerArea)
+            return;
+
+        if (Time.unscaledTime < _duckZoneMoveSfxEnableAt)
+            return;
+
+        bool parentChanged = oldParent != transform.parent;
+        bool siblingChanged = oldSibling != transform.GetSiblingIndex();
+        if (!parentChanged && !siblingChanged)
+            return;
+
+        CardZoneMoveSfx.NotifyPlayerAreaMove();
     }
 
     private void HandleStateChanged(string reason)
     {
         if (!NetworkClient.active) return;
         TryApplyLayout(reason);
+
+        if (zone == ZoneKind.PlayerArea && !IsOwnedByLocalPlayer())
+            PlayerManager.RequestTurnOrderLayoutRefresh($"DuckCard.{reason}");
     }
 
     // Layout --------------------------------------------------------------
@@ -120,10 +186,14 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         var rect = transform as RectTransform;
         if (rect == null) return false;
 
+        DisableTransformSyncIfPresent();
+        Transform oldParent = rect.parent;
+        int oldSibling = transform.GetSiblingIndex();
+
         var parent = ResolveZoneParent();
-        if (parent == null)
+        if (!IsSceneTransform(parent))
         {
-            Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
+            // Debug.LogWarning($"[DuckCard] Parent missing for {name} zone={zone} owner={ownerNetId} reason={reason}");
             return false;
         }
 
@@ -134,6 +204,7 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.localScale = Vector3.one;
         rect.localRotation = Quaternion.identity;
+        rect.localPosition = new Vector3(rect.localPosition.x, rect.localPosition.y, 0f);
 
         bool parentHasLayout = parent.GetComponent<LayoutGroup>() != null;
 
@@ -161,14 +232,68 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         if (targetIndex < 0 || targetIndex > parent.childCount)
             targetIndex = parent.childCount;
         transform.SetSiblingIndex(targetIndex);
+        TryNotifyPlayerAreaMoveSfx(oldParent, oldSibling);
 
+        EnsureVisibleState();
         LogLayout(reason, parent, rect);
         return true;
     }
 
+    private void EnsureVisibleState()
+    {
+        if (zone != ZoneKind.PlayerArea)
+            return;
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        if (TryGetComponent<Image>(out var image))
+        {
+            if (!image.enabled)
+                image.enabled = true;
+
+            if (image.color.a <= 0.01f)
+            {
+                Color c = image.color;
+                c.a = 1f;
+                image.color = c;
+            }
+        }
+
+        if (TryGetComponent<CanvasGroup>(out var canvasGroup) && canvasGroup.alpha <= 0.01f)
+            canvasGroup.alpha = 1f;
+    }
+
     private void LogLayout(string reason, Transform parent, RectTransform rect)
     {
-        ;
+        bool hasImage = TryGetComponent<Image>(out var image);
+        float imageAlpha = hasImage ? image.color.a : -1f;
+        bool hasCanvasGroup = TryGetComponent<CanvasGroup>(out var canvasGroup);
+        float canvasGroupAlpha = hasCanvasGroup ? canvasGroup.alpha : -1f;
+
+        bool suspicious = zone == ZoneKind.PlayerArea &&
+                          (
+                              !gameObject.activeInHierarchy ||
+                              parent == null ||
+                              !parent.gameObject.activeInHierarchy ||
+                              (hasImage && (!image.enabled || imageAlpha <= 0.01f)) ||
+                              (hasCanvasGroup && canvasGroupAlpha <= 0.01f) ||
+                              rect.rect.width <= 1f ||
+                              rect.rect.height <= 1f ||
+                              Mathf.Abs(rect.anchoredPosition.x) > 3000f ||
+                              Mathf.Abs(rect.anchoredPosition.y) > 3000f
+                          );
+
+        if (!suspicious)
+            return;
+
+        Debug.LogWarning(
+            $"[DuckCard][LayoutSuspect] name={name} netId={netId} owner={ownerNetId} zone={zone} reason={reason} " +
+            $"parent={(parent != null ? parent.name : "null")} activeSelf={gameObject.activeSelf} activeInHierarchy={gameObject.activeInHierarchy} " +
+            $"parentActive={(parent != null && parent.gameObject.activeInHierarchy)} pos={rect.anchoredPosition} size={rect.rect.size} scale={rect.localScale} " +
+            $"imageEnabled={(hasImage ? image.enabled.ToString() : "n/a")} imageAlpha={(hasImage ? imageAlpha.ToString("0.00") : "n/a")} " +
+            $"canvasAlpha={(hasCanvasGroup ? canvasGroupAlpha.ToString("0.00") : "n/a")}"
+        );
     }
 
     private Transform ResolveZoneParent()
@@ -180,25 +305,42 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         {
             case ZoneKind.PlayerArea:
                 if (ownedByLocal)
-                    return localPM?.PlayerArea?.transform ?? FindZoneRecursive(ZoneKind.PlayerArea);
+                {
+                    Transform localArea = localPM != null ? localPM.PlayerArea?.transform : null;
+                    if (IsSceneTransform(localArea))
+                        return localArea;
+                    return FindZoneRecursive(ZoneKind.PlayerArea);
+                }
 
                 var mapped = PlayerManager.TryGetEnemySlotForNetId(ownerNetId);
-                if (mapped != null) return mapped;
+                if (IsSceneTransform(mapped)) return mapped;
 
-                var ownerPM = GetOwnerPlayerManager();
-                if (ownerPM != null && ownerPM.EnemyArea != null)
-                    return ownerPM.EnemyArea.transform;
-
-                return localPM?.EnemyArea?.transform ?? FindZoneRecursive(ZoneKind.PlayerArea, "EnemyArea");
+                // TurnOrder mapping is not ready yet; keep current parent and wait for refresh.
+                return IsSceneTransform(transform.parent) ? transform.parent : null;
 
             case ZoneKind.DuckZone:
-                return localPM?.DuckZone?.transform ?? FindZoneRecursive(ZoneKind.DuckZone);
+            {
+                Transform zoneTr = localPM != null ? localPM.DuckZone?.transform : null;
+                if (IsSceneTransform(zoneTr))
+                    return zoneTr;
+                return FindZoneRecursive(ZoneKind.DuckZone);
+            }
 
             case ZoneKind.DropZone:
-                return localPM?.DropZone?.transform ?? FindZoneRecursive(ZoneKind.DropZone);
+            {
+                Transform zoneTr = localPM != null ? localPM.DropZone?.transform : null;
+                if (IsSceneTransform(zoneTr))
+                    return zoneTr;
+                return FindZoneRecursive(ZoneKind.DropZone);
+            }
 
             case ZoneKind.TargetZone:
-                return localPM?.TargetZone?.transform ?? FindZoneRecursive(ZoneKind.TargetZone);
+            {
+                Transform zoneTr = localPM != null ? localPM.TargetZone?.transform : null;
+                if (IsSceneTransform(zoneTr))
+                    return zoneTr;
+                return FindZoneRecursive(ZoneKind.TargetZone);
+            }
 
             default:
                 return null;
@@ -230,6 +372,14 @@ public class DuckCard : NetworkBehaviour, IPointerClickHandler
         }
 
         return null;
+    }
+
+    private static bool IsSceneTransform(Transform tr)
+    {
+        return tr != null &&
+               tr.gameObject != null &&
+               tr.gameObject.scene.IsValid() &&
+               tr.gameObject.scene.isLoaded;
     }
 
     // Server-side assignment is purely logical; clients recompute layout locally.

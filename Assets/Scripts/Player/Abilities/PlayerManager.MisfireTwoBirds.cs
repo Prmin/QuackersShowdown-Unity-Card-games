@@ -22,8 +22,11 @@ public partial class PlayerManager
         var randomNeighbor = neighbors[UnityEngine.Random.Range(0, neighbors.Count)];
         uint clickedId = clickedCard.netId;
         uint shotId = randomNeighbor.netId;
+        bool misfireHitMarsh = IsMarshShotTarget(randomNeighbor.gameObject);
 
         ShootCardDirect(randomNeighbor);
+        ServerRecordDuckShotCount(1);
+        ServerBroadcastShotResolvedSfx(misfireHitMarsh ? 0 : 1, misfireHitMarsh ? 1 : 0);
 
         // ✅ ลบเป้าของ "ใบที่โดนทำลายจริงๆ"
         Server_DestroyAllTargetsFor(shotId);
@@ -91,6 +94,12 @@ public partial class PlayerManager
                 if (dc1 == null || dc2 == null) { /* ... */ }
                 int row1 = dc1.RowNet, col1 = dc1.ColNet;
                 int row2 = dc2.RowNet, col2 = dc2.ColNet;
+                ServerRecordDuckShotCount(2);
+                bool firstIsMarsh = IsMarshShotTarget(firstTwoBirdsCard.gameObject);
+                bool secondIsMarsh = IsMarshShotTarget(clickedCard.gameObject);
+                int marshHitCount = (firstIsMarsh ? 1 : 0) + (secondIsMarsh ? 1 : 0);
+                int duckHitCount = 2 - marshHitCount;
+                ServerBroadcastShotResolvedSfx(duckHitCount, marshHitCount);
                 NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
                 NetworkServer.Destroy(clickedCard.gameObject);
                 RemoveTargetFromCard(firstTwoBirdsCard);
@@ -107,6 +116,9 @@ public partial class PlayerManager
                     if (dc1 != null)
                     {
                         int row1 = dc1.RowNet, col1 = dc1.ColNet;
+                        ServerRecordDuckShotCount(1);
+                        bool firstIsMarsh = IsMarshShotTarget(firstTwoBirdsCard.gameObject);
+                        ServerBroadcastShotResolvedSfx(firstIsMarsh ? 0 : 1, firstIsMarsh ? 1 : 0);
                         NetworkServer.Destroy(firstTwoBirdsCard.gameObject);
                         RemoveTargetFromCard(firstTwoBirdsCard);
                         ShiftColumnsDown(row1, col1);

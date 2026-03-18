@@ -20,6 +20,9 @@ public partial class PlayerManager
         var leftmost = FindLeftmostDuck(0);
         if (leftmost != null)
         {
+            // Play wing-flap as soon as this ability starts resolving.
+            ServerBroadcastDuckMoveAbilitySfx(1);
+
             string key = ExtractDuckKeyFromCard(leftmost.gameObject) ?? leftmost.gameObject.name;
             int before = Server_GetDuckPoolRemaining();
 
@@ -95,6 +98,7 @@ public partial class PlayerManager
     private IEnumerator FastForwardCoroutine(DuckCard selectedDuck)
     {
         float delay = 0.3f;
+        bool moveStarted = false;
         int curRow = selectedDuck.RowNet;
         List<int> originalTargetColumns = new List<int>();
         List<TargetFollow> targetsToDestroy = new List<TargetFollow>();
@@ -117,10 +121,19 @@ public partial class PlayerManager
             int targetCol = currentCol - 1;
             DuckCard targetDuck = FindDuckAt(curRow, targetCol);
             if (targetDuck == null) break;
+
+            if (!moveStarted)
+            {
+                // Selection is complete and movement is about to begin.
+                ServerBroadcastDuckMoveAbilitySfx(1);
+                moveStarted = true;
+            }
+
             selectedDuck.ColNet = targetCol;
             targetDuck.ColNet = currentCol;
             yield return new WaitForSeconds(delay);
         }
+
         yield return null;
         foreach (int originalCol in originalTargetColumns)
         {

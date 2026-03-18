@@ -126,4 +126,22 @@ public static class CardPoolManager
         else _pool[cardName] = 1;
     }
 
+    /// <summary>
+    /// Consume one specific duck card from pool (destroy from economy without spawning).
+    /// Server only.
+    /// </summary>
+    [Server]
+    public static bool TryConsumeCard(string cardName)
+    {
+        if (!NetworkServer.active || _pool == null || string.IsNullOrWhiteSpace(cardName))
+            return false;
+
+        string key = CleanCardName(cardName);
+        if (!_pool.TryGetValue(key, out int count) || count <= 0)
+            return false;
+
+        _pool[key] = count - 1;
+        return true;
+    }
+
 }

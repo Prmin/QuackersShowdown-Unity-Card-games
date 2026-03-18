@@ -45,7 +45,7 @@ public class SceneLoadingOverlay : MonoBehaviour
         var bgGO = new GameObject("BG");
         bgGO.transform.SetParent(transform, false);
         _bg = bgGO.AddComponent<Image>();
-        _bg.color = new Color(0f, 0f, 0f, 0.75f);
+        _bg.color = new Color(0f, 0f, 0f, 1f);
         var bgRt = _bg.rectTransform;
         bgRt.anchorMin = Vector2.zero;
         bgRt.anchorMax = Vector2.one;

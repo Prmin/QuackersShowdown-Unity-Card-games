@@ -1,91 +1,114 @@
+using Mirror;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Mirror;
 
 public class LobbyPlayerSingleUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI playerNameText;
     [SerializeField] private Image characterImage;
+    [SerializeField] private Image profileImage;
     [SerializeField] private Button kickPlayerButton;
 
-    // ✅ รูปสถานะ Ready
     [Header("Ready State Display")]
-    [SerializeField] private Image readyStateImage;     // ใส่ Image บน template ไว้
-    [SerializeField] private Sprite readySprite;        // รูปตอน Ready
-    [SerializeField] private Sprite notReadySprite;     // รูปตอน Not Ready
-
-    // ✅ ตั้งค่าว่าจะ tint สีสไปรต์ไหม และกำหนดสี
+    [SerializeField] private Image readyStateImage;
+    [SerializeField] private Sprite readySprite;
+    [SerializeField] private Sprite notReadySprite;
     [SerializeField] private bool tintSprite = true;
-    [SerializeField] private Color readyTint = new Color32(46, 204, 113, 255); // เขียว
-    [SerializeField] private Color notReadyTint = new Color32(231, 76, 60, 255);  // แดง
+    [SerializeField] private Color readyTint = new Color32(46, 204, 113, 255);
+    [SerializeField] private Color notReadyTint = new Color32(231, 76, 60, 255);
+
+    [Header("Stats Text (Optional)")]
+    [SerializeField] private TextMeshProUGUI playedText;
+    [SerializeField] private TextMeshProUGUI winText;
+    [SerializeField] private TextMeshProUGUI lossText;
+    [SerializeField] private TextMeshProUGUI drawText;
+    [SerializeField] private TextMeshProUGUI duckShotText;
 
     private uint targetNetId;
 
     private void Awake()
     {
-        if (kickPlayerButton)
+        if (kickPlayerButton != null)
             kickPlayerButton.onClick.AddListener(KickPlayer);
     }
 
     public void SetKickPlayerButtonVisible(bool visible)
     {
-        if (kickPlayerButton)
+        if (kickPlayerButton != null)
             kickPlayerButton.gameObject.SetActive(visible);
     }
 
     public void UpdatePlayer(LobbyRoomPlayer lp)
     {
-        if (!lp) return;
+        if (lp == null)
+            return;
 
-        // จำเป้าหมายไว้สำหรับปุ่ม Kick
         targetNetId = lp.netId;
 
-        // ชื่อ
-        var name = string.IsNullOrWhiteSpace(lp.displayName) ? "Player" : lp.displayName;
-        if (playerNameText) playerNameText.text = name;
+        string name = string.IsNullOrWhiteSpace(lp.displayName) ? "Player" : lp.displayName;
+        if (playerNameText != null)
+            playerNameText.text = name;
 
-        // เป็ด (สี)
-        if (characterImage)
+        if (characterImage != null)
+        {
+            // Keep original behavior: character image follows duck color.
             characterImage.sprite = LobbyAssets.Instance ? LobbyAssets.Instance.GetDuckSpriteByIndex(lp.duckColorIndex) : null;
+            characterImage.preserveAspect = true;
+        }
 
-        // สถานะ Ready
+        if (profileImage != null)
+        {
+            // New separate profile avatar image.
+            Sprite avatar = LobbyAssets.Instance ? LobbyAssets.Instance.GetProfileAvatarSpriteByIndex(lp.profileAvatarIndex) : null;
+            profileImage.sprite = avatar;
+            profileImage.enabled = avatar != null;
+            if (avatar != null)
+                profileImage.preserveAspect = true;
+        }
+
         ApplyReadyVisual(lp.readyToBegin);
+        ApplyStatsVisual(lp.statsPlayed, lp.statsWin, lp.statsLoss, lp.statsDraw, lp.statsDuckShots);
 
-        // ถ้าเป็นโฮสต์ → ซ่อนไอคอนสถานะ
-        if (readyStateImage)
+        if (readyStateImage != null)
             readyStateImage.gameObject.SetActive(!lp.isHost);
     }
 
-    void ApplyReadyVisual(bool isReady)
+    private void ApplyReadyVisual(bool isReady)
     {
-        if (!readyStateImage) return;
+        if (readyStateImage == null)
+            return;
 
-        // 1) มีสไปรต์ให้สลับ → ใช้สไปรต์ตามสถานะ
-        if (readySprite && notReadySprite)
+        if (readySprite != null && notReadySprite != null)
         {
             readyStateImage.sprite = isReady ? readySprite : notReadySprite;
             readyStateImage.enabled = true;
+            readyStateImage.color = tintSprite ? (isReady ? readyTint : notReadyTint) : Color.white;
+            return;
+        }
 
-            // จะ tint เพิ่มด้วยไหม
-            readyStateImage.color = tintSprite
-                ? (isReady ? readyTint : notReadyTint)
-                : Color.white; // ไม่ tint ก็ปล่อยเป็นขาว (ไม่ปรับสี)
-        }
-        // 2) ไม่มีสไปรต์ → ใช้การย้อมสีเป็นตัวบอกสถานะ
-        else
-        {
-            readyStateImage.enabled = true;
-            readyStateImage.sprite = readyStateImage.sprite; // คงสไปรต์เดิมไว้ (ถ้ามี)
-            readyStateImage.color = isReady ? readyTint : notReadyTint;
-        }
+        readyStateImage.enabled = true;
+        readyStateImage.color = isReady ? readyTint : notReadyTint;
     }
 
+    private void ApplyStatsVisual(int played, int win, int loss, int draw, int duckShots)
+    {
+        if (playedText != null) playedText.text = $"{Mathf.Max(0, played)}";
+        if (winText != null) winText.text = $"{Mathf.Max(0, win)}";
+        if (lossText != null) lossText.text = $"{Mathf.Max(0, loss)}";
+        if (drawText != null) drawText.text = $"{Mathf.Max(0, draw)}";
+        if (duckShotText != null) duckShotText.text = $"{Mathf.Max(0, duckShots)}";
+    }
 
     private void KickPlayer()
     {
-        if (targetNetId == 0) return;
-        var me = LobbyRoomPlayer.Local;
-        if (me) me.CmdKickPlayer(targetNetId);
+        if (targetNetId == 0)
+            return;
+
+        UIAudioSfx.PlayButtonClick();
+
+        LobbyRoomPlayer me = LobbyRoomPlayer.Local;
+        if (me != null)
+            me.CmdKickPlayer(targetNetId);
     }
 }

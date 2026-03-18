@@ -27,6 +27,8 @@ public class ActionHandUI : MonoBehaviour
         }
         Instance = this;
 
+        EnsureLocalHandRoot();
+
         _prefabLookup = new Dictionary<string, GameObject>();
         foreach (var entry in actionCardPrefabs)
         {
@@ -48,7 +50,25 @@ public class ActionHandUI : MonoBehaviour
             return;
         }
 
-        var cardObj = Instantiate(prefab, localHandRoot, false);
+        EnsureLocalHandRoot();
+        var cardObj = Instantiate(prefab);
+
+        Transform handRoot = localHandRoot;
+        if (!IsSceneTransform(handRoot))
+        {
+            Transform fallbackCanvas = GameObject.Find("Main Canvas")?.transform ?? GameObject.Find("Canvas")?.transform;
+            if (fallbackCanvas != null)
+                handRoot = fallbackCanvas;
+        }
+
+        if (IsSceneTransform(handRoot))
+        {
+            cardObj.transform.SetParent(handRoot, false);
+            if (localHandRoot != handRoot)
+                localHandRoot = handRoot;
+
+            CardZoneMoveSfx.NotifyPlayerAreaMove();
+        }
 
         // ผูกสคริปต์ LocalHandCard เพื่อส่ง CmdPlayActionCard เมื่อเล่นใบนี้
         var localHandCard = cardObj.GetComponent<LocalHandCard>();
@@ -89,6 +109,31 @@ public class ActionHandUI : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void EnsureLocalHandRoot()
+    {
+        if (IsSceneTransform(localHandRoot))
+            return;
+
+        Transform resolved = null;
+
+        if (PlayerManager.localInstance != null && PlayerManager.localInstance.PlayerArea != null)
+            resolved = PlayerManager.localInstance.PlayerArea.transform;
+
+        if (!IsSceneTransform(resolved))
+            resolved = GameObject.Find("PlayerArea")?.transform;
+
+        if (IsSceneTransform(resolved))
+            localHandRoot = resolved;
+    }
+
+    private static bool IsSceneTransform(Transform tr)
+    {
+        return tr != null &&
+               tr.gameObject != null &&
+               tr.gameObject.scene.IsValid() &&
+               tr.gameObject.scene.isLoaded;
     }
 
     [System.Serializable]

@@ -134,11 +134,11 @@ MonoBehaviour:
   GivePeaceAChancePrefab: {fileID: 4912664318366299341, guid: 5b10a1a9c7cfba443826028d19fc7bc4, type: 3}
   resurrectionPrefab: {fileID: 4912664318366299341, guid: 16b2ab167195cff40b770f6581d64b62, type: 3}
   duckAndCoverPrefab: {fileID: 4912664318366299341, guid: 3fc5be5983eba2a48a1c4c9dacd63414, type: 3}
-  PlayerArea: {fileID: 8984303353754016741, guid: 531bf5e86878df84aad2b6e2b8c1dbc7, type: 3}
-  EnemyArea: {fileID: 8512122936133997501, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
-  DropZone: {fileID: 7109037699065259299, guid: efb6de748c2733d4380977aad84e0963, type: 3}
-  DuckZone: {fileID: 4097748016762052934, guid: 3ef6e3ebfa65e654b9a07018b0175947, type: 3}
-  TargetZone: {fileID: 1761571985895606704, guid: f3492f020a4471e4cb0cd4d64176c0c0, type: 3}
+  PlayerArea: {fileID: 0}
+  EnemyArea: {fileID: 0}
+  DropZone: {fileID: 0}
+  DuckZone: {fileID: 0}
+  TargetZone: {fileID: 0}
   DuckBlue: {fileID: 6939795744060361821, guid: ae1effe4ca6d69940a65d604ce9ddee7, type: 3}
   DuckGreen: {fileID: 6939795744060361821, guid: fe4e3cd75ca0837469efa23b3686e7e7, type: 3}
   DuckOrange: {fileID: 6939795744060361821, guid: f0b45bc94c9bf164aa21bced9a996db6, type: 3}
@@ -146,7 +146,7 @@ MonoBehaviour:
   DuckPurple: {fileID: 6939795744060361821, guid: c055c54cad203d441a32b1046f8ab38b, type: 3}
   DuckYellow: {fileID: 6939795744060361821, guid: e66b57d66adcfe344bd66ccec3496792, type: 3}
   Marsh: {fileID: 6939795744060361821, guid: a74b94a59f171164883ce12bf19916df, type: 3}
-  TargetCoverZone: {fileID: 3687697826827476903, guid: 77fe25a2d79151d4092586467e7a7258, type: 3}
+  TargetCoverZone: {fileID: 0}
   DuckBluePrefab: {fileID: 6939795744060361821, guid: ae1effe4ca6d69940a65d604ce9ddee7, type: 3}
   DuckGreenPrefab: {fileID: 6939795744060361821, guid: fe4e3cd75ca0837469efa23b3686e7e7, type: 3}
   DuckOrangePrefab: {fileID: 6939795744060361821, guid: f0b45bc94c9bf164aa21bced9a996db6, type: 3}

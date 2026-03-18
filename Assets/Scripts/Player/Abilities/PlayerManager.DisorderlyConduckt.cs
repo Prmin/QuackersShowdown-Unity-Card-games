@@ -38,6 +38,9 @@ public partial class PlayerManager
         if (firstHadTarget) RemoveTargetFromCard(firstSelectedDuck.netIdentity);
         if (secondHadTarget) RemoveTargetFromCard(secondDuck.netIdentity);
 
+        // Second selection complete; start movement SFX before swapping.
+        ServerBroadcastDuckMoveAbilitySfx(1);
+
         int tempCol = firstSelectedDuck.ColNet;
         firstSelectedDuck.ColNet = secondDuck.ColNet;
         secondDuck.ColNet = tempCol;

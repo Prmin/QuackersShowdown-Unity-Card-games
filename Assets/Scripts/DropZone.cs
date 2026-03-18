@@ -18,6 +18,7 @@ public class DropZone : MonoBehaviour, IDropHandler
         // ตั้งการ์ดใหม่
         currentCard = newCard;
         currentCard.transform.SetParent(transform, false);
+        CardZoneMoveSfx.NotifyDropZonePlaced();
     }
 
     // -------------------------------------------
@@ -28,6 +29,16 @@ public class DropZone : MonoBehaviour, IDropHandler
         // eventData.pointerDrag คือ GameObject การ์ดที่ถูกลากมาวาง
         GameObject droppedCard = eventData.pointerDrag;
         if (droppedCard == null) return;
+
+        // DragDrop เป็นเจ้าของ flow การเล่นการ์ดอยู่แล้ว (รวมทั้ง gate เรื่องเทิร์น)
+        // กันไม่ให้ DropZone ยิง PlayCard ซ้ำหรือยิงตอนไม่ใช่เทิร์นจนเกิด reject + การ์ดหาย
+        if (droppedCard.TryGetComponent(out DragDrop dragDrop))
+        {
+            if (!dragDrop.IsDragging || !dragDrop.CanPlayNow())
+                return;
+
+            return;
+        }
 
         // 1) เอาการ์ดนี้มาวางบน DropZone (ตามหลักการที่มีอยู่แล้ว)
         PlaceCard(droppedCard);

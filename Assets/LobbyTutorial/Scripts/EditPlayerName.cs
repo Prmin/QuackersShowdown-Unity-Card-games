@@ -17,13 +17,15 @@ public class EditPlayerName : MonoBehaviour
     {
         Instance = this;
         // โหลดชื่อเดิม (ถ้ามี)
-        playerName = PlayerPrefs.GetString("playerName", playerName);
+        playerName = LocalProfileData.GetPlayerName(playerName);
         playerNameText.text = playerName;
 
         GetComponent<Button>().onClick.AddListener(() =>
         {
+            UIAudioSfx.PlayButtonClick();
+
             UI_InputWindow.Show_Static("Player Name", playerName,
-                "abcdefghijklmnopqrstuvxywzABCDEFGHIJKLMNOPQRSTUVXYWZ .,-", 20,
+                "", 20,
                 () => { /* Cancel */ },
                 (string newName) =>
                 {
@@ -41,7 +43,7 @@ public class EditPlayerName : MonoBehaviour
 
     private void EditPlayerName_OnNameChanged(object sender, EventArgs e)
     {
-        PlayerPrefs.SetString("playerName", playerName);
+        LocalProfileData.SetPlayerName(playerName);
         var me = LobbyRoomPlayer.Local;
         if (me) me.CmdSetName(playerName);
     }

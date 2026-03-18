@@ -423,6 +423,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6051368713238733017}
     m_Modifications:
+    - target: {fileID: 1033086556945836908, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
+      propertyPath: _assetId
+      value: 1956343270
+      objectReference: {fileID: 0}
     - target: {fileID: 1158673523184375741, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -511,9 +515,17 @@ PrefabInstance:
       propertyPath: _assetId
       value: 1956343270
       objectReference: {fileID: 0}
+    - target: {fileID: 7320812401802401116, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
+      propertyPath: _assetId
+      value: 1956343270
+      objectReference: {fileID: 0}
     - target: {fileID: 8512122936133997501, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
       propertyPath: m_Name
       value: EnemyArea
+      objectReference: {fileID: 0}
+    - target: {fileID: 8881089328817015642, guid: 1c49d15d693cb914da3346cf18f35262, type: 3}
+      propertyPath: _assetId
+      value: 1956343270
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
